@@ -95,20 +95,6 @@
     .step{ height:36px; border-radius:4px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform .05s; }
     .step.playing{ border:2px solid #fff!important; transform:scaleY(1.08); box-shadow:0 0 8px #fff; }
 
-    /* DRONE RANGE SEQUENCER */
-    .drone-range{ margin-bottom:12px; }
-    .dr-viz{ display:grid; grid-template-columns:repeat(16,1fr); gap:3px; margin-bottom:10px; }
-    .dr-dot{ height:14px; border-radius:3px; background:rgba(170,0,255,0.07); border:1px solid rgba(170,0,255,0.10); transition:background .1s,box-shadow .1s; }
-    .dr-dot.in-range{ background:rgba(170,0,255,0.52); border-color:rgba(200,80,255,0.75); box-shadow:0 0 6px rgba(170,0,255,0.4); }
-    .dr-dot.is-head{ background:var(--drone)!important; border-color:#fff!important; box-shadow:0 0 12px var(--drone)!important; transform:scaleY(1.1); }
-    .dr-dot.is-start{ border-left:3px solid rgba(255,255,255,0.8); }
-    .dr-dot.is-end  { border-right:3px solid rgba(255,255,255,0.4); }
-    .dr-controls{ display:flex; flex-direction:column; gap:7px; }
-    .dr-row{ display:flex; align-items:center; gap:8px; }
-    .dr-lbl{ font-size:8px; font-weight:900; letter-spacing:1.5px; color:rgba(170,0,255,0.8); min-width:34px; text-transform:uppercase; }
-    .dr-val{ font-size:11px; font-weight:900; color:var(--drone); min-width:20px; text-align:right; text-shadow:0 0 8px var(--drone); }
-    input.dr-sl{ -webkit-appearance:none; appearance:none; flex:1; height:4px; border-radius:2px; background:rgba(170,0,255,0.25); cursor:pointer; }
-    input.dr-sl::-webkit-slider-thumb{ -webkit-appearance:none; width:30px; height:30px; background:var(--drone); border-radius:50%; border:3px solid #000; box-shadow:0 0 10px rgba(170,0,255,0.6); }
     .step.b-on { background:var(--bass);  box-shadow:0 0 10px var(--bass); }
     .step.d-on { background:var(--drum);  box-shadow:0 0 10px var(--drum); }
     .step.h-on { background:var(--hihat); box-shadow:0 0 10px var(--hihat); }
@@ -310,22 +296,7 @@
         </div>
       </div>
       <div class="drawer-body">
-        <!-- DRONE RANGE SEQUENCER -->
-        <div class="drone-range">
-          <div class="dr-viz" id="drViz"></div>
-          <div class="dr-controls">
-            <div class="dr-row">
-              <span class="dr-lbl">START</span>
-              <input type="range" class="dr-sl" id="DR-Start" min="0" max="15" step="1" value="0" oninput="updateDroneRange()">
-              <span class="dr-val" id="drStartVal">1</span>
-            </div>
-            <div class="dr-row">
-              <span class="dr-lbl">END</span>
-              <input type="range" class="dr-sl" id="DR-End" min="0" max="15" step="1" value="8" oninput="updateDroneRange()">
-              <span class="dr-val" id="drEndVal">9</span>
-            </div>
-          </div>
-        </div>
+        <div class="grid" id="gDR"></div>
         <div id="DR-preset-section">
           <div class="preset-row" id="preDR"></div>
           <div class="morph-wrap">
@@ -480,29 +451,11 @@ const MOODS=[
   {h:140, s:1.3, name:'JUNGLE'},  // green
 ];
 let moodIdx=0, moodT=0;
-const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0);
+const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 
 // ── DRONE CONTINUOUS VOICE ─────────────────────────
 let droneGain=null, droneOscs=[];
 
-function buildDroneDots(){
-  const c=document.getElementById('drViz'); if(!c) return;
-  for(let i=0;i<16;i++){
-    const d=document.createElement('div'); d.className='dr-dot'; d.dataset.step=i; c.appendChild(d);
-  }
-  updateDroneRange();
-}
-function updateDroneRange(){
-  const s=Math.round(r('DR-Start')), e=Math.round(r('DR-End'));
-  const sv=document.getElementById('drStartVal'), ev=document.getElementById('drEndVal');
-  if(sv) sv.textContent=s+1; if(ev) ev.textContent=e+1;
-  document.querySelectorAll('.dr-dot').forEach((d,i)=>{
-    const inR = s<e ? (i>=s&&i<=e) : (i>=s||i<=e); // supports wrap-around
-    d.classList.toggle('in-range', inR);
-    d.classList.toggle('is-start', i===s);
-    d.classList.toggle('is-end',   i===e);
-  });
-}
 function startDrone(t){
   _killDroneOscs(); // clean up any previous voice
   const vol=n('DR-Vol'); if(vol<0.01) return;
@@ -688,10 +641,9 @@ function rSend(inst,type){
 
 function toggleD(id){ document.getElementById(id).classList.toggle('open'); }
 function clearSeq(){
-  [bS,dS,hS].forEach(a=>a.fill(0));
-  document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on'));
+  [bS,dS,hS,drS].forEach(a=>a.fill(0));
+  document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on','dr-on'));
   if(droneGain) stopDrone(ctx.currentTime);
-  document.getElementById('DR-Start').value=0; document.getElementById('DR-End').value=8; updateDroneRange();
 }
 function setBpm(val){
   bpm=val;
@@ -710,7 +662,7 @@ function togglePlay(){
   isPlaying=!isPlaying;
   const btn=document.getElementById('playBtn');
   if(isPlaying){ nextT=ctx.currentTime+0.05; seqStep=0; btn.textContent='■  STOP'; btn.classList.add('playing'); }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(droneGain) stopDrone(ctx.currentTime); }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(droneGain) { stopDrone(ctx.currentTime); } }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -1249,15 +1201,10 @@ function loop(){
       const sl=60/bpm/4;
       document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing'));
       document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
-      // Drone range sequencer — playhead dot + start/stop
-      document.querySelectorAll('.dr-dot').forEach(e=>e.classList.remove('is-head'));
-      const _dd=document.querySelector(`.dr-dot[data-step="${seqStep}"]`);
-      if(_dd) _dd.classList.add('is-head');
-      const _drS=Math.round(r('DR-Start')), _drE=Math.round(r('DR-End'));
-      if(_drS!==_drE){
-        if(seqStep===_drS) startDrone(nextT);
-        if(seqStep===_drE) stopDrone(nextT);
-      }
+      // Drone step sequencer — sustain across on-steps, start/stop at transitions
+      const _drOn=drS[seqStep], _drPrev=drS[(seqStep+15)%16];
+      if(_drOn && !_drPrev) startDrone(nextT);
+      else if(!_drOn && _drPrev) stopDrone(nextT);
       if(bS[seqStep])  playB(nextT);
       if(dS[seqStep])  playD(nextT);
       if(hS[seqStep])  playH(nextT);
@@ -1354,7 +1301,7 @@ function padPos(e){
 document.addEventListener('DOMContentLoaded',()=>{
   buildParams('pDR','DR',PDEFS.DR); buildParams('pB','B',PDEFS.B);
   buildParams('pD','D',PDEFS.D);   buildParams('pH','H',PDEFS.H);
-  buildDroneDots(); buildGrid('gB',bS,'b-on');
+  buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
   buildPresets('DR'); buildPresets('B'); buildPresets('D'); buildPresets('H');
 
