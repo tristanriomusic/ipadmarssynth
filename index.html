@@ -14,9 +14,10 @@
 
     /* BACKGROUND IMAGE */
     #bg{
-      position:fixed; inset:0; z-index:0;
+      position:fixed; inset:-6%; z-index:0;
       background:url('bg.jpg') center/cover no-repeat;
-      will-change:filter; transition:filter 0.08s linear;
+      will-change:filter,transform; transition:filter 0.08s linear;
+      transform-origin:center center;
     }
     /* REACTIVE CANVAS OVERLAY */
     #bgCanvas{
@@ -30,7 +31,16 @@
     }
 
     /* BOOT */
-    #boot{ position:fixed; inset:0; background:#000; color:#fff; z-index:99999; border:none; font-size:22px; font-weight:900; letter-spacing:4px; cursor:pointer; }
+    #boot{ position:fixed; inset:0; z-index:99999; border:none; cursor:pointer; overflow:hidden; padding:0; background:#000; }
+    .boot-bg{ position:absolute; inset:-8%; background:url('bg.jpg') center/cover no-repeat; animation:bootKB 16s ease-in-out infinite alternate, bootHue 14s linear infinite; will-change:transform,filter; }
+    .boot-overlay{ position:absolute; inset:0; background:rgba(0,0,0,0.22); }
+    .boot-content{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:2; pointer-events:none; }
+    .boot-title{ font-size:clamp(22px,6vw,42px); font-weight:900; letter-spacing:8px; color:#fff; text-align:center; text-shadow:0 0 50px rgba(0,242,255,1),0 0 100px rgba(0,242,255,0.5),0 2px 6px rgba(0,0,0,0.9); }
+    .boot-version{ margin-top:6px; font-size:clamp(8px,2vw,12px); letter-spacing:10px; color:rgba(0,242,255,0.7); text-shadow:0 0 20px rgba(0,242,255,0.5); }
+    .boot-sub{ margin-top:28px; font-size:clamp(9px,2.5vw,13px); letter-spacing:5px; color:rgba(255,255,255,0.85); animation:bootPulse 2.2s ease-in-out infinite; text-shadow:0 0 20px rgba(255,255,255,0.4); }
+    @keyframes bootKB{ 0%{transform:scale(1.0) translateX(0px) translateY(0px)} 100%{transform:scale(1.2) translateX(-30px) translateY(10px)} }
+    @keyframes bootHue{ 0%{filter:hue-rotate(0deg) saturate(1.4) brightness(0.8)} 33%{filter:hue-rotate(140deg) saturate(2.0) brightness(1.0)} 66%{filter:hue-rotate(260deg) saturate(2.2) brightness(0.95)} 100%{filter:hue-rotate(360deg) saturate(1.4) brightness(0.8)} }
+    @keyframes bootPulse{ 0%,100%{opacity:0.4} 50%{opacity:1} }
     #ui{ display:none; position:relative; z-index:3; }
 
     /* PLAY */
@@ -135,7 +145,15 @@
 <div id="bg"></div>
 <canvas id="bgCanvas"></canvas>
 <div id="scrim"></div>
-<button id="boot">INITIALIZE OMNIVERSE V14</button>
+<button id="boot">
+  <div class="boot-bg"></div>
+  <div class="boot-overlay"></div>
+  <div class="boot-content">
+    <div class="boot-title">OMNIVERSE</div>
+    <div class="boot-version">V 1 4</div>
+    <div class="boot-sub">▶ TAP TO INITIALIZE ◀</div>
+  </div>
+</button>
 <div id="ui">
 
   <button id="playBtn" onclick="togglePlay()">▶  PLAY</button>
@@ -165,7 +183,7 @@
   </div>
 
   <div id="xPad">
-    <span class="pad-label">XS NEBULA — <span id="modeLabel">SHIMMER</span></span>
+    <span class="pad-label">XS NEBULA — <span id="modeLabel">SHIMMER</span> <span id="zoneLabel" style="color:rgba(255,220,80,0.9);font-size:9px;letter-spacing:2px;"></span></span>
     <canvas id="padCanvas"></canvas>
   </div>
 
@@ -434,6 +452,28 @@ const MOODS=[
 let moodIdx=0, moodT=0;
 const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 const NOTES=[41.20,49.00,55.00,65.41,82.41];
+
+// ═══ NEBULA PITCH ZONES ═══════════════════════════
+const NEBULA_ROOT=55; // A1
+const NEBULA_ZONES=[
+  {name:'VOID',   ratios:[0.25,0.333,0.5],          hue:270, col:'rgba(130,0,220,0.22)'},
+  {name:'PULSE',  ratios:[1.0,1.125,1.25,1.333],    hue:200, col:'rgba(0,180,255,0.20)'},
+  {name:'DRIFT',  ratios:[1.5,1.6,1.667,1.75],      hue:140, col:'rgba(0,255,120,0.18)'},
+  {name:'BLOOM',  ratios:[2.0,2.25,2.5,2.667],      hue:45,  col:'rgba(255,200,0,0.18)'},
+  {name:'SURGE',  ratios:[3.0,3.333,3.5,4.0],       hue:10,  col:'rgba(255,90,20,0.20)'},
+  {name:'APEX',   ratios:[4.5,5.0,6.0,7.0,8.0],     hue:320, col:'rgba(255,50,200,0.22)'},
+];
+const ZONE_LABEL_COLS=['#cc88ff','#00e8ff','#44ffaa','#ffdd44','#ff9944','#ff66cc'];
+function quantizeNebulaFreq(px){
+  const zi=Math.min(Math.floor(px*NEBULA_ZONES.length),NEBULA_ZONES.length-1);
+  const zone=NEBULA_ZONES[zi];
+  const posInZone=(px*NEBULA_ZONES.length)-zi;
+  const ri=Math.round(posInZone*(zone.ratios.length-1));
+  return NEBULA_ROOT*zone.ratios[Math.min(ri,zone.ratios.length-1)];
+}
+function currentZoneName(px){
+  return NEBULA_ZONES[Math.min(Math.floor(px*NEBULA_ZONES.length),NEBULA_ZONES.length-1)].name;
+}
 const activePre={DR:0,B:0,D:0,H:0};
 const instDeep={X:false,DR:false,B:false,D:false,H:false};
 
@@ -712,6 +752,12 @@ function drawBg(){
   document.getElementById('scrim').style.background=
     `rgba(2,2,8,${(0.28-energy*0.18).toFixed(2)})`;
 
+  // Animate background image with music — scale & drift
+  const bgScale=(1+energy*0.06+beatFlash*0.03).toFixed(3);
+  const bgTX=((padX-0.5)*energy*18).toFixed(1);
+  const bgTY=(energy*12+beatFlash*5).toFixed(1);
+  document.getElementById('bg').style.transform=`scale(${bgScale}) translate(${bgTX}px,${bgTY}px)`;
+
   // Decay
   energy  *=0.96;
   beatFlash*=0.88;
@@ -808,7 +854,7 @@ function spawnGrainAt(px, py, schedT){
   const spread  = n('X-Width');
   const chorus  = n('X-Chorus');
   const smear   = n('X-Smear')*1.2;
-  const baseFreq= (55+px*660)*harm;
+  const baseFreq= quantizeNebulaFreq(px)*harm;
   const amp     = vol*(0.25+(1-py)*0.75);
   const toRev   = n('X-Rev');
   const toDly   = n('X-Dly');
@@ -907,71 +953,150 @@ function spawnGrain(){
     if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t});
   }
   spawnGrainAt(padX, padY, ctx.currentTime);
+  const zl=document.getElementById('zoneLabel');
+  if(zl) zl.textContent='· '+currentZoneName(padX);
 }
 
 // ═══ SEQUENCER SOUNDS ════════════════════════════
 function playDR(t){
   const vol=n('DR-Vol'); if(vol<0.01) return;
   triggerEnergy(vol*0.5);
-  const o1=ctx.createOscillator(),o2=ctx.createOscillator();
-  const filt=ctx.createBiquadFilter(),env=ctx.createGain(),pan=ctx.createStereoPanner();
-  filt.type='lowpass'; filt.frequency.value=60+n('DR-Cutoff')*2200; filt.Q.value=n('DR-Reso')*22;
-  o1.type='sawtooth'; o2.type='sawtooth';
-  o1.frequency.value=41.20; o2.frequency.value=41.20+n('DR-Detune')*12;
-  const atk=0.05+n('DR-Atk')*3, rel=0.3+n('DR-Rel')*5;
-  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.5,t+atk);
+  const detAmt=n('DR-Detune')*18, atk=0.08+n('DR-Atk')*3.5, rel=0.5+n('DR-Rel')*6;
+  const cutoff=Math.max(80,80+n('DR-Cutoff')*3200), reso=n('DR-Reso')*18;
+  const baseF=41.20;
+  // Master filter with bright sweep-in
+  const filt=ctx.createBiquadFilter();
+  filt.type='lowpass';
+  filt.frequency.setValueAtTime(Math.min(20000,cutoff*3),t);
+  filt.frequency.exponentialRampToValueAtTime(Math.max(80,cutoff),t+atk+0.5);
+  filt.Q.value=reso;
+  const env=ctx.createGain(), pan=ctx.createStereoPanner();
+  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.28,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+atk+rel);
   pan.pan.value=n('DR-Pan')*2-1;
-  o1.connect(filt); o2.connect(filt); filt.connect(env); env.connect(pan);
-  send(pan, rSend('DR','Rev'), rSend('DR','Dly'));
-  o1.start(t); o2.start(t); o1.stop(t+atk+rel+0.2); o2.stop(t+atk+rel+0.2);
+  // 5 detuned sawtooth voices + sub
+  const dets=[-detAmt*2,-detAmt*0.7,0,detAmt*0.7,detAmt*2];
+  const pans=[-0.55,-0.25,0,0.25,0.55];
+  const amps=[0.45,0.7,1.0,0.7,0.45];
+  for(let i=0;i<5;i++){
+    const o=ctx.createOscillator(),og=ctx.createGain(),op=ctx.createStereoPanner();
+    o.type='sawtooth'; o.frequency.value=baseF+dets[i];
+    og.gain.value=amps[i]*0.22; op.pan.value=pans[i];
+    o.connect(og); og.connect(op); op.connect(filt);
+    o.start(t); o.stop(t+atk+rel+0.4);
+  }
+  // Sub octave for weight
+  const sub=ctx.createOscillator(),subG=ctx.createGain();
+  sub.type='sine'; sub.frequency.value=baseF*0.5; subG.gain.value=0.65;
+  sub.connect(subG); subG.connect(filt);
+  sub.start(t); sub.stop(t+atk+rel+0.4);
+  filt.connect(env); env.connect(pan);
+  send(pan,rSend('DR','Rev'),rSend('DR','Dly'));
 }
 function playB(t){
   const vol=n('B-Vol'); if(vol<0.01) return;
   triggerEnergy(vol*0.4);
-  const osc=ctx.createOscillator(),env=ctx.createGain(),filt=ctx.createBiquadFilter();
-  const sub=ctx.createOscillator(),subG=ctx.createGain();
   const freq=NOTES[Math.floor(Math.random()*NOTES.length)];
-  osc.type='triangle'; osc.frequency.value=freq;
-  sub.type='sine'; sub.frequency.value=freq*0.5; subG.gain.value=n('B-Sub')*0.6;
-  filt.type='lowpass'; filt.frequency.setValueAtTime(1200,t);
-  filt.frequency.exponentialRampToValueAtTime(40+n('B-Tone')*600,t+0.12);
-  const atk=0.005+n('B-Punch')*0.03, rel=0.5+n('B-Rel')*2.5;
-  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol,t+atk);
+  const punch=n('B-Punch'), tone=n('B-Tone'), subAmt=n('B-Sub');
+  const rel=0.4+n('B-Rel')*2.8, atk=0.002+punch*0.015;
+  const pan=ctx.createStereoPanner(); pan.pan.value=n('B-Pan')*2-1;
+  // Main body with pitch click transient
+  const osc=ctx.createOscillator();
+  osc.type='triangle';
+  osc.frequency.setValueAtTime(freq*(1+punch*3.5),t);
+  osc.frequency.exponentialRampToValueAtTime(freq,t+0.025+punch*0.06);
+  // Second harmonic for tone character
+  const osc2=ctx.createOscillator(),osc2G=ctx.createGain();
+  osc2.type='sine'; osc2.frequency.value=freq*2; osc2G.gain.value=tone*0.28;
+  osc2.connect(osc2G);
+  // Sub octave
+  const sub=ctx.createOscillator(),subEnv=ctx.createGain();
+  sub.type='sine'; sub.frequency.value=freq*0.5;
+  subEnv.gain.setValueAtTime(0,t); subEnv.gain.linearRampToValueAtTime(subAmt*vol,t+0.004);
+  subEnv.gain.exponentialRampToValueAtTime(0.0001,t+0.004+rel*1.3);
+  sub.connect(subEnv); subEnv.connect(pan);
+  // Filter sweep — plucky tone
+  const filt=ctx.createBiquadFilter();
+  filt.type='lowpass';
+  filt.frequency.setValueAtTime(Math.min(20000,300+tone*12000),t);
+  filt.frequency.exponentialRampToValueAtTime(Math.max(40,55+tone*400),t+0.045+punch*0.09);
+  filt.Q.value=0.8+punch*4;
+  // Soft saturation for body
+  const ws=ctx.createWaveShaper();
+  const kk=22+punch*55; const cv=new Float32Array(512);
+  for(let i=0;i<512;i++){const x=(i*2)/512-1; cv[i]=((Math.PI+kk)*x)/(Math.PI+kk*Math.abs(x));}
+  ws.curve=cv; ws.oversample='2x';
+  const env=ctx.createGain();
+  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.75,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+atk+rel);
-  osc.connect(filt); sub.connect(subG); subG.connect(filt); filt.connect(env);
-  send(env, rSend('B','Rev'), rSend('B','Dly'));
-  osc.start(t); sub.start(t); osc.stop(t+4); sub.stop(t+4);
+  osc.connect(filt); osc2G.connect(filt); filt.connect(ws); ws.connect(env); env.connect(pan);
+  send(pan,rSend('B','Rev'),rSend('B','Dly'));
+  const stopT=t+atk+rel+0.3;
+  osc.start(t); osc2.start(t); sub.start(t); osc.stop(stopT); osc2.stop(stopT); sub.stop(stopT);
 }
 function playD(t){
   const vol=n('D-Vol'); if(vol<0.01) return;
   triggerEnergy(vol*0.6);
-  const osc=ctx.createOscillator(),env=ctx.createGain(),pan=ctx.createStereoPanner();
-  osc.type='sine';
-  osc.frequency.setValueAtTime(140+n('D-Tune')*220,t);
-  osc.frequency.exponentialRampToValueAtTime(55+n('D-Thump')*50,t+0.08);
-  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol,t+0.004);
-  env.gain.exponentialRampToValueAtTime(0.0001,t+0.08+n('D-Decay')*2.5);
-  pan.pan.value=n('D-Pan')*2-1;
-  osc.connect(env); env.connect(pan);
-  const snap=n('D-Snap');
-  if(snap>0.05){ const sn=ctx.createOscillator(),sg=ctx.createGain(); sn.type='square'; sn.frequency.value=1200+snap*3000; sg.gain.setValueAtTime(snap*vol*0.5,t); sg.gain.exponentialRampToValueAtTime(0.0001,t+0.01); sn.connect(sg); sg.connect(masterEQ); sn.start(t); sn.stop(t+0.02); }
-  send(pan, rSend('D','Rev'), rSend('D','Dly'));
-  osc.start(t); osc.stop(t+4);
+  const tune=n('D-Tune'), dec=n('D-Decay'), thump=n('D-Thump'), snap=n('D-Snap');
+  const pan=ctx.createStereoPanner(); pan.pan.value=n('D-Pan')*2-1;
+  const startF=100+tune*310, endF=38+thump*48, decT=0.05+dec*2.5;
+  // Mode 1 — fundamental body
+  const o1=ctx.createOscillator(),e1=ctx.createGain();
+  o1.type='sine';
+  o1.frequency.setValueAtTime(startF,t);
+  o1.frequency.exponentialRampToValueAtTime(Math.max(20,endF),t+decT*0.38);
+  e1.gain.setValueAtTime(0,t); e1.gain.linearRampToValueAtTime(vol,t+0.003);
+  e1.gain.exponentialRampToValueAtTime(0.0001,t+decT);
+  // Mode 2 — ~1.52× second drum head resonance
+  const o2=ctx.createOscillator(),e2=ctx.createGain();
+  o2.type='sine';
+  o2.frequency.setValueAtTime(startF*1.52,t);
+  o2.frequency.exponentialRampToValueAtTime(Math.max(25,endF*1.4),t+decT*0.2);
+  e2.gain.setValueAtTime(0,t); e2.gain.linearRampToValueAtTime(vol*0.42,t+0.002);
+  e2.gain.exponentialRampToValueAtTime(0.0001,t+decT*0.38);
+  // Mode 3 — ~2.75× ring component
+  const o3=ctx.createOscillator(),e3=ctx.createGain();
+  o3.type='triangle';
+  o3.frequency.setValueAtTime(startF*2.75,t);
+  o3.frequency.exponentialRampToValueAtTime(Math.max(30,endF*2.4),t+decT*0.1);
+  e3.gain.setValueAtTime(0,t); e3.gain.linearRampToValueAtTime(vol*0.18,t+0.001);
+  e3.gain.exponentialRampToValueAtTime(0.0001,t+decT*0.2);
+  o1.connect(e1); o2.connect(e2); o3.connect(e3);
+  e1.connect(pan); e2.connect(pan); e3.connect(pan);
+  // Noise transient for attack texture
+  if(snap>0.02){
+    const nbuf=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*0.06),ctx.sampleRate);
+    const nd=nbuf.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
+    const nsrc=ctx.createBufferSource(),nhp=ctx.createBiquadFilter(),ne=ctx.createGain();
+    nsrc.buffer=nbuf; nhp.type='bandpass'; nhp.frequency.value=1800+snap*6000; nhp.Q.value=0.5;
+    ne.gain.setValueAtTime(snap*vol*0.6,t); ne.gain.exponentialRampToValueAtTime(0.0001,t+0.014+snap*0.028);
+    nsrc.connect(nhp); nhp.connect(ne); ne.connect(pan); nsrc.start(t);
+  }
+  send(pan,rSend('D','Rev'),rSend('D','Dly'));
+  o1.start(t); o2.start(t); o3.start(t);
+  const st=t+decT+0.1; o1.stop(st); o2.stop(st); o3.stop(st);
 }
 function playH(t){
   const vol=n('H-Vol'); if(vol<0.01) return;
   triggerEnergy(vol*0.25);
-  const osc=ctx.createOscillator(),env=ctx.createGain(),hp=ctx.createBiquadFilter(),pan=ctx.createStereoPanner();
-  osc.type='square';
-  osc.frequency.value=7000+n('H-Color')*9000+(Math.random()-0.5)*n('H-Jitter')*4000;
-  hp.type='highpass'; hp.frequency.value=5500;
-  env.gain.setValueAtTime(vol*0.22,t);
-  env.gain.exponentialRampToValueAtTime(0.0001,t+0.04+n('H-Decay')*0.35);
-  pan.pan.value=n('H-Pan')*2-1;
-  osc.connect(hp); hp.connect(env); env.connect(pan);
-  send(pan, rSend('H','Rev')*0.6, rSend('H','Dly')*0.5);
-  osc.start(t); osc.stop(t+0.5);
+  const color=n('H-Color'), dec=0.018+n('H-Decay')*0.45, jitt=n('H-Jitter'), shine=n('H-Shine');
+  const pan=ctx.createStereoPanner(); pan.pan.value=n('H-Pan')*2-1;
+  const baseF=120+color*185;
+  // TR-808-style: 6 square oscillators with inharmonic ratios
+  const ratios=[2.0,3.0,4.16,5.04,6.25,6.89];
+  const mix=ctx.createGain(); mix.gain.value=0.18;
+  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=4500+color*6500;
+  // Presence peak for sizzle/shine
+  const pk=ctx.createBiquadFilter(); pk.type='peaking'; pk.frequency.value=7000+color*6000; pk.gain.value=shine*11; pk.Q.value=0.9;
+  const env=ctx.createGain();
+  env.gain.setValueAtTime(vol*0.2,t); env.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(0.006,dec));
+  for(let i=0;i<6;i++){
+    const o=ctx.createOscillator(),og=ctx.createGain();
+    o.type='square'; o.frequency.value=baseF*ratios[i]+(Math.random()-0.5)*jitt*280;
+    og.gain.value=1; o.connect(og); og.connect(mix); o.start(t); o.stop(t+dec+0.06);
+  }
+  mix.connect(hp); hp.connect(pk); pk.connect(env); env.connect(pan);
+  send(pan,rSend('H','Rev')*0.6,rSend('H','Dly')*0.5);
 }
 
 // ═══ MAIN LOOP ════════════════════════════════════
@@ -1035,6 +1160,16 @@ function initCanvas(){
 function drawCanvas(){
   if(!ctx2){ requestAnimationFrame(drawCanvas); return; }
   ctx2.clearRect(0,0,padW,padH);
+
+  // ── Nebula zone bands ──────────────────────────
+  NEBULA_ZONES.forEach((z,i)=>{
+    const x0=i/NEBULA_ZONES.length*padW, x1=(i+1)/NEBULA_ZONES.length*padW;
+    ctx2.fillStyle=z.col; ctx2.fillRect(x0,0,x1-x0,padH);
+    if(i>0){ ctx2.strokeStyle='rgba(255,255,255,0.1)'; ctx2.lineWidth=0.5; ctx2.beginPath(); ctx2.moveTo(x0,0); ctx2.lineTo(x0,padH); ctx2.stroke(); }
+    ctx2.fillStyle=ZONE_LABEL_COLS[i]; ctx2.font='bold 7px Inter,sans-serif'; ctx2.textAlign='center';
+    ctx2.fillText(z.name,(x0+x1)/2,padH-6);
+  });
+
   const COLS={shimmer:'rgba(0,242,255,0.22)',abyss:'rgba(100,0,220,0.28)',crystal:'rgba(200,100,255,0.22)',cloud:'rgba(80,160,255,0.18)',pulse:'rgba(255,220,0,0.22)'};
   const col=COLS[padMode]||COLS.shimmer;
   const gr=ctx2.createRadialGradient(padX*padW,padY*padH,0,padW*0.5,padH*0.5,padW*0.85);
