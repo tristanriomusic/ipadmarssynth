@@ -303,7 +303,7 @@
             <input class="morph-sl" type="range" id="DR-morph" min="0" max="100" value="0" oninput="onMorph('DR',+this.value)">
           </div>
           <div class="pg3">
-            <div class="ctrl"><label>Volume</label>   <input type="range" id="DR-Vol" min="0" max="100" value="28"><div class="dv" id="DR-Vol-v">28</div></div>
+            <div class="ctrl"><label>Volume</label>   <input type="range" id="DR-Vol" min="0" max="100" value="40"><div class="dv" id="DR-Vol-v">40</div></div>
             <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="DR-Rev" min="0" max="100" value="62"><div class="dv" id="DR-Rev-v">62</div></div>
             <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="DR-Dly" min="0" max="100" value="12"><div class="dv" id="DR-Dly-v">12</div></div>
           </div>
@@ -536,11 +536,11 @@ function tickLooper(){
 const PRESETS={
   DR:{ color:'#aa00ff', names:['STRINGS','SPARSE','DARK','SHIMMER','BREATH'],
     data:[
-      {Vol:28,Detune:28,Atk:75,Rel:82,Cutoff:28,Reso:4, Pan:50},
-      {Vol:16,Detune:8, Atk:60,Rel:65,Cutoff:65,Reso:6, Pan:50},
-      {Vol:34,Detune:18,Atk:85,Rel:92,Cutoff:10,Reso:22,Pan:50},
-      {Vol:20,Detune:14,Atk:55,Rel:70,Cutoff:82,Reso:38,Pan:50},
-      {Vol:24,Detune:42,Atk:38,Rel:58,Cutoff:48,Reso:12,Pan:50},
+      {Vol:40,Detune:28,Atk:35,Rel:72,Cutoff:28,Reso:4, Pan:50},
+      {Vol:28,Detune:8, Atk:22,Rel:58,Cutoff:65,Reso:6, Pan:50},
+      {Vol:45,Detune:18,Atk:55,Rel:82,Cutoff:10,Reso:22,Pan:50},
+      {Vol:32,Detune:14,Atk:28,Rel:62,Cutoff:82,Reso:38,Pan:50},
+      {Vol:35,Detune:42,Atk:18,Rel:48,Cutoff:48,Reso:12,Pan:50},
     ]},
   B:{ color:'#ffcc00', names:['UPRIGHT','WARM','BLOOM','SUSTAIN','HOLLOW'],
     data:[
@@ -568,7 +568,7 @@ const PRESETS={
     ]}
 };
 const PDEFS={
-  DR:[{id:'Vol',d:28},{id:'Detune',d:25},{id:'Atk',d:72},{id:'Rel',d:78},{id:'Cutoff',d:32},{id:'Reso',d:5},{id:'Pan',d:50}],
+  DR:[{id:'Vol',d:40},{id:'Detune',d:25},{id:'Atk',d:35},{id:'Rel',d:72},{id:'Cutoff',d:32},{id:'Reso',d:5},{id:'Pan',d:50}],
   B: [{id:'Vol',d:60},{id:'Tone',d:28},{id:'Punch',d:12},{id:'Rel',d:72},{id:'Sub',d:68},{id:'Pan',d:50}],
   D: [{id:'Vol',d:60},{id:'Tune',d:48},{id:'Decay',d:42},{id:'Thump',d:38},{id:'Snap',d:25},{id:'Pan',d:50}],
   H: [{id:'Vol',d:32},{id:'Color',d:28},{id:'Decay',d:48},{id:'Jitter',d:10},{id:'Shine',d:28},{id:'Pan',d:50}]
@@ -1028,15 +1028,15 @@ function playDR(t){
   triggerEnergy(vol*0.4);
   // Detune in Hz — small amount for organic beating between voices (max ~4Hz)
   const detHz=n('DR-Detune')*4;
-  // Long attack/release — string section breathing
-  const atk=0.6+n('DR-Atk')*5.8, rel=2.0+n('DR-Rel')*9;
+  // Slow but audible attack — range 0.15s (tight) to 2.0s (slow string swell)
+  const atk=0.15+n('DR-Atk')*1.85, rel=1.5+n('DR-Rel')*5.5;
   const cutoff=Math.max(300,350+n('DR-Cutoff')*2600), reso=n('DR-Reso')*7;
   const baseF=41.20, panV=n('DR-Pan')*2-1;
   const dur=atk+rel;
   // Warm lowpass
   const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=cutoff; filt.Q.value=reso;
   const env=ctx.createGain(), pan=ctx.createStereoPanner(); pan.pan.value=panV;
-  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.20,t+atk);
+  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.55,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   // Slow volume swell LFO — natural breath (~0.15–0.28 Hz)
   const swellLfo=ctx.createOscillator(), swellG=ctx.createGain();
