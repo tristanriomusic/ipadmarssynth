@@ -94,6 +94,19 @@
     .beat-group:nth-child(odd){ background:rgba(255,255,255,0.08); }
     .step{ height:36px; border-radius:4px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform .05s; }
     .step.playing{ border:2px solid #fff!important; transform:scaleY(1.08); box-shadow:0 0 8px #fff; }
+
+    /* FLOW SEQUENCER (drone) */
+    .flow-seq{ margin-bottom:12px; }
+    .flow-hdr{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; }
+    .flow-name{ font-size:8px; font-weight:900; letter-spacing:2px; color:rgba(170,0,255,0.75); text-transform:uppercase; }
+    .flow-pct{ font-size:14px; font-weight:900; color:var(--drone); text-shadow:0 0 10px var(--drone); }
+    .flow-dots{ display:grid; grid-template-columns:repeat(16,1fr); gap:3px; margin-bottom:9px; }
+    .flow-dot{ height:14px; border-radius:3px; background:rgba(170,0,255,0.08); border:1px solid rgba(170,0,255,0.12); transition:background .1s,box-shadow .1s; }
+    .flow-dot.will-play{ background:rgba(170,0,255,0.5); border-color:rgba(200,80,255,0.7); box-shadow:0 0 5px rgba(170,0,255,0.4); }
+    .flow-dot.downbeat{ border-top:2px solid rgba(170,0,255,0.25); }
+    .flow-dot.is-head{ background:var(--drone)!important; border-color:#fff!important; box-shadow:0 0 10px var(--drone)!important; }
+    input.flow-sl{ -webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:3px; background:rgba(170,0,255,0.25); cursor:pointer; }
+    input.flow-sl::-webkit-slider-thumb{ -webkit-appearance:none; width:30px; height:30px; background:var(--drone); border-radius:50%; border:3px solid #000; box-shadow:0 0 10px rgba(170,0,255,0.6); }
     .step.b-on { background:var(--bass);  box-shadow:0 0 10px var(--bass); }
     .step.d-on { background:var(--drum);  box-shadow:0 0 10px var(--drum); }
     .step.h-on { background:var(--hihat); box-shadow:0 0 10px var(--hihat); }
@@ -288,14 +301,22 @@
     <!-- DRONE -->
     <div class="drawer open" id="drDR">
       <div class="drawer-hdr" onclick="toggleD('drDR')" style="color:var(--drone)">
-        <span>DRONE — DETUNED SAWS</span>
+        <span>DRONE — STRING FIELD</span>
         <div style="display:flex;align-items:center;gap:6px">
           <button class="imode-btn" id="imDR" onclick="toggleInstMode('DR',event)">DEEP</button>
           <span class="arr">▼</span>
         </div>
       </div>
       <div class="drawer-body">
-        <div class="grid" id="gDR"></div>
+        <!-- FLOW SEQUENCER — replaces step grid -->
+        <div class="flow-seq">
+          <div class="flow-hdr">
+            <span class="flow-name">PRESENCE</span>
+            <span class="flow-pct" id="drFlowPct">0%</span>
+          </div>
+          <div class="flow-dots" id="drFlowDots"></div>
+          <input type="range" class="flow-sl" id="DR-Flow" min="0" max="100" value="0" oninput="updateDrFlow(+this.value)">
+        </div>
         <div id="DR-preset-section">
           <div class="preset-row" id="preDR"></div>
           <div class="morph-wrap">
@@ -450,7 +471,32 @@ const MOODS=[
   {h:140, s:1.3, name:'JUNGLE'},  // green
 ];
 let moodIdx=0, moodT=0;
-const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
+const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0);
+// Drone flow sequencer — beat priority (how early each step unlocks as presence rises)
+// 1.00 = downbeat 1 (unlocks first), 0.12 = weakest off-beat (unlocks last)
+const DR_BEAT_PRI=[
+  1.00, 0.12, 0.30, 0.12,  // beat 1
+  0.88, 0.12, 0.30, 0.12,  // beat 2
+  0.95, 0.12, 0.30, 0.12,  // beat 3
+  0.85, 0.12, 0.30, 0.12,  // beat 4
+];
+function updateDrFlow(val){
+  const pct=document.getElementById('drFlowPct');
+  if(pct) pct.textContent=Math.round(val)+'%';
+  const flow=val/100;
+  document.querySelectorAll('.flow-dot').forEach((d,i)=>{
+    d.classList.toggle('will-play', flow > 1-DR_BEAT_PRI[i]);
+  });
+}
+function buildFlowDots(){
+  const c=document.getElementById('drFlowDots'); if(!c) return;
+  for(let i=0;i<16;i++){
+    const d=document.createElement('div');
+    d.className='flow-dot'+(i%4===0?' downbeat':'');
+    d.dataset.step=i; c.appendChild(d);
+  }
+  updateDrFlow(0);
+}
 const NOTES=[41.20,49.00,55.00,65.41,82.41];
 
 // ═══ NEBULA PITCH ZONES ═══════════════════════════
@@ -584,8 +630,9 @@ function rSend(inst,type){
 
 function toggleD(id){ document.getElementById(id).classList.toggle('open'); }
 function clearSeq(){
-  [bS,dS,hS,drS].forEach(a=>a.fill(0));
-  document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on','dr-on'));
+  [bS,dS,hS].forEach(a=>a.fill(0));
+  document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on'));
+  document.getElementById('DR-Flow').value=0; updateDrFlow(0);
 }
 function setBpm(val){
   bpm=val;
@@ -1191,7 +1238,12 @@ function loop(){
       const sl=60/bpm/4;
       document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing'));
       document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
-      if(drS[seqStep]) playDR(nextT);
+      // Drone flow sequencer
+      document.querySelectorAll('.flow-dot').forEach(e=>e.classList.remove('is-head'));
+      const _fd=document.querySelector(`.flow-dot[data-step="${seqStep}"]`);
+      if(_fd) _fd.classList.add('is-head');
+      const _drFlow=n('DR-Flow');
+      if(_drFlow > 1-DR_BEAT_PRI[seqStep]) playDR(nextT);
       if(bS[seqStep])  playB(nextT);
       if(dS[seqStep])  playD(nextT);
       if(hS[seqStep])  playH(nextT);
@@ -1288,7 +1340,7 @@ function padPos(e){
 document.addEventListener('DOMContentLoaded',()=>{
   buildParams('pDR','DR',PDEFS.DR); buildParams('pB','B',PDEFS.B);
   buildParams('pD','D',PDEFS.D);   buildParams('pH','H',PDEFS.H);
-  buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
+  buildFlowDots(); buildGrid('gB',bS,'b-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
   buildPresets('DR'); buildPresets('B'); buildPresets('D'); buildPresets('H');
 
