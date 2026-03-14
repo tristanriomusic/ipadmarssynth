@@ -453,60 +453,66 @@ const MOODS=[
 let moodIdx=0, moodT=0;
 const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 
-// ── DRONE CONTINUOUS VOICE ─────────────────────────
-let droneGain=null, droneOscs=[];
+// ── PER-INSTRUMENT 3-BAND EQ ───────────────────────
+// Returns {in, out} nodes. Chain: src → eq.in … eq.out → send()
+function makeEQ(inst){
+  const lo=ctx.createBiquadFilter(); lo.type='lowshelf';  lo.frequency.value=150;
+  lo.gain.value=(r(`${inst}-EQLo`)-50)*0.30;   // ±15 dB
+  const mi=ctx.createBiquadFilter(); mi.type='peaking';   mi.frequency.value=600; mi.Q.value=0.8;
+  mi.gain.value=(r(`${inst}-EQMi`)-50)*0.30;
+  const hi=ctx.createBiquadFilter(); hi.type='highshelf'; hi.frequency.value=3500;
+  hi.gain.value=(r(`${inst}-EQHi`)-50)*0.30;
+  lo.connect(mi); mi.connect(hi);
+  return {in:lo, out:hi};
+}
 
-function startDrone(t){
-  _killDroneOscs(); // clean up any previous voice
+// ── DRONE — step-triggered, long release (overlaps = sustained feel) ──
+function playDR(t){
   const vol=n('DR-Vol'); if(vol<0.01) return;
-  triggerEnergy(vol*0.4);
-  const detHz=n('DR-Detune')*4;
-  const atk=0.15+n('DR-Atk')*1.85;
-  const cutoff=Math.max(300,350+n('DR-Cutoff')*2600), reso=n('DR-Reso')*7;
-  const baseF=41.20, panV=n('DR-Pan')*2-1;
+  triggerEnergy(vol*0.25);
+  const detHz=n('DR-Detune')*6;
+  const atk=0.04+n('DR-Atk')*0.36;   // 0.04–0.40s
+  const rel=2.5+n('DR-Rel')*5.0;     // 2.5–7.5s — long enough to span many steps
+  const cutoff=Math.max(180,160+n('DR-Cutoff')*1800), reso=n('DR-Reso')*5;
+  const panV=n('DR-Pan')*2-1, baseF=41.20, dur=atk+rel;
   const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=cutoff; filt.Q.value=reso;
-  droneGain=ctx.createGain(); droneGain.gain.setValueAtTime(0,t);
-  droneGain.gain.linearRampToValueAtTime(vol*0.55,t+atk);
+  const env=ctx.createGain();
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(vol*0.55,t+atk);
+  env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   const pan=ctx.createStereoPanner(); pan.pan.value=panV;
-  // Swell LFO
+  // Swell LFO — natural breath on the envelope
   const swL=ctx.createOscillator(), swG=ctx.createGain();
-  swL.type='sine'; swL.frequency.value=0.14+Math.random()*0.14; swG.gain.value=vol*0.04;
-  swL.connect(swG); swG.connect(droneGain.gain); swL.start(t); droneOscs.push(swL);
-  // 5 detuned sine voices
+  swL.type='sine'; swL.frequency.value=0.12+Math.random()*0.10; swG.gain.value=vol*0.06;
+  swL.connect(swG); swG.connect(env.gain); swL.start(t); swL.stop(t+dur+0.5);
+  // 5 detuned sines — string section spread across stereo field
   const vDefs=[
-    {df:0,          pp:0,    av:1.0, vr:0.28, vd:1.0},
-    {df:detHz,      pp:0.32, av:0.82,vr:0.31, vd:0.9},
-    {df:-detHz,     pp:-0.32,av:0.82,vr:0.25, vd:1.1},
-    {df:detHz*1.7,  pp:0.62, av:0.62,vr:0.22, vd:0.8},
-    {df:-detHz*1.7, pp:-0.62,av:0.62,vr:0.26, vd:1.0},
+    {df:0,           pp:0,    av:0.85, vr:0.24, vd:1.0},
+    {df:detHz,       pp:0.42, av:0.70, vr:0.29, vd:0.9},
+    {df:-detHz,      pp:-0.42,av:0.70, vr:0.23, vd:1.1},
+    {df:detHz*1.85,  pp:0.78, av:0.48, vr:0.18, vd:0.8},
+    {df:-detHz*1.85, pp:-0.78,av:0.48, vr:0.21, vd:1.2},
   ];
   for(const v of vDefs){
     const o=ctx.createOscillator(), og=ctx.createGain(), op=ctx.createStereoPanner();
-    o.type='sine'; o.frequency.value=baseF+v.df; og.gain.value=v.av*0.26; op.pan.value=v.pp;
+    o.type='sine'; o.frequency.value=baseF+v.df; og.gain.value=v.av*0.30; op.pan.value=v.pp;
     const vib=ctx.createOscillator(), vg=ctx.createGain();
-    vib.type='sine'; vib.frequency.value=v.vr; vg.gain.value=baseF*0.004*v.vd;
+    vib.type='sine'; vib.frequency.value=v.vr; vg.gain.value=baseF*0.003*v.vd;
     vib.connect(vg); vg.connect(o.frequency);
     o.connect(og); og.connect(op); op.connect(filt);
-    o.start(t); vib.start(t); droneOscs.push(o,vib);
+    o.start(t); vib.start(t); o.stop(t+dur+0.5); vib.stop(t+dur+0.5);
   }
+  // Octave up — very quiet shimmer
+  const oct=ctx.createOscillator(), octG=ctx.createGain();
+  oct.type='sine'; oct.frequency.value=baseF*2; octG.gain.value=0.10;
+  oct.connect(octG); octG.connect(filt); oct.start(t); oct.stop(t+dur+0.5);
+  // Sub — weight and gravitas
   const sub=ctx.createOscillator(), subG=ctx.createGain();
   sub.type='sine'; sub.frequency.value=baseF*0.5; subG.gain.value=0.55;
-  sub.connect(subG); subG.connect(filt); sub.start(t); droneOscs.push(sub);
-  filt.connect(droneGain); droneGain.connect(pan);
-  send(pan,rSend('DR','Rev'),rSend('DR','Dly'));
-}
-function stopDrone(t){
-  if(!droneGain) return;
-  const rel=0.8+n('DR-Rel')*2.5;
-  droneGain.gain.cancelScheduledValues(t);
-  droneGain.gain.setTargetAtTime(0,t,rel*0.35);
-  const stopAt=t+rel+1.5;
-  droneOscs.forEach(o=>{ try{ o.stop(stopAt); }catch(e){} });
-  droneGain=null; droneOscs=[];
-}
-function _killDroneOscs(){
-  if(droneGain){ droneGain.gain.setValueAtTime(0,ctx?ctx.currentTime:0); droneGain=null; }
-  droneOscs.forEach(o=>{ try{ o.stop(); }catch(e){} }); droneOscs=[];
+  sub.connect(subG); subG.connect(filt); sub.start(t); sub.stop(t+dur+0.5);
+  filt.connect(env); env.connect(pan);
+  const eq=makeEQ('DR'); pan.connect(eq.in);
+  send(eq.out,rSend('DR','Rev'),rSend('DR','Dly'));
 }
 const NOTES=[41.20,49.00,55.00,65.41,82.41];
 
@@ -625,10 +631,16 @@ const PRESETS={
     ]}
 };
 const PDEFS={
-  DR:[{id:'Vol',d:40},{id:'Detune',d:25},{id:'Atk',d:35},{id:'Rel',d:72},{id:'Cutoff',d:32},{id:'Reso',d:5},{id:'Pan',d:50}],
-  B: [{id:'Vol',d:60},{id:'Tone',d:28},{id:'Punch',d:12},{id:'Rel',d:72},{id:'Sub',d:68},{id:'Pan',d:50}],
-  D: [{id:'Vol',d:60},{id:'Tune',d:48},{id:'Decay',d:42},{id:'Thump',d:38},{id:'Snap',d:25},{id:'Pan',d:50}],
-  H: [{id:'Vol',d:32},{id:'Color',d:28},{id:'Decay',d:48},{id:'Jitter',d:10},{id:'Shine',d:28},{id:'Pan',d:50}]
+  // EQLo=low shelf 150Hz, EQMi=peak 600Hz, EQHi=high shelf 3.5kHz  (±15dB, 50=0dB)
+  // Defaults carve frequency space: Drone=sub, Bass=low-mid, Drum=mids, HiHat=highs
+  DR:[{id:'Vol',d:40},{id:'Detune',d:25},{id:'Atk',d:35},{id:'Rel',d:72},{id:'Cutoff',d:32},{id:'Reso',d:5},{id:'Pan',d:50},
+      {id:'EQLo',d:80},{id:'EQMi',d:30},{id:'EQHi',d:0}],
+  B: [{id:'Vol',d:60},{id:'Tone',d:28},{id:'Punch',d:12},{id:'Rel',d:72},{id:'Sub',d:68},{id:'Pan',d:50},
+      {id:'EQLo',d:60},{id:'EQMi',d:60},{id:'EQHi',d:20}],
+  D: [{id:'Vol',d:60},{id:'Tune',d:48},{id:'Decay',d:42},{id:'Thump',d:38},{id:'Snap',d:25},{id:'Pan',d:50},
+      {id:'EQLo',d:30},{id:'EQMi',d:80},{id:'EQHi',d:50}],
+  H: [{id:'Vol',d:32},{id:'Color',d:28},{id:'Decay',d:48},{id:'Jitter',d:10},{id:'Shine',d:28},{id:'Pan',d:50},
+      {id:'EQLo',d:0},{id:'EQMi',d:20},{id:'EQHi',d:70}]
 };
 
 // ═══ UTILS ═══════════════════════════════════════
@@ -643,7 +655,6 @@ function toggleD(id){ document.getElementById(id).classList.toggle('open'); }
 function clearSeq(){
   [bS,dS,hS,drS].forEach(a=>a.fill(0));
   document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on','dr-on'));
-  if(droneGain) stopDrone(ctx.currentTime);
 }
 function setBpm(val){
   bpm=val;
@@ -662,7 +673,7 @@ function togglePlay(){
   isPlaying=!isPlaying;
   const btn=document.getElementById('playBtn');
   if(isPlaying){ nextT=ctx.currentTime+0.05; seqStep=0; btn.textContent='■  STOP'; btn.classList.add('playing'); }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(droneGain) { stopDrone(ctx.currentTime); } }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -1120,7 +1131,8 @@ function playB(t){
   env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.68,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   osc.connect(filt); h2G.connect(filt); h3G.connect(filt); filt.connect(env); env.connect(pan);
-  send(pan,rSend('B','Rev'),rSend('B','Dly'));
+  const eqB=makeEQ('B'); pan.connect(eqB.in);
+  send(eqB.out,rSend('B','Rev'),rSend('B','Dly'));
   const stopT=t+dur+0.5;
   osc.start(t); h2.start(t); h3.start(t); sub.start(t); bodyLfo.start(t);
   osc.stop(stopT); h2.stop(stopT); h3.stop(stopT); sub.stop(stopT); bodyLfo.stop(stopT);
@@ -1157,7 +1169,8 @@ function playD(t){
     ne.gain.setValueAtTime(snap*vol*0.42,t); ne.gain.exponentialRampToValueAtTime(0.0001,t+0.03+snap*0.06);
     nsrc.connect(nbp); nbp.connect(ne); ne.connect(pan); nsrc.start(t);
   }
-  send(pan,rSend('D','Rev'),rSend('D','Dly'));
+  const eqD=makeEQ('D'); pan.connect(eqD.in);
+  send(eqD.out,rSend('D','Rev'),rSend('D','Dly'));
   o1.start(t); o2.start(t);
   const st=t+decT+0.15; o1.stop(st); o2.stop(st);
 }
@@ -1190,7 +1203,8 @@ function playH(t){
   shimG.gain.setValueAtTime(shine*vol*0.07,t); shimG.gain.exponentialRampToValueAtTime(0.0001,t+dur*0.7);
   shimO.connect(shimG); shimG.connect(pan); shimO.start(t); shimO.stop(t+dur+0.05);
   nsrc.connect(bp); bp.connect(lp); lp.connect(env); env.connect(pan);
-  send(pan,rSend('H','Rev')*0.85,rSend('H','Dly')*0.55);
+  const eqH=makeEQ('H'); pan.connect(eqH.in);
+  send(eqH.out,rSend('H','Rev')*0.85,rSend('H','Dly')*0.55);
   nsrc.start(t);
 }
 
@@ -1201,10 +1215,7 @@ function loop(){
       const sl=60/bpm/4;
       document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing'));
       document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
-      // Drone step sequencer — sustain across on-steps, start/stop at transitions
-      const _drOn=drS[seqStep], _drPrev=drS[(seqStep+15)%16];
-      if(_drOn && !_drPrev) startDrone(nextT);
-      else if(!_drOn && _drPrev) stopDrone(nextT);
+      if(drS[seqStep]) playDR(nextT);
       if(bS[seqStep])  playB(nextT);
       if(dS[seqStep])  playD(nextT);
       if(hS[seqStep])  playH(nextT);
