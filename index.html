@@ -6,182 +6,120 @@
   <title>OMNIVERSE V14</title>
   <style>
     :root {
-      --bass:  #ffcc00; --drum:  #ff6600;
-      --hihat: #00ff88; --drone: #aa00ff;
-      --xs:    #00f2ff; --fx:    #ff4488;
-      --bg:    #050508;
+      --bass:#ffcc00; --drum:#ff6600; --hihat:#00ff88;
+      --drone:#aa00ff; --xs:#00f2ff; --fx:#ff4488; --bg:#050508;
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
-      font-family: 'Inter', sans-serif; margin: 0;
-      background: var(--bg); color: #fff;
-      overflow-x: hidden; user-select: none;
-    }
+    *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body{ font-family:'Inter',sans-serif; margin:0; background:var(--bg); color:#fff; overflow-x:hidden; user-select:none; }
 
-    /* ── BOOT ── */
-    #boot {
-      position: fixed; inset: 0; background: #000; color: #fff;
-      z-index: 99999; border: none; font-size: 22px; font-weight: 900;
-      letter-spacing: 4px; cursor: pointer;
-    }
-    #ui { display: none; }
+    /* BOOT */
+    #boot{ position:fixed; inset:0; background:#000; color:#fff; z-index:99999; border:none; font-size:22px; font-weight:900; letter-spacing:4px; cursor:pointer; }
+    #ui{ display:none; }
 
-    /* ── PLAY BUTTON ── */
-    #playBtn {
-      display: block; width: calc(94vw); margin: 10px 3vw 0 3vw;
-      padding: 18px; border-radius: 12px; border: 2px solid #00ff88;
-      font-weight: 900; font-size: 15px; letter-spacing: 4px; cursor: pointer;
-      background: #0d1f0d; color: #00ff88;
-      box-shadow: 0 0 20px rgba(0,255,136,0.12); transition: all 0.15s;
-    }
-    #playBtn.playing { background: #1f0d0d; color: #ff4466; border-color: #ff4466; box-shadow: 0 0 20px rgba(255,68,102,0.18); }
+    /* PLAY */
+    #playBtn{ display:block; width:94vw; margin:10px 3vw 0; padding:18px; border-radius:12px; border:2px solid #00ff88; font-weight:900; font-size:15px; letter-spacing:4px; cursor:pointer; background:#0d1f0d; color:#00ff88; box-shadow:0 0 20px rgba(0,255,136,0.12); transition:all .15s; }
+    #playBtn.playing{ background:#1f0d0d; color:#ff4466; border-color:#ff4466; }
 
-    /* ── TOP BAR ── */
-    .top-bar {
-      display: grid; grid-template-columns: 1fr 1fr 1fr;
-      gap: 7px; padding: 7px 3vw 0 3vw;
-    }
-    .m-btn {
-      padding: 12px 6px; border: none; border-radius: 10px;
-      font-weight: 900; color: #fff; text-transform: uppercase;
-      font-size: 9px; letter-spacing: 0.8px; cursor: pointer;
-    }
-    #kill    { background: #ff0044; }
-    #silence { background: #1a1a1a; border: 1px solid #2a2a2a; }
-    #modeBtn { background: #12122a; color: #7070cc; border: 1px solid #2a2a4a; }
-    #modeBtn.deep { background: #1e1030; color: #cc88ff; border-color: #7040aa; }
+    /* TOP BAR */
+    .top-bar{ display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:7px 3vw 0; }
+    .m-btn{ padding:13px 6px; border:none; border-radius:10px; font-weight:900; color:#fff; text-transform:uppercase; font-size:9px; letter-spacing:.8px; cursor:pointer; }
+    #kill{ background:#ff0044; }
+    #silence{ background:#1a1a1a; border:1px solid #2a2a2a; }
 
-    /* ── BPM BAR ── */
-    .bpm-bar {
-      display: flex; align-items: center; gap: 8px;
-      margin: 7px 3vw; padding: 10px 14px;
-      background: #0c0c14; border-radius: 12px; border: 1px solid #1a1a2a;
-    }
-    .bpm-bar > label { font-size: 9px; color: #555; font-weight: 900; letter-spacing: 2px; }
-    .bpm-val { font-size: 20px; font-weight: 900; color: var(--xs); min-width: 44px; text-align: center; }
-    .bpm-bar input[type=range] { flex: 1; }
-    .bpm-presets { display: flex; gap: 5px; }
-    .bpm-pre { background: #111; border: 1px solid #2a2a2a; color: #666; font-size: 9px; font-weight: 800; padding: 5px 7px; border-radius: 6px; cursor: pointer; }
-    .bpm-pre.on { background: var(--xs); color: #000; border-color: var(--xs); }
+    /* BPM */
+    .bpm-bar{ display:flex; align-items:center; gap:8px; margin:7px 3vw; padding:10px 14px; background:#0c0c14; border-radius:12px; border:1px solid #1a1a2a; }
+    .bpm-bar>label{ font-size:9px; color:#555; font-weight:900; letter-spacing:2px; }
+    .bpm-val{ font-size:20px; font-weight:900; color:var(--xs); min-width:44px; text-align:center; }
+    .bpm-bar input[type=range]{ flex:1; }
+    .bpm-presets{ display:flex; gap:5px; }
+    .bpm-pre{ background:#111; border:1px solid #2a2a2a; color:#666; font-size:9px; font-weight:800; padding:5px 7px; border-radius:6px; cursor:pointer; }
+    .bpm-pre.on{ background:var(--xs); color:#000; border-color:var(--xs); }
 
-    /* ── PAD MODE ROW ── */
-    .pad-mode-row {
-      display: flex; gap: 6px; padding: 0 3vw 6px 3vw;
-      overflow-x: auto; scrollbar-width: none;
-    }
-    .pad-mode-row::-webkit-scrollbar { display: none; }
-    .pm {
-      flex-shrink: 0; background: #0d0d1a; border: 1px solid rgba(0,242,255,0.25);
-      color: rgba(0,242,255,0.5); font-size: 9px; font-weight: 900;
-      padding: 7px 14px; border-radius: 20px; cursor: pointer;
-      letter-spacing: 1px; transition: all 0.15s; white-space: nowrap;
-    }
-    .pm.on { background: var(--xs); color: #000; border-color: var(--xs); box-shadow: 0 0 10px rgba(0,242,255,0.4); }
+    /* PAD MODES */
+    .pad-mode-row{ display:flex; gap:6px; padding:0 3vw 6px; overflow-x:auto; scrollbar-width:none; }
+    .pad-mode-row::-webkit-scrollbar{ display:none; }
+    .pm{ flex-shrink:0; background:#0d0d1a; border:1px solid rgba(0,242,255,0.2); color:rgba(0,242,255,0.45); font-size:9px; font-weight:900; padding:7px 14px; border-radius:20px; cursor:pointer; letter-spacing:1px; transition:all .15s; }
+    .pm.on{ background:var(--xs); color:#000; border-color:var(--xs); box-shadow:0 0 10px rgba(0,242,255,0.35); }
 
-    /* ── XY PAD ── */
-    #xPad {
-      position: relative; margin: 0 3vw 8px 3vw;
-      height: 20vh; border-radius: 18px; overflow: hidden;
-      border: 2px solid var(--xs); cursor: crosshair; touch-action: none;
-      box-shadow: 0 0 30px rgba(0,242,255,0.07);
-    }
-    #xPad canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .pad-label {
-      position: absolute; top: 10px; left: 14px;
-      font-size: 10px; font-weight: 900; letter-spacing: 3px;
-      color: rgba(0,242,255,0.35); z-index: 5; pointer-events: none;
-    }
+    /* XY PAD */
+    #xPad{ position:relative; margin:0 3vw 8px; height:22vh; border-radius:18px; overflow:hidden; border:2px solid var(--xs); cursor:crosshair; touch-action:none; box-shadow:0 0 30px rgba(0,242,255,0.07); }
+    #xPad canvas{ position:absolute; inset:0; width:100%; height:100%; }
+    .pad-label{ position:absolute; top:10px; left:14px; font-size:10px; font-weight:900; letter-spacing:3px; color:rgba(0,242,255,0.3); z-index:5; pointer-events:none; }
 
-    /* ── SCROLL AREA ── */
-    .main { padding: 0 3vw 300px 3vw; display: flex; flex-direction: column; gap: 8px; }
+    /* MAIN */
+    .main{ padding:0 3vw 300px; display:flex; flex-direction:column; gap:8px; }
 
-    /* ── DRAWERS ── */
-    .drawer { background: #0c0c14; border-radius: 14px; border: 1px solid #15152a; overflow: hidden; }
-    .drawer-hdr {
-      padding: 13px 15px; background: #0f0f1e; cursor: pointer;
-      display: flex; justify-content: space-between; align-items: center;
-      font-weight: 900; font-size: 11px; letter-spacing: 1.5px;
-    }
-    .arr { font-size: 9px; opacity: 0.4; transition: transform 0.2s; }
-    .drawer.open .arr { transform: rotate(180deg); }
-    .drawer-body { display: none; padding: 14px; }
-    .drawer.open .drawer-body { display: block; }
+    /* DRAWERS */
+    .drawer{ background:#0c0c14; border-radius:14px; border:1px solid #15152a; overflow:hidden; }
+    .drawer-hdr{ padding:12px 15px; background:#0f0f1e; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-weight:900; font-size:11px; letter-spacing:1.5px; }
+    .arr{ font-size:9px; opacity:.4; transition:transform .2s; }
+    .drawer.open .arr{ transform:rotate(180deg); }
+    .drawer-body{ display:none; padding:14px; }
+    .drawer.open .drawer-body{ display:block; }
 
-    /* ── STEP GRID ── */
-    .grid { display: grid; grid-template-columns: repeat(16,1fr); gap: 3px; margin-bottom: 12px; }
-    .step { height: 36px; border-radius: 5px; background: #111; border: 1px solid #1c1c1c; cursor: pointer; transition: transform 0.05s; }
-    .step.playing { border: 2px solid rgba(255,255,255,0.8) !important; transform: scaleY(1.08); }
-    .step.b-on  { background: var(--bass);  box-shadow: 0 0 8px var(--bass); }
-    .step.d-on  { background: var(--drum);  box-shadow: 0 0 8px var(--drum); }
-    .step.h-on  { background: var(--hihat); box-shadow: 0 0 8px var(--hihat); }
-    .step.dr-on { background: var(--drone); box-shadow: 0 0 12px var(--drone); }
+    /* INST MODE TOGGLE */
+    .imode-btn{ font-size:8px; font-weight:900; padding:4px 9px; border-radius:5px; border:1px solid #2a2a3a; background:#111; color:#555; cursor:pointer; letter-spacing:1px; margin-right:6px; white-space:nowrap; }
+    .imode-btn.deep{ background:#1e1030; color:#cc88ff; border-color:#7040aa; }
 
-    /* ── PRESET BUTTONS ── */
-    .preset-row { display: flex; gap: 5px; margin-bottom: 8px; }
-    .prs {
-      flex: 1; padding: 10px 2px; border-radius: 8px;
-      background: #111; border: 1px solid #222; color: #555;
-      font-size: 8px; font-weight: 900; letter-spacing: 0.5px; cursor: pointer;
-      transition: all 0.15s; text-align: center;
-    }
-    .prs.on { color: #000 !important; }
+    /* STEP GRID */
+    .grid{ display:grid; grid-template-columns:repeat(16,1fr); gap:3px; margin-bottom:12px; }
+    .step{ height:36px; border-radius:5px; background:#111; border:1px solid #1c1c1c; cursor:pointer; transition:transform .05s; }
+    .step.playing{ border:2px solid rgba(255,255,255,.8)!important; transform:scaleY(1.08); }
+    .step.b-on { background:var(--bass);  box-shadow:0 0 8px var(--bass); }
+    .step.d-on { background:var(--drum);  box-shadow:0 0 8px var(--drum); }
+    .step.h-on { background:var(--hihat); box-shadow:0 0 8px var(--hihat); }
+    .step.dr-on{ background:var(--drone); box-shadow:0 0 12px var(--drone); }
 
-    /* ── MORPH SLIDER ── */
-    .morph-wrap { margin-bottom: 10px; }
-    .morph-label { font-size: 8px; color: #444; font-weight: 900; letter-spacing: 2px; display: flex; justify-content: space-between; margin-bottom: 5px; }
-    .morph-label span { color: #666; }
-    input.morph-sl {
-      -webkit-appearance: none; appearance: none;
-      width: 100%; height: 6px; border-radius: 3px; background: #1e1e2e; cursor: pointer;
-    }
-    input.morph-sl::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 34px; height: 34px;
-      background: #fff; border-radius: 50%; border: 3px solid #000;
-      box-shadow: 0 0 8px rgba(0,0,0,0.6);
-    }
+    /* PRESETS */
+    .preset-row{ display:flex; gap:5px; margin-bottom:8px; }
+    .prs{ flex:1; padding:10px 2px; border-radius:8px; background:#111; border:1px solid #222; color:#555; font-size:8px; font-weight:900; cursor:pointer; transition:all .15s; text-align:center; }
+    .prs.on{ color:#000!important; }
 
-    /* ── SEND CONTROLS (always visible) ── */
-    .sends { margin-bottom: 0; }
+    /* MORPH */
+    .morph-wrap{ margin-bottom:10px; }
+    .morph-label{ font-size:8px; color:#444; font-weight:900; letter-spacing:2px; display:flex; justify-content:space-between; margin-bottom:5px; }
+    .morph-label span{ color:#666; }
+    input.morph-sl{ -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:3px; background:#1e1e2e; cursor:pointer; }
+    input.morph-sl::-webkit-slider-thumb{ -webkit-appearance:none; width:34px; height:34px; background:#fff; border-radius:50%; border:3px solid #000; box-shadow:0 0 8px rgba(0,0,0,.6); }
 
-    /* ── PARAMS / CONTROLS ── */
-    .sec { font-size: 8px; font-weight: 900; letter-spacing: 2px; color: #333; text-transform: uppercase; margin: 12px 0 7px; }
-    .pg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-    .pg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
-    .pg4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 7px; }
-    .ctrl { display: flex; flex-direction: column; gap: 4px; background: #111; padding: 9px 9px 7px; border-radius: 8px; border: 1px solid #1a1a1a; }
-    .ctrl label { font-size: 8px; color: #484848; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; }
-    .ctrl .dv { font-size: 10px; color: #666; font-weight: 700; text-align: right; margin-top: -2px; }
-    .fx-ctrl { border-color: rgba(255,68,136,0.18) !important; }
-    .fx-ctrl label { color: rgba(255,68,136,0.55) !important; }
+    /* PARAMS */
+    .sec{ font-size:8px; font-weight:900; letter-spacing:2px; color:#333; text-transform:uppercase; margin:12px 0 7px; }
+    .pg2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+    .pg3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+    .pg4{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:7px; }
+    .ctrl{ display:flex; flex-direction:column; gap:4px; background:#111; padding:9px 9px 7px; border-radius:8px; border:1px solid #1a1a1a; }
+    .ctrl label{ font-size:8px; color:#484848; font-weight:800; text-transform:uppercase; letter-spacing:.8px; }
+    .ctrl .dv{ font-size:10px; color:#666; font-weight:700; text-align:right; margin-top:-2px; }
+    .fx-ctrl{ border-color:rgba(255,68,136,0.18)!important; }
+    .fx-ctrl label{ color:rgba(255,68,136,0.55)!important; }
+    .xs-ctrl{ border-color:rgba(0,242,255,0.18)!important; }
+    .xs-ctrl label{ color:rgba(0,242,255,0.5)!important; }
 
-    /* ── DEEP SECTION (hidden in preset mode) ── */
-    .deep-section { display: none; }
-    body.deep .deep-section { display: block; }
+    /* LOOPER */
+    .looper{ background:#070710; border:1px solid #0d0d22; border-radius:10px; padding:10px; margin-bottom:10px; }
+    .looper-btns{ display:flex; gap:6px; margin-bottom:8px; }
+    .loop-btn{ flex:1; padding:11px 4px; border-radius:8px; border:1px solid #1a1a2a; background:#0d0d1a; color:#555; font-size:9px; font-weight:900; cursor:pointer; letter-spacing:.5px; transition:all .15s; }
+    .loop-btn.rec.active{ background:#3a0d0d; color:#ff4466; border-color:#ff4466; box-shadow:0 0 10px rgba(255,68,102,.3); }
+    .loop-btn.play.active{ background:#0d2a1a; color:#00ff88; border-color:#00ff88; }
+    .loop-btn:disabled{ opacity:.3; }
+    .loop-bars{ display:flex; gap:5px; }
+    .loop-bar-btn{ flex:1; padding:7px 4px; border-radius:6px; border:1px solid #1a1a2a; background:#0d0d1a; color:#555; font-size:8px; font-weight:900; cursor:pointer; }
+    .loop-bar-btn.on{ background:var(--xs); color:#000; border-color:var(--xs); }
+    .loop-status{ font-size:8px; color:#444; font-weight:900; letter-spacing:2px; text-align:center; margin-top:6px; height:14px; }
 
-    /* ── RANGE INPUTS ── */
-    input[type=range] {
-      -webkit-appearance: none; appearance: none;
-      background: #222; height: 4px; border-radius: 2px; width: 100%; cursor: pointer;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 28px; height: 28px;
-      background: #ddd; border-radius: 50%; border: 3px solid #000;
-      box-shadow: 0 0 6px rgba(0,0,0,0.6);
-    }
+    /* RANGE */
+    input[type=range]{ -webkit-appearance:none; appearance:none; background:#222; height:4px; border-radius:2px; width:100%; cursor:pointer; }
+    input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; background:#ddd; border-radius:50%; border:3px solid #000; box-shadow:0 0 6px rgba(0,0,0,.6); }
   </style>
 </head>
 <body>
-
 <button id="boot">INITIALIZE OMNIVERSE V14</button>
-
 <div id="ui">
 
   <button id="playBtn" onclick="togglePlay()">▶  PLAY</button>
-
   <div class="top-bar">
     <button id="kill"    class="m-btn" onclick="location.reload()">HARD RESET</button>
     <button id="silence" class="m-btn" onclick="clearSeq()">CLEAR STEPS</button>
-    <button id="modeBtn" class="m-btn" onclick="toggleMode()">DEEP MODE</button>
   </div>
 
   <div class="bpm-bar">
@@ -196,59 +134,84 @@
     </div>
   </div>
 
-  <!-- Pad mode buttons OUTSIDE the pad -->
   <div class="pad-mode-row">
-    <button class="pm on" onclick="setPadMode('stardust',this)">STARDUST</button>
+    <button class="pm on" onclick="setPadMode('shimmer',this)">SHIMMER</button>
     <button class="pm"    onclick="setPadMode('abyss',this)">ABYSS</button>
-    <button class="pm"    onclick="setPadMode('warp',this)">WARP</button>
+    <button class="pm"    onclick="setPadMode('crystal',this)">CRYSTAL</button>
     <button class="pm"    onclick="setPadMode('cloud',this)">CLOUD</button>
     <button class="pm"    onclick="setPadMode('pulse',this)">PULSE</button>
   </div>
 
   <div id="xPad">
-    <span class="pad-label">XS NEBULA ENGINE</span>
+    <span class="pad-label">XS NEBULA — <span id="modeLabel">SHIMMER</span></span>
     <canvas id="padCanvas"></canvas>
   </div>
 
   <div class="main">
 
-    <!-- XS NEBULA CONTROLS -->
+    <!-- XS NEBULA -->
     <div class="drawer open" id="drX">
       <div class="drawer-hdr" onclick="toggleD('drX')" style="color:var(--xs)">
-        <span>XS NEBULA — <span id="modeLabel">STARDUST</span></span>
-        <span class="arr">▼</span>
+        <span>XS NEBULA ENGINE</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="imode-btn" id="imX" onclick="toggleInstMode('X',event)">DEEP</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
-        <div class="pg3">
-          <div class="ctrl"><label>Volume</label>    <input type="range" id="X-Vol"   min="0" max="100" value="65"><div class="dv" id="X-Vol-v">65</div></div>
-          <div class="ctrl"><label>Jitter</label>    <input type="range" id="X-Jitter" min="0" max="100" value="30"><div class="dv" id="X-Jitter-v">30</div></div>
-          <div class="ctrl"><label>Grain Size</label><input type="range" id="X-Grain" min="0" max="100" value="40"><div class="dv" id="X-Grain-v">40</div></div>
+        <!-- LOOPER (always visible) -->
+        <div class="looper">
+          <div class="looper-btns">
+            <button class="loop-btn rec"  id="loop-rec"  onclick="loopRecord()">● REC</button>
+            <button class="loop-btn play" id="loop-play" onclick="loopToggle()" disabled>▶ LOOP</button>
+            <button class="loop-btn"      id="loop-clear" onclick="loopClear()">✕ CLEAR</button>
+          </div>
+          <div class="loop-bars">
+            <button class="loop-bar-btn on" data-bars="1" onclick="setLoopBars(1,this)">1 BAR</button>
+            <button class="loop-bar-btn"    data-bars="2" onclick="setLoopBars(2,this)">2 BAR</button>
+            <button class="loop-bar-btn"    data-bars="4" onclick="setLoopBars(4,this)">4 BAR</button>
+            <button class="loop-bar-btn"    data-bars="8" onclick="setLoopBars(8,this)">8 BAR</button>
+          </div>
+          <div class="loop-status" id="loop-status">EMPTY</div>
         </div>
-        <div class="sec">EFFECTS SEND</div>
-        <div class="pg3 sends">
-          <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="X-Rev"  min="0" max="100" value="60"><div class="dv" id="X-Rev-v">60</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="X-Dly"  min="0" max="100" value="35"><div class="dv" id="X-Dly-v">35</div></div>
-          <div class="ctrl fx-ctrl"><label>Space FB</label><input type="range" id="X-Fb"   min="0" max="96"  value="65"><div class="dv" id="X-Fb-v">65</div></div>
+
+        <!-- PRESET MODE (always visible) -->
+        <div id="X-preset-section">
+          <div class="pg3">
+            <div class="ctrl xs-ctrl"><label>Volume</label>  <input type="range" id="X-Vol"   min="0" max="100" value="70"><div class="dv" id="X-Vol-v">70</div></div>
+            <div class="ctrl xs-ctrl"><label>Jitter</label>  <input type="range" id="X-Jitter" min="0" max="100" value="25"><div class="dv" id="X-Jitter-v">25</div></div>
+            <div class="ctrl xs-ctrl"><label>Density</label> <input type="range" id="X-Grain" min="0" max="100" value="55"><div class="dv" id="X-Grain-v">55</div></div>
+          </div>
+          <div class="sec">FX SEND</div>
+          <div class="pg3">
+            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="X-Rev"  min="0" max="100" value="75"><div class="dv" id="X-Rev-v">75</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="X-Dly"  min="0" max="100" value="40"><div class="dv" id="X-Dly-v">40</div></div>
+            <div class="ctrl fx-ctrl"><label>Space FB</label><input type="range" id="X-Fb"   min="0" max="96"  value="70"><div class="dv" id="X-Fb-v">70</div></div>
+          </div>
         </div>
-        <div class="deep-section">
+
+        <!-- DEEP MODE -->
+        <div id="X-deep-section" style="display:none">
+          <div class="sec">OSCILLATOR</div>
+          <div class="pg4">
+            <div class="ctrl"><label>Harmonics</label><input type="range" id="X-Harm"   min="0" max="100" value="40"><div class="dv" id="X-Harm-v">40</div></div>
+            <div class="ctrl"><label>Shimmer</label>  <input type="range" id="X-Shim"   min="0" max="100" value="50"><div class="dv" id="X-Shim-v">50</div></div>
+            <div class="ctrl"><label>Detune</label>   <input type="range" id="X-Detune" min="0" max="100" value="30"><div class="dv" id="X-Detune-v">30</div></div>
+            <div class="ctrl"><label>Spread</label>   <input type="range" id="X-Width"  min="0" max="100" value="65"><div class="dv" id="X-Width-v">65</div></div>
+          </div>
           <div class="sec">ENVELOPE</div>
           <div class="pg4">
-            <div class="ctrl"><label>Attack</label>     <input type="range" id="X-Atk"    min="0" max="100" value="15"><div class="dv" id="X-Atk-v">15</div></div>
-            <div class="ctrl"><label>Release</label>    <input type="range" id="X-Rel"    min="0" max="100" value="55"><div class="dv" id="X-Rel-v">55</div></div>
-            <div class="ctrl"><label>LFO Rate</label>   <input type="range" id="X-LFO"    min="0" max="100" value="20"><div class="dv" id="X-LFO-v">20</div></div>
-            <div class="ctrl"><label>Detune</label>     <input type="range" id="X-Detune" min="0" max="100" value="30"><div class="dv" id="X-Detune-v">30</div></div>
+            <div class="ctrl"><label>Attack</label>   <input type="range" id="X-Atk"   min="0" max="100" value="20"><div class="dv" id="X-Atk-v">20</div></div>
+            <div class="ctrl"><label>Release</label>  <input type="range" id="X-Rel"   min="0" max="100" value="65"><div class="dv" id="X-Rel-v">65</div></div>
+            <div class="ctrl"><label>LFO Rate</label> <input type="range" id="X-LFO"   min="0" max="100" value="15"><div class="dv" id="X-LFO-v">15</div></div>
+            <div class="ctrl"><label>Smear</label>    <input type="range" id="X-Smear" min="0" max="100" value="35"><div class="dv" id="X-Smear-v">35</div></div>
           </div>
           <div class="sec">FILTER</div>
           <div class="pg4">
-            <div class="ctrl"><label>Cutoff</label>       <input type="range" id="X-Cut"   min="0" max="100" value="70"><div class="dv" id="X-Cut-v">70</div></div>
-            <div class="ctrl"><label>Resonance</label>    <input type="range" id="X-Reso"  min="0" max="100" value="20"><div class="dv" id="X-Reso-v">20</div></div>
-            <div class="ctrl"><label>Filter Type</label>  <input type="range" id="X-FType" min="0" max="100" value="0"> <div class="dv" id="X-FType-v" style="font-size:8px">BP</div></div>
-            <div class="ctrl"><label>Stereo Width</label> <input type="range" id="X-Width" min="0" max="100" value="60"><div class="dv" id="X-Width-v">60</div></div>
-          </div>
-          <div class="sec">SPACE</div>
-          <div class="pg2">
-            <div class="ctrl"><label>Harmonics</label>  <input type="range" id="X-Harm"  min="0" max="100" value="20"><div class="dv" id="X-Harm-v">20</div></div>
-            <div class="ctrl"><label>Time Smear</label> <input type="range" id="X-Smear" min="0" max="100" value="30"><div class="dv" id="X-Smear-v">30</div></div>
+            <div class="ctrl"><label>Cutoff</label>   <input type="range" id="X-Cut"   min="0" max="100" value="72"><div class="dv" id="X-Cut-v">72</div></div>
+            <div class="ctrl"><label>Resonance</label><input type="range" id="X-Reso"  min="0" max="100" value="18"><div class="dv" id="X-Reso-v">18</div></div>
+            <div class="ctrl"><label>F.Type</label>   <input type="range" id="X-FType" min="0" max="100" value="0"> <div class="dv" id="X-FType-v" style="font-size:8px">LP</div></div>
+            <div class="ctrl"><label>Chorus</label>   <input type="range" id="X-Chorus" min="0" max="100" value="40"><div class="dv" id="X-Chorus-v">40</div></div>
           </div>
         </div>
       </div>
@@ -261,34 +224,23 @@
       </div>
       <div class="drawer-body">
         <div class="pg3">
-          <div class="ctrl fx-ctrl"><label>Rev Mix</label>  <input type="range" id="FX-RevMix" min="0" max="100" value="40"><div class="dv" id="FX-RevMix-v">40</div></div>
-          <div class="ctrl fx-ctrl"><label>Dly Mix</label>  <input type="range" id="FX-DlyMix" min="0" max="100" value="30"><div class="dv" id="FX-DlyMix-v">30</div></div>
-          <div class="ctrl fx-ctrl"><label>Master Vol</label><input type="range" id="FX-Vol"   min="0" max="100" value="75"><div class="dv" id="FX-Vol-v">75</div></div>
+          <div class="ctrl fx-ctrl"><label>Rev Mix</label>  <input type="range" id="FX-RevMix"  min="0" max="100" value="40"><div class="dv" id="FX-RevMix-v">40</div></div>
+          <div class="ctrl fx-ctrl"><label>Dly Mix</label>  <input type="range" id="FX-DlyMix"  min="0" max="100" value="30"><div class="dv" id="FX-DlyMix-v">30</div></div>
+          <div class="ctrl fx-ctrl"><label>Master Vol</label><input type="range" id="FX-Vol"    min="0" max="100" value="75"><div class="dv" id="FX-Vol-v">75</div></div>
         </div>
-        <div class="deep-section">
-          <div class="sec">REVERB</div>
-          <div class="pg3">
-            <div class="ctrl fx-ctrl"><label>Size</label>     <input type="range" id="FX-RevSize"  min="0" max="100" value="55"><div class="dv" id="FX-RevSize-v">55</div></div>
-            <div class="ctrl fx-ctrl"><label>Decay</label>    <input type="range" id="FX-RevDecay" min="0" max="100" value="50"><div class="dv" id="FX-RevDecay-v">50</div></div>
-            <div class="ctrl fx-ctrl"><label>Pre-Delay</label><input type="range" id="FX-RevPre"  min="0" max="100" value="10"><div class="dv" id="FX-RevPre-v">10</div></div>
-          </div>
-          <div class="sec">DELAY</div>
-          <div class="pg4">
-            <div class="ctrl fx-ctrl"><label>Time</label>    <input type="range" id="FX-DlyTime" min="0" max="100" value="40"><div class="dv" id="FX-DlyTime-v">40</div></div>
-            <div class="ctrl fx-ctrl"><label>Feedback</label><input type="range" id="FX-DlyFb"   min="0" max="96"  value="50"><div class="dv" id="FX-DlyFb-v">50</div></div>
-            <div class="ctrl fx-ctrl"><label>Hi Damp</label> <input type="range" id="FX-DlyDamp" min="0" max="100" value="40"><div class="dv" id="FX-DlyDamp-v">40</div></div>
-          </div>
-          <div class="sec">DRIVE</div>
-          <div class="pg3">
-            <div class="ctrl fx-ctrl"><label>Drive</label>    <input type="range" id="FX-Drive"    min="0" max="100" value="0"> <div class="dv" id="FX-Drive-v">0</div></div>
-            <div class="ctrl fx-ctrl"><label>Tone</label>     <input type="range" id="FX-DriveTone" min="0" max="100" value="50"><div class="dv" id="FX-DriveTone-v">50</div></div>
-            <div class="ctrl fx-ctrl"><label>Drive Mix</label><input type="range" id="FX-DriveMix" min="0" max="100" value="50"><div class="dv" id="FX-DriveMix-v">50</div></div>
-          </div>
-          <div class="sec">MASTER EQ</div>
-          <div class="pg2">
-            <div class="ctrl fx-ctrl"><label>Lo Cut</label><input type="range" id="FX-LoCut" min="0" max="100" value="10"><div class="dv" id="FX-LoCut-v">10</div></div>
-            <div class="ctrl fx-ctrl"><label>Hi Cut</label><input type="range" id="FX-HiCut" min="0" max="100" value="90"><div class="dv" id="FX-HiCut-v">90</div></div>
-          </div>
+        <div class="sec">REVERB</div>
+        <div class="pg4">
+          <div class="ctrl fx-ctrl"><label>Size</label>     <input type="range" id="FX-RevSize"  min="0" max="100" value="60"><div class="dv" id="FX-RevSize-v">60</div></div>
+          <div class="ctrl fx-ctrl"><label>Decay</label>    <input type="range" id="FX-RevDecay" min="0" max="100" value="55"><div class="dv" id="FX-RevDecay-v">55</div></div>
+          <div class="ctrl fx-ctrl"><label>Pre-Delay</label><input type="range" id="FX-RevPre"  min="0" max="100" value="8"> <div class="dv" id="FX-RevPre-v">8</div></div>
+          <div class="ctrl fx-ctrl"><label>Shimmer</label>  <input type="range" id="FX-Shimmer" min="0" max="100" value="0"> <div class="dv" id="FX-Shimmer-v">0</div></div>
+        </div>
+        <div class="sec">DELAY</div>
+        <div class="pg4">
+          <div class="ctrl fx-ctrl"><label>Time</label>    <input type="range" id="FX-DlyTime" min="0" max="100" value="40"><div class="dv" id="FX-DlyTime-v">40</div></div>
+          <div class="ctrl fx-ctrl"><label>Feedback</label><input type="range" id="FX-DlyFb"   min="0" max="96"  value="50"><div class="dv" id="FX-DlyFb-v">50</div></div>
+          <div class="ctrl fx-ctrl"><label>Hi Damp</label> <input type="range" id="FX-DlyDamp" min="0" max="100" value="45"><div class="dv" id="FX-DlyDamp-v">45</div></div>
+          <div class="ctrl fx-ctrl"><label>Drive</label>   <input type="range" id="FX-Drive"   min="0" max="100" value="0"> <div class="dv" id="FX-Drive-v">0</div></div>
         </div>
       </div>
     </div>
@@ -296,22 +248,34 @@
     <!-- DRONE -->
     <div class="drawer open" id="drDR">
       <div class="drawer-hdr" onclick="toggleD('drDR')" style="color:var(--drone)">
-        <span>DRONE — DETUNED SAWS</span><span class="arr">▼</span>
+        <span>DRONE — DETUNED SAWS</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="imode-btn" id="imDR" onclick="toggleInstMode('DR',event)">DEEP</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
         <div class="grid" id="gDR"></div>
-        <div class="preset-row" id="preDR"></div>
-        <div class="morph-wrap">
-          <div class="morph-label"><span>MORPH</span><span id="DR-morph-lbl">THICK → THIN</span></div>
-          <input class="morph-sl" type="range" id="DR-morph" min="0" max="100" value="0" oninput="onMorph('DR',+this.value)">
+        <div id="DR-preset-section">
+          <div class="preset-row" id="preDR"></div>
+          <div class="morph-wrap">
+            <div class="morph-label"><span>MORPH</span><span id="DR-morph-lbl">THICK → THIN</span></div>
+            <input class="morph-sl" type="range" id="DR-morph" min="0" max="100" value="0" oninput="onMorph('DR',+this.value)">
+          </div>
+          <div class="pg3">
+            <div class="ctrl"><label>Volume</label>   <input type="range" id="DR-Vol" min="0" max="100" value="25"><div class="dv" id="DR-Vol-v">25</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="DR-Rev" min="0" max="100" value="30"><div class="dv" id="DR-Rev-v">30</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="DR-Dly" min="0" max="100" value="0"><div class="dv" id="DR-Dly-v">0</div></div>
+          </div>
         </div>
-        <div class="pg2 sends">
-          <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="DR-Rev" min="0" max="100" value="30"><div class="dv" id="DR-Rev-v">30</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="DR-Dly" min="0" max="100" value="0"> <div class="dv" id="DR-Dly-v">0</div></div>
-        </div>
-        <div class="deep-section">
+        <div id="DR-deep-section" style="display:none">
           <div class="sec">PARAMETERS</div>
           <div class="pg4" id="pDR"></div>
+          <div class="sec">SENDS</div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="DR-Rev-d" min="0" max="100" value="30"><div class="dv" id="DR-Rev-d-v">30</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="DR-Dly-d" min="0" max="100" value="0"> <div class="dv" id="DR-Dly-d-v">0</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -319,22 +283,34 @@
     <!-- BASS -->
     <div class="drawer" id="drB">
       <div class="drawer-hdr" onclick="toggleD('drB')" style="color:var(--bass)">
-        <span>SUB BASS — Em9</span><span class="arr">▼</span>
+        <span>SUB BASS — Em9</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="imode-btn" id="imB" onclick="toggleInstMode('B',event)">DEEP</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
         <div class="grid" id="gB"></div>
-        <div class="preset-row" id="preB"></div>
-        <div class="morph-wrap">
-          <div class="morph-label"><span>MORPH</span><span id="B-morph-lbl">SUB → PUNCH</span></div>
-          <input class="morph-sl" type="range" id="B-morph" min="0" max="100" value="0" oninput="onMorph('B',+this.value)">
+        <div id="B-preset-section">
+          <div class="preset-row" id="preB"></div>
+          <div class="morph-wrap">
+            <div class="morph-label"><span>MORPH</span><span id="B-morph-lbl">SUB → PUNCH</span></div>
+            <input class="morph-sl" type="range" id="B-morph" min="0" max="100" value="0" oninput="onMorph('B',+this.value)">
+          </div>
+          <div class="pg3">
+            <div class="ctrl"><label>Volume</label>    <input type="range" id="B-Vol" min="0" max="100" value="65"><div class="dv" id="B-Vol-v">65</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="B-Rev" min="0" max="100" value="20"><div class="dv" id="B-Rev-v">20</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="B-Dly" min="0" max="100" value="0"><div class="dv" id="B-Dly-v">0</div></div>
+          </div>
         </div>
-        <div class="pg2 sends">
-          <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="B-Rev" min="0" max="100" value="20"><div class="dv" id="B-Rev-v">20</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="B-Dly" min="0" max="100" value="0"> <div class="dv" id="B-Dly-v">0</div></div>
-        </div>
-        <div class="deep-section">
+        <div id="B-deep-section" style="display:none">
           <div class="sec">PARAMETERS</div>
           <div class="pg4" id="pB"></div>
+          <div class="sec">SENDS</div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="B-Rev-d" min="0" max="100" value="20"><div class="dv" id="B-Rev-d-v">20</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="B-Dly-d" min="0" max="100" value="0"> <div class="dv" id="B-Dly-d-v">0</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -342,22 +318,34 @@
     <!-- BONGO -->
     <div class="drawer" id="drD">
       <div class="drawer-hdr" onclick="toggleD('drD')" style="color:var(--drum)">
-        <span>BONGO — PUNCH</span><span class="arr">▼</span>
+        <span>BONGO — PUNCH</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="imode-btn" id="imD" onclick="toggleInstMode('D',event)">DEEP</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
         <div class="grid" id="gD"></div>
-        <div class="preset-row" id="preD"></div>
-        <div class="morph-wrap">
-          <div class="morph-label"><span>MORPH</span><span id="D-morph-lbl">TIGHT → LOOSE</span></div>
-          <input class="morph-sl" type="range" id="D-morph" min="0" max="100" value="0" oninput="onMorph('D',+this.value)">
+        <div id="D-preset-section">
+          <div class="preset-row" id="preD"></div>
+          <div class="morph-wrap">
+            <div class="morph-label"><span>MORPH</span><span id="D-morph-lbl">TIGHT → LOOSE</span></div>
+            <input class="morph-sl" type="range" id="D-morph" min="0" max="100" value="0" oninput="onMorph('D',+this.value)">
+          </div>
+          <div class="pg3">
+            <div class="ctrl"><label>Volume</label>    <input type="range" id="D-Vol" min="0" max="100" value="65"><div class="dv" id="D-Vol-v">65</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="D-Rev" min="0" max="100" value="10"><div class="dv" id="D-Rev-v">10</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="D-Dly" min="0" max="100" value="0"><div class="dv" id="D-Dly-v">0</div></div>
+          </div>
         </div>
-        <div class="pg2 sends">
-          <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="D-Rev" min="0" max="100" value="10"><div class="dv" id="D-Rev-v">10</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="D-Dly" min="0" max="100" value="0"> <div class="dv" id="D-Dly-v">0</div></div>
-        </div>
-        <div class="deep-section">
+        <div id="D-deep-section" style="display:none">
           <div class="sec">PARAMETERS</div>
           <div class="pg4" id="pD"></div>
+          <div class="sec">SENDS</div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="D-Rev-d" min="0" max="100" value="10"><div class="dv" id="D-Rev-d-v">10</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="D-Dly-d" min="0" max="100" value="0"> <div class="dv" id="D-Dly-d-v">0</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -365,379 +353,456 @@
     <!-- HI-HAT -->
     <div class="drawer" id="drH">
       <div class="drawer-hdr" onclick="toggleD('drH')" style="color:var(--hihat)">
-        <span>HI-HAT — SHIMMER</span><span class="arr">▼</span>
+        <span>HI-HAT — SHIMMER</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="imode-btn" id="imH" onclick="toggleInstMode('H',event)">DEEP</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
         <div class="grid" id="gH"></div>
-        <div class="preset-row" id="preH"></div>
-        <div class="morph-wrap">
-          <div class="morph-label"><span>MORPH</span><span id="H-morph-lbl">CLOSED → OPEN</span></div>
-          <input class="morph-sl" type="range" id="H-morph" min="0" max="100" value="0" oninput="onMorph('H',+this.value)">
+        <div id="H-preset-section">
+          <div class="preset-row" id="preH"></div>
+          <div class="morph-wrap">
+            <div class="morph-label"><span>MORPH</span><span id="H-morph-lbl">CLOSED → OPEN</span></div>
+            <input class="morph-sl" type="range" id="H-morph" min="0" max="100" value="0" oninput="onMorph('H',+this.value)">
+          </div>
+          <div class="pg3">
+            <div class="ctrl"><label>Volume</label>    <input type="range" id="H-Vol" min="0" max="100" value="45"><div class="dv" id="H-Vol-v">45</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="H-Rev" min="0" max="100" value="20"><div class="dv" id="H-Rev-v">20</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="H-Dly" min="0" max="100" value="10"><div class="dv" id="H-Dly-v">10</div></div>
+          </div>
         </div>
-        <div class="pg2 sends">
-          <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="H-Rev" min="0" max="100" value="20"><div class="dv" id="H-Rev-v">20</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="H-Dly" min="0" max="100" value="10"><div class="dv" id="H-Dly-v">10</div></div>
-        </div>
-        <div class="deep-section">
+        <div id="H-deep-section" style="display:none">
           <div class="sec">PARAMETERS</div>
           <div class="pg4" id="pH"></div>
+          <div class="sec">SENDS</div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="H-Rev-d" min="0" max="100" value="20"><div class="dv" id="H-Rev-d-v">20</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="H-Dly-d" min="0" max="100" value="10"><div class="dv" id="H-Dly-d-v">10</div></div>
+          </div>
         </div>
       </div>
     </div>
 
-  </div>
-</div>
+  </div><!-- .main -->
+</div><!-- #ui -->
 
 <script>
-// ═══════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════
-let ctx, master, masterEQ, revNode, revPre, revWet, delNode, delFb, delDamp, delWet, waveshaper, driveMix;
-let bpm = 120, seqStep = 0, nextT = 0, isPlaying = false, deepMode = false;
-let padActive = false, padX = 0.5, padY = 0.5, padMode = 'stardust', lastGrain = 0;
-let ripples = [];
-const bS  = Array(16).fill(0), dS  = Array(16).fill(0);
-const hS  = Array(16).fill(0), drS = Array(16).fill(0);
-const NOTES = [41.20, 49.00, 55.00, 65.41, 82.41];
-const activePre = { DR:0, B:0, D:0, H:0 };
+// ═══ STATE ═══════════════════════════════════════
+let ctx, master, masterEQ, revNode, revPre, revWet, shimGain,
+    delNode, delFb, delDamp, delWet, waveshaper, driveMix;
+let bpm=120, seqStep=0, nextT=0, isPlaying=false;
+let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
+let ripples=[];
+const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
+const NOTES=[41.20,49.00,55.00,65.41,82.41];
+const activePre={DR:0,B:0,D:0,H:0};
+const instDeep={X:false,DR:false,B:false,D:false,H:false};
 
-// ═══════════════════════════════════════════
-// PRESETS  (all values 0-100)
-// ═══════════════════════════════════════════
-const PRESETS = {
-  DR: {
-    color: '#aa00ff',
-    names: ['THICK','THIN','DARK','BRIGHT','PULSE'],
-    data: [
-      { Vol:30, Detune:85, Atk:50, Rel:75, Cutoff:25, Reso:5,  Pan:50 }, // THICK
-      { Vol:18, Detune:8,  Atk:5,  Rel:20, Cutoff:75, Reso:8,  Pan:50 }, // THIN
-      { Vol:35, Detune:45, Atk:70, Rel:90, Cutoff:8,  Reso:40, Pan:50 }, // DARK
-      { Vol:20, Detune:30, Atk:10, Rel:50, Cutoff:95, Reso:65, Pan:50 }, // BRIGHT
-      { Vol:28, Detune:60, Atk:2,  Rel:12, Cutoff:45, Reso:25, Pan:50 }, // PULSE
-    ]
-  },
-  B: {
-    color: '#ffcc00',
-    names: ['SUB','PUNCH','PLUCK','SLIDE','GROWL'],
-    data: [
-      { Vol:70, Tone:8,  Punch:15, Rel:65, Sub:85, Pan:50 }, // SUB
-      { Vol:65, Tone:55, Punch:90, Rel:18, Sub:35, Pan:50 }, // PUNCH
-      { Vol:60, Tone:75, Punch:65, Rel:5,  Sub:15, Pan:50 }, // PLUCK
-      { Vol:65, Tone:25, Punch:35, Rel:95, Sub:60, Pan:50 }, // SLIDE
-      { Vol:55, Tone:65, Punch:55, Rel:45, Sub:50, Pan:50 }, // GROWL
-    ]
-  },
-  D: {
-    color: '#ff6600',
-    names: ['TIGHT','LOOSE','HIGH','LOW','TRIBAL'],
-    data: [
-      { Vol:65, Tune:65, Decay:12, Thump:30, Snap:75, Pan:50 }, // TIGHT
-      { Vol:70, Tune:40, Decay:75, Thump:60, Snap:15, Pan:50 }, // LOOSE
-      { Vol:60, Tune:88, Decay:22, Thump:12, Snap:55, Pan:50 }, // HIGH
-      { Vol:75, Tune:12, Decay:55, Thump:92, Snap:10, Pan:50 }, // LOW
-      { Vol:65, Tune:50, Decay:38, Thump:55, Snap:40, Pan:50 }, // TRIBAL
-    ]
-  },
-  H: {
-    color: '#00ff88',
-    names: ['CLOSED','OPEN','BRIGHT','DARK','SIZZLE'],
-    data: [
-      { Vol:45, Color:60, Decay:5,  Jitter:10, Shine:25, Pan:50 }, // CLOSED
-      { Vol:40, Color:55, Decay:85, Jitter:15, Shine:55, Pan:50 }, // OPEN
-      { Vol:38, Color:95, Decay:18, Jitter:30, Shine:80, Pan:50 }, // BRIGHT
-      { Vol:52, Color:12, Decay:42, Jitter:5,  Shine:18, Pan:50 }, // DARK
-      { Vol:35, Color:70, Decay:72, Jitter:45, Shine:95, Pan:50 }, // SIZZLE
-    ]
+// ═══ LOOPER ══════════════════════════════════════
+let loopEvents=[], loopBars=1, loopRec=false, loopPlay=false;
+let loopRecStart=0, loopPlayStart=0, loopScheduled=0;
+function getLoopLen(){ return loopBars*4*(60/bpm); }
+
+function loopRecord(){
+  if(loopRec){ loopRec=false; updateLoopUI(); return; }
+  loopEvents=[]; loopRec=true; loopPlay=false;
+  loopRecStart=ctx.currentTime;
+  updateLoopUI();
+  setTimeout(()=>{ if(loopRec){ loopRec=false; updateLoopUI(); } }, getLoopLen()*1000+200);
+}
+function loopToggle(){
+  if(!loopEvents.length) return;
+  loopPlay=!loopPlay;
+  if(loopPlay){ loopPlayStart=ctx.currentTime; loopScheduled=ctx.currentTime; }
+  updateLoopUI();
+}
+function loopClear(){
+  loopEvents=[]; loopPlay=false; loopRec=false; updateLoopUI();
+}
+function setLoopBars(bars,btn){
+  loopBars=bars;
+  document.querySelectorAll('.loop-bar-btn').forEach(b=>b.classList.toggle('on',+b.dataset.bars===bars));
+}
+function updateLoopUI(){
+  document.getElementById('loop-rec').classList.toggle('active',loopRec);
+  document.getElementById('loop-play').classList.toggle('active',loopPlay);
+  document.getElementById('loop-play').disabled=loopEvents.length===0;
+  document.getElementById('loop-clear').disabled=loopEvents.length===0&&!loopRec;
+  const t=loopEvents.length;
+  document.getElementById('loop-status').textContent=
+    loopRec?'● RECORDING...':(loopPlay?'▶ LOOPING':(t>0?`${t} EVENTS`:'EMPTY'));
+}
+
+function tickLooper(){
+  if(!loopPlay||!loopEvents.length) return;
+  const lookahead=0.2, now=ctx.currentTime;
+  while(loopScheduled < now+lookahead){
+    const len=getLoopLen();
+    const sinceStart=Math.max(0, loopScheduled-loopPlayStart);
+    const iter=Math.floor(sinceStart/len);
+    const iterStart=loopPlayStart+iter*len;
+    const posInIter=loopScheduled-iterStart;
+    const next=loopEvents.find(e=>e.t>posInIter);
+    if(next){
+      const schedAt=iterStart+next.t;
+      if(schedAt>now-0.01) spawnGrainAt(next.x, next.y, schedAt);
+      loopScheduled=schedAt+0.0008;
+    } else {
+      loopScheduled=iterStart+len+0.0001;
+    }
   }
+}
+
+// ═══ PRESETS ══════════════════════════════════════
+const PRESETS={
+  DR:{ color:'#aa00ff', names:['THICK','THIN','DARK','BRIGHT','PULSE'],
+    data:[
+      {Vol:30,Detune:85,Atk:50,Rel:75,Cutoff:25,Reso:5, Pan:50},
+      {Vol:18,Detune:8, Atk:5, Rel:20,Cutoff:75,Reso:8, Pan:50},
+      {Vol:35,Detune:45,Atk:70,Rel:90,Cutoff:8, Reso:40,Pan:50},
+      {Vol:20,Detune:30,Atk:10,Rel:50,Cutoff:95,Reso:65,Pan:50},
+      {Vol:28,Detune:60,Atk:2, Rel:12,Cutoff:45,Reso:25,Pan:50},
+    ]},
+  B:{ color:'#ffcc00', names:['SUB','PUNCH','PLUCK','SLIDE','GROWL'],
+    data:[
+      {Vol:70,Tone:8, Punch:15,Rel:65,Sub:85,Pan:50},
+      {Vol:65,Tone:55,Punch:90,Rel:18,Sub:35,Pan:50},
+      {Vol:60,Tone:75,Punch:65,Rel:5, Sub:15,Pan:50},
+      {Vol:65,Tone:25,Punch:35,Rel:95,Sub:60,Pan:50},
+      {Vol:55,Tone:65,Punch:55,Rel:45,Sub:50,Pan:50},
+    ]},
+  D:{ color:'#ff6600', names:['TIGHT','LOOSE','HIGH','LOW','TRIBAL'],
+    data:[
+      {Vol:65,Tune:65,Decay:12,Thump:30,Snap:75,Pan:50},
+      {Vol:70,Tune:40,Decay:75,Thump:60,Snap:15,Pan:50},
+      {Vol:60,Tune:88,Decay:22,Thump:12,Snap:55,Pan:50},
+      {Vol:75,Tune:12,Decay:55,Thump:92,Snap:10,Pan:50},
+      {Vol:65,Tune:50,Decay:38,Thump:55,Snap:40,Pan:50},
+    ]},
+  H:{ color:'#00ff88', names:['CLOSED','OPEN','BRIGHT','DARK','SIZZLE'],
+    data:[
+      {Vol:45,Color:60,Decay:5, Jitter:10,Shine:25,Pan:50},
+      {Vol:40,Color:55,Decay:85,Jitter:15,Shine:55,Pan:50},
+      {Vol:38,Color:95,Decay:18,Jitter:30,Shine:80,Pan:50},
+      {Vol:52,Color:12,Decay:42,Jitter:5, Shine:18,Pan:50},
+      {Vol:35,Color:70,Decay:72,Jitter:45,Shine:95,Pan:50},
+    ]}
+};
+const PDEFS={
+  DR:[{id:'Vol',d:25},{id:'Detune',d:50},{id:'Atk',d:30},{id:'Rel',d:50},{id:'Cutoff',d:55},{id:'Reso',d:20},{id:'Pan',d:50}],
+  B: [{id:'Vol',d:65},{id:'Tone',d:50},{id:'Punch',d:50},{id:'Rel',d:40},{id:'Sub',d:50},{id:'Pan',d:50}],
+  D: [{id:'Vol',d:65},{id:'Tune',d:50},{id:'Decay',d:40},{id:'Thump',d:50},{id:'Snap',d:30},{id:'Pan',d:50}],
+  H: [{id:'Vol',d:45},{id:'Color',d:55},{id:'Decay',d:30},{id:'Jitter',d:20},{id:'Shine',d:50},{id:'Pan',d:50}]
 };
 
-// ═══════════════════════════════════════════
-// PARAM DEFINITIONS (deep mode sliders)
-// ═══════════════════════════════════════════
-const PDEFS = {
-  DR: [{id:'Vol',d:25},{id:'Detune',d:50},{id:'Atk',d:30},{id:'Rel',d:50},{id:'Cutoff',d:55},{id:'Reso',d:20},{id:'Pan',d:50}],
-  B:  [{id:'Vol',d:65},{id:'Tone',d:50},{id:'Punch',d:50},{id:'Rel',d:40},{id:'Sub',d:50},{id:'Pan',d:50}],
-  D:  [{id:'Vol',d:65},{id:'Tune',d:50},{id:'Decay',d:40},{id:'Thump',d:50},{id:'Snap',d:30},{id:'Pan',d:50}],
-  H:  [{id:'Vol',d:45},{id:'Color',d:55},{id:'Decay',d:30},{id:'Jitter',d:20},{id:'Shine',d:50},{id:'Pan',d:50}]
-};
+// ═══ UTILS ═══════════════════════════════════════
+function r(id){ const e=document.getElementById(id); return e?parseFloat(e.value):50; }
+function n(id){ return r(id)/100; }
+// For deep mode, read from -d suffixed sliders when in deep mode, otherwise from preset sliders
+function rSend(inst,type){
+  return instDeep[inst] ? n(`${inst}-${type}-d`) : n(`${inst}-${type}`);
+}
 
-// ═══════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════
-function r(id) { const e = document.getElementById(id); return e ? parseFloat(e.value) : 50; }
-function n(id) { return r(id) / 100; }
-
-function toggleD(id) { document.getElementById(id).classList.toggle('open'); }
-
-function clearSeq() {
+function toggleD(id){ document.getElementById(id).classList.toggle('open'); }
+function clearSeq(){
   [bS,dS,hS,drS].forEach(a=>a.fill(0));
   document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on','dr-on'));
 }
-
-function setBpm(val) {
-  bpm = val;
-  document.getElementById('bpmSlider').value = val;
-  document.getElementById('bpmVal').textContent = val;
-  document.querySelectorAll('.bpm-pre').forEach(b=>b.classList.toggle('on', +b.textContent===val));
-  if (delNode) delNode.delayTime.setTargetAtTime(60/bpm/2, ctx.currentTime, 0.05);
+function setBpm(val){
+  bpm=val;
+  document.getElementById('bpmSlider').value=val;
+  document.getElementById('bpmVal').textContent=val;
+  document.querySelectorAll('.bpm-pre').forEach(b=>b.classList.toggle('on',+b.textContent===val));
+  if(delNode) delNode.delayTime.setTargetAtTime(60/bpm/2, ctx.currentTime, 0.05);
 }
-
-function setPadMode(mode, btn) {
-  padMode = mode;
+function setPadMode(mode,btn){
+  padMode=mode;
   document.querySelectorAll('.pm').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
-  document.getElementById('modeLabel').textContent = btn.textContent;
+  document.getElementById('modeLabel').textContent=btn.textContent;
+}
+function togglePlay(){
+  isPlaying=!isPlaying;
+  const btn=document.getElementById('playBtn');
+  if(isPlaying){ nextT=ctx.currentTime+0.05; seqStep=0; btn.textContent='■  STOP'; btn.classList.add('playing'); }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); }
+}
+function toggleInstMode(inst,e){
+  e.stopPropagation();
+  const btn=document.getElementById(`im${inst}`);
+  const going=!instDeep[inst];
+  instDeep[inst]=going;
+  btn.textContent=going?'PRESET':'DEEP';
+  btn.classList.toggle('deep',going);
+  const ps=document.getElementById(`${inst}-preset-section`);
+  const ds=document.getElementById(`${inst}-deep-section`);
+  if(ps) ps.style.display=going?'none':'block';
+  if(ds) ds.style.display=going?'block':'none';
 }
 
-function togglePlay() {
-  isPlaying = !isPlaying;
-  const btn = document.getElementById('playBtn');
-  if (isPlaying) {
-    nextT = ctx.currentTime + 0.05; seqStep = 0;
-    btn.textContent = '■  STOP'; btn.classList.add('playing');
-  } else {
-    btn.textContent = '▶  PLAY'; btn.classList.remove('playing');
-    document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing'));
+// ═══ PRESETS — select / morph ══════════════════════
+function applyPresetVals(inst,vals){
+  for(const[k,v] of Object.entries(vals)){
+    const el=document.getElementById(`${inst}-${k}`);
+    if(el){ el.value=Math.round(v); }
+    const dv=document.getElementById(`${inst}-${k}-v`);
+    if(dv) dv.textContent=Math.round(v);
   }
 }
-
-function toggleMode() {
-  deepMode = !deepMode;
-  document.body.classList.toggle('deep', deepMode);
-  const btn = document.getElementById('modeBtn');
-  btn.textContent = deepMode ? 'PRESET MODE' : 'DEEP MODE';
-  btn.classList.toggle('deep', deepMode);
-}
-
-// ═══════════════════════════════════════════
-// PRESETS — select + morph
-// ═══════════════════════════════════════════
-function applyPresetVals(inst, vals) {
-  for (const [k, v] of Object.entries(vals)) {
-    const el = document.getElementById(`${inst}-${k}`);
-    if (el) { el.value = Math.round(v); }
-    const dv = document.getElementById(`${inst}-${k}-v`);
-    if (dv) dv.textContent = Math.round(v);
-  }
-}
-
-function selectPreset(inst, idx) {
-  activePre[inst] = idx;
-  document.getElementById(`${inst}-morph`).value = 0;
-  applyPresetVals(inst, PRESETS[inst].data[idx]);
+function selectPreset(inst,idx){
+  activePre[inst]=idx;
+  document.getElementById(`${inst}-morph`).value=0;
+  applyPresetVals(inst,PRESETS[inst].data[idx]);
   updateMorphLabel(inst);
-  // update button UI
-  document.querySelectorAll(`#pre${inst} .prs`).forEach((b,i) => {
-    b.classList.toggle('on', i === idx);
-    b.style.background = (i === idx) ? PRESETS[inst].color : '';
+  document.querySelectorAll(`#pre${inst} .prs`).forEach((b,i)=>{
+    b.classList.toggle('on',i===idx);
+    b.style.background=i===idx?PRESETS[inst].color:'';
+  });
+}
+function updateMorphLabel(inst){
+  const from=activePre[inst], to=(from+1)%PRESETS[inst].names.length;
+  document.getElementById(`${inst}-morph-lbl`).textContent=`${PRESETS[inst].names[from]} → ${PRESETS[inst].names[to]}`;
+}
+function onMorph(inst,val){
+  const t=val/100, from=activePre[inst], to=(from+1)%PRESETS[inst].data.length;
+  const a=PRESETS[inst].data[from], b=PRESETS[inst].data[to];
+  const lerped={}; for(const k of Object.keys(a)) lerped[k]=a[k]+(b[k]-a[k])*t;
+  applyPresetVals(inst,lerped);
+}
+function buildPresets(inst){
+  const c=document.getElementById(`pre${inst}`);
+  PRESETS[inst].names.forEach((name,i)=>{
+    const btn=document.createElement('button');
+    btn.className='prs'+(i===0?' on':'');
+    btn.textContent=name;
+    btn.style.background=i===0?PRESETS[inst].color:'';
+    btn.style.borderColor=PRESETS[inst].color+'44';
+    btn.addEventListener('click',()=>selectPreset(inst,i));
+    c.appendChild(btn);
   });
 }
 
-function updateMorphLabel(inst) {
-  const from = activePre[inst];
-  const to   = (from + 1) % PRESETS[inst].names.length;
-  document.getElementById(`${inst}-morph-lbl`).textContent =
-    `${PRESETS[inst].names[from]} → ${PRESETS[inst].names[to]}`;
-}
-
-function onMorph(inst, val) {
-  const t    = val / 100;
-  const from = activePre[inst];
-  const to   = (from + 1) % PRESETS[inst].data.length;
-  const a    = PRESETS[inst].data[from];
-  const b    = PRESETS[inst].data[to];
-  const lerped = {};
-  for (const k of Object.keys(a)) lerped[k] = a[k] + (b[k] - a[k]) * t;
-  applyPresetVals(inst, lerped);
-}
-
-function buildPresets(inst) {
-  const container = document.getElementById(`pre${inst}`);
-  PRESETS[inst].names.forEach((name, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'prs' + (i === 0 ? ' on' : '');
-    btn.textContent = name;
-    btn.style.background = i === 0 ? PRESETS[inst].color : '';
-    btn.style.color = i === 0 ? '#000' : '';
-    btn.style.borderColor = PRESETS[inst].color.replace(')', ',0.3)').replace('rgb','rgba') || '#333';
-    btn.addEventListener('click', () => selectPreset(inst, i));
-    container.appendChild(btn);
-  });
-}
-
-// ═══════════════════════════════════════════
-// AUDIO INIT
-// ═══════════════════════════════════════════
-function init() {
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
+// ═══ AUDIO INIT ═══════════════════════════════════
+function init(){
+  ctx=new(window.AudioContext||window.webkitAudioContext)();
   ctx.resume();
 
-  master   = ctx.createGain(); master.gain.value = 0.75;
-  masterEQ = ctx.createBiquadFilter(); masterEQ.type = 'lowpass'; masterEQ.frequency.value = 16000;
+  master=ctx.createGain(); master.gain.value=0.75;
+  masterEQ=ctx.createBiquadFilter(); masterEQ.type='lowpass'; masterEQ.frequency.value=16000;
   masterEQ.connect(master); master.connect(ctx.destination);
 
-  // Reverb
-  revPre  = ctx.createDelay(0.5); revPre.delayTime.value = 0.01;
-  revNode = ctx.createConvolver();
-  revWet  = ctx.createGain(); revWet.gain.value = 0.35;
+  // Reverb with shimmer return
+  revPre=ctx.createDelay(0.5); revPre.delayTime.value=0.01;
+  revNode=ctx.createConvolver();
+  revWet=ctx.createGain(); revWet.gain.value=0.4;
+  shimGain=ctx.createGain(); shimGain.gain.value=0;
   revPre.connect(revNode); revNode.connect(revWet); revWet.connect(masterEQ);
-  buildReverb(3.5, 0.55);
+  // Shimmer: high-passed reverb return → slight detune
+  revNode.connect(shimGain); shimGain.connect(masterEQ);
+  buildReverb(4, 0.55);
 
   // Delay
-  delNode = ctx.createDelay(5.0); delNode.delayTime.value = 60/bpm/2;
-  delFb   = ctx.createGain(); delFb.gain.value = 0.5;
-  delDamp = ctx.createBiquadFilter(); delDamp.type = 'lowpass'; delDamp.frequency.value = 4000;
-  delWet  = ctx.createGain(); delWet.gain.value = 0.28;
+  delNode=ctx.createDelay(5.0); delNode.delayTime.value=60/bpm/2;
+  delFb=ctx.createGain(); delFb.gain.value=0.5;
+  delDamp=ctx.createBiquadFilter(); delDamp.type='lowpass'; delDamp.frequency.value=4000;
+  delWet=ctx.createGain(); delWet.gain.value=0.28;
   delNode.connect(delDamp); delDamp.connect(delFb); delFb.connect(delNode);
   delNode.connect(delWet); delWet.connect(masterEQ);
 
   // Waveshaper
-  waveshaper = ctx.createWaveShaper(); waveshaper.oversample = '4x';
-  waveshaper.curve = makeDistCurve(0);
-  driveMix = ctx.createGain(); driveMix.gain.value = 0;
+  waveshaper=ctx.createWaveShaper(); waveshaper.oversample='4x';
+  waveshaper.curve=makeDistCurve(0);
+  driveMix=ctx.createGain(); driveMix.gain.value=0;
   waveshaper.connect(driveMix); driveMix.connect(masterEQ);
 
   wireSliders();
   loop();
 
-  // iOS keep-alive
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible') ctx.resume(); });
-  document.addEventListener('touchstart', () => { if (ctx.state!=='running') ctx.resume(); }, { passive:true });
-  setInterval(() => { if (ctx && ctx.state!=='running') ctx.resume(); }, 8000);
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') ctx.resume(); });
+  document.addEventListener('touchstart',()=>{ if(ctx.state!=='running') ctx.resume(); },{passive:true});
+  setInterval(()=>{ if(ctx&&ctx.state!=='running') ctx.resume(); },8000);
 }
 
-function buildReverb(size, decay) {
-  const len = ctx.sampleRate * Math.max(0.1, size);
-  const buf = ctx.createBuffer(2, len, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, decay*3);
+function buildReverb(size,decay){
+  const len=ctx.sampleRate*Math.max(0.1,size);
+  const buf=ctx.createBuffer(2,len,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){
+    const d=buf.getChannelData(ch);
+    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay*3);
   }
-  revNode.buffer = buf;
+  revNode.buffer=buf;
 }
-
-function makeDistCurve(amount) {
-  const s = 512, c = new Float32Array(s), k = amount * 300;
-  for (let i = 0; i < s; i++) {
-    const x = (i*2)/s - 1;
-    c[i] = k < 0.01 ? x : ((Math.PI+k)*x) / (Math.PI + k*Math.abs(x));
-  }
+function makeDistCurve(amount){
+  const s=512,c=new Float32Array(s),k=amount*300;
+  for(let i=0;i<s;i++){ const x=(i*2)/s-1; c[i]=k<0.01?x:((Math.PI+k)*x)/(Math.PI+k*Math.abs(x)); }
   return c;
 }
-
-function send(srcNode, toRev, toDly) {
-  if (toRev > 0.005) { const g=ctx.createGain(); g.gain.value=toRev; srcNode.connect(g); g.connect(revPre); }
-  if (toDly > 0.005) { const g=ctx.createGain(); g.gain.value=toDly; srcNode.connect(g); g.connect(delNode); }
-  srcNode.connect(masterEQ);
-  srcNode.connect(waveshaper);
+function send(src,toRev,toDly){
+  if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; src.connect(g); g.connect(revPre); }
+  if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; src.connect(g); g.connect(delNode); }
+  src.connect(masterEQ); src.connect(waveshaper);
 }
 
-// ═══════════════════════════════════════════
-// FX RACK LIVE
-// ═══════════════════════════════════════════
-function applyFX(id, val) {
-  if (!ctx) return;
-  const t = ctx.currentTime, nv = val/100;
-  switch(id) {
-    case 'FX-RevMix':    revWet.gain.setTargetAtTime(nv*0.9, t, 0.05); break;
+// ═══ FX LIVE ══════════════════════════════════════
+function applyFX(id,val){
+  if(!ctx) return;
+  const t=ctx.currentTime,nv=val/100;
+  switch(id){
+    case 'FX-RevMix':    revWet.gain.setTargetAtTime(nv*0.9,t,0.05); break;
+    case 'FX-Shimmer':   shimGain.gain.setTargetAtTime(nv*0.35,t,0.1); break;
     case 'FX-RevSize':
-    case 'FX-RevDecay':  buildReverb(0.3+n('FX-RevSize')*8, 0.2+n('FX-RevDecay')*0.9); break;
-    case 'FX-RevPre':    revPre.delayTime.setTargetAtTime(nv*0.4, t, 0.05); break;
-    case 'FX-DlyFb':     delFb.gain.setTargetAtTime(nv*0.96, t, 0.05); break;
-    case 'FX-DlyMix':    delWet.gain.setTargetAtTime(nv*0.85, t, 0.05); break;
-    case 'FX-DlyTime':   delNode.delayTime.setTargetAtTime(0.03+nv*1.8, t, 0.05); break;
-    case 'FX-DlyDamp':   delDamp.frequency.setTargetAtTime(500+nv*15000, t, 0.05); break;
-    case 'FX-Drive':     waveshaper.curve = makeDistCurve(nv); break;
-    case 'FX-DriveMix':  driveMix.gain.setTargetAtTime(nv*0.8, t, 0.05); break;
-    case 'FX-Vol':       master.gain.setTargetAtTime(nv, t, 0.05); break;
-    case 'FX-HiCut':     masterEQ.frequency.setTargetAtTime(200+nv*15800, t, 0.1); break;
+    case 'FX-RevDecay':  buildReverb(0.3+n('FX-RevSize')*9, 0.2+n('FX-RevDecay')*0.9); break;
+    case 'FX-RevPre':    revPre.delayTime.setTargetAtTime(nv*0.4,t,0.05); break;
+    case 'FX-DlyFb':     delFb.gain.setTargetAtTime(nv*0.96,t,0.05); break;
+    case 'FX-DlyMix':    delWet.gain.setTargetAtTime(nv*0.85,t,0.05); break;
+    case 'FX-DlyTime':   delNode.delayTime.setTargetAtTime(0.03+nv*1.8,t,0.05); break;
+    case 'FX-DlyDamp':   delDamp.frequency.setTargetAtTime(500+nv*15000,t,0.05); break;
+    case 'FX-Drive':     waveshaper.curve=makeDistCurve(nv); driveMix.gain.setTargetAtTime(nv*0.6,t,0.05); break;
+    case 'FX-Vol':       master.gain.setTargetAtTime(nv,t,0.05); break;
   }
 }
-
-// ═══════════════════════════════════════════
-// SLIDER WIRING
-// ═══════════════════════════════════════════
-function wireSliders() {
-  document.querySelectorAll('input[type=range]').forEach(el => {
-    if (el.classList.contains('morph-sl')) return; // morph sliders wired via oninput
-    const dv = document.getElementById(el.id + '-v');
-    el.addEventListener('input', () => {
-      const val = parseFloat(el.value);
-      if (dv) {
-        dv.textContent = el.id==='X-FType'
-          ? ['BP','LP','HP','NT'][Math.floor(val/25)]||'BP'
-          : Math.round(val);
-      }
-      applyFX(el.id, val);
+function wireSliders(){
+  document.querySelectorAll('input[type=range]').forEach(el=>{
+    if(el.classList.contains('morph-sl')) return;
+    const dv=document.getElementById(el.id+'-v');
+    el.addEventListener('input',()=>{
+      const val=parseFloat(el.value);
+      if(dv) dv.textContent=el.id==='X-FType'?['LP','BP','HP','NT'][Math.floor(val/25)]||'LP':Math.round(val);
+      applyFX(el.id,val);
     });
   });
-  document.getElementById('bpmSlider').addEventListener('input', e => setBpm(+e.target.value));
+  document.getElementById('bpmSlider').addEventListener('input',e=>setBpm(+e.target.value));
 }
 
-// ═══════════════════════════════════════════
-// GRAIN SPAWNER
-// ═══════════════════════════════════════════
-function spawnGrain() {
-  const vol = n('X-Vol'); if (vol < 0.01) return;
-  const now    = ctx.currentTime;
-  const jitter = n('X-Jitter') * 2500;
-  const grain  = n('X-Grain');
-  const harm   = 1 + n('X-Harm') * 3;
-  const base   = (70 + padX * 900) * harm;
-  const chaos  = (Math.random()-0.5) * jitter;
-  const width  = (Math.random()-0.5)*2 * n('X-Width');
-  const smear  = n('X-Smear') * 0.8;
-
-  const osc  = ctx.createOscillator();
-  const env  = ctx.createGain();
-  const filt = ctx.createBiquadFilter();
-  const pan  = ctx.createStereoPanner();
-
-  let dur, type, freq = base + chaos;
-  switch (padMode) {
-    case 'abyss':   dur=0.8+grain*2.5;  type='sine';     freq=base*0.45+chaos*0.3; break;
-    case 'warp':    dur=0.02+grain*0.25; type='sawtooth'; freq=base+chaos*2.2;      break;
-    case 'cloud':   dur=1.2+grain*3;    type='triangle'; freq=base*0.7+(Math.random()-0.5)*120; break;
-    case 'pulse':   dur=0.005+grain*0.06;type='square';  freq=base+chaos;           break;
-    default:        dur=0.03+grain*0.25; type='triangle'; freq=base+chaos;
-  }
-  osc.type = type;
-  osc.frequency.value = Math.max(20, freq);
-
-  const lfoAmt = n('X-LFO');
-  if (lfoAmt > 0.04) {
-    const lfo=ctx.createOscillator(), lfoG=ctx.createGain();
-    lfo.frequency.value=0.3+lfoAmt*18; lfoG.gain.value=n('X-Detune')*80;
-    lfo.connect(lfoG); lfoG.connect(osc.frequency); lfo.start(now); lfo.stop(now+dur+0.15);
-  }
-
-  const ftypes=['bandpass','lowpass','highpass','notch'];
-  filt.type = ftypes[Math.floor(n('X-FType')*3.99)]||'bandpass';
-  filt.frequency.value = 80 + padY * n('X-Cut') * 14000;
-  filt.Q.value = 0.5 + n('X-Reso')*18;
-
-  const atk = 0.008 + n('X-Atk')*dur*0.85;
-  const rel = Math.max(0.01, n('X-Rel')*dur + smear);
-  const amp = vol * (0.3 + (1-padY)*0.7);
-  env.gain.setValueAtTime(0, now);
-  env.gain.linearRampToValueAtTime(amp, now+atk);
-  env.gain.exponentialRampToValueAtTime(0.0001, now+atk+rel);
-  pan.pan.value = Math.max(-1, Math.min(1, width));
-
-  osc.connect(filt); filt.connect(env); env.connect(pan);
-  send(pan, n('X-Rev'), n('X-Dly'));
-  delFb.gain.value = n('X-Fb')*0.96;
-  if (smear > 0.1) { const sg=ctx.createGain(); sg.gain.value=smear*0.5; pan.connect(sg); sg.connect(revPre); }
-  osc.start(now); osc.stop(now+atk+rel+0.08);
+// ═══ GRAIN SPAWNER ════════════════════════════════
+// Spawn a single musical oscillator voice
+function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly){
+  const osc=ctx.createOscillator(), env=ctx.createGain(), pan=ctx.createStereoPanner();
+  osc.type=type; osc.frequency.value=Math.max(20,freq);
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(amp,t+atk);
+  env.gain.exponentialRampToValueAtTime(0.0001,t+atk+Math.max(0.01,rel));
+  pan.pan.value=Math.max(-1,Math.min(1,panVal));
+  osc.connect(env); env.connect(pan);
+  send(pan, toRev, toDly);
+  osc.start(t); osc.stop(t+atk+rel+0.15);
 }
 
-// ═══════════════════════════════════════════
-// SEQUENCER SOUNDS
-// ═══════════════════════════════════════════
-function playDR(t) {
+function spawnGrainAt(px, py, schedT){
+  const vol=n('X-Vol'); if(vol<0.01) return;
+  const jitter  = n('X-Jitter')*800;
+  const grain   = n('X-Grain');
+  const harm    = 1+n('X-Harm')*2.5;
+  const shim    = n('X-Shim');
+  const spread  = n('X-Width');
+  const chorus  = n('X-Chorus');
+  const smear   = n('X-Smear')*1.2;
+  const baseFreq= (55+px*660)*harm;
+  const amp     = vol*(0.25+(1-py)*0.75);
+  const toRev   = n('X-Rev');
+  const toDly   = n('X-Dly');
+
+  // LFO helper
+  function addLFO(oscNode, rate, depth){
+    if(rate<0.01) return;
+    const lfo=ctx.createOscillator(), lg=ctx.createGain();
+    lfo.frequency.value=rate; lg.gain.value=depth;
+    lfo.connect(lg); lg.connect(oscNode.frequency);
+    lfo.start(schedT); lfo.stop(schedT+10);
+  }
+  const lfoRate = n('X-LFO')*12;
+  const detW    = n('X-Detune')*60;
+
+  switch(padMode){
+
+    case 'shimmer': {
+      // Eventide shimmer: layered harmonics with shimmer feedback
+      const dur = 0.4+grain*2.5;
+      const atk = 0.15+n('X-Atk')*dur*0.6;
+      const rel = 0.5+n('X-Rel')*dur+smear;
+      const ch  = (Math.random()-0.5)*jitter;
+      // Fundamental
+      makeVoice(baseFreq+ch,'triangle',atk,rel,amp*0.6,schedT,(Math.random()-0.5)*spread*1.5,toRev,toDly);
+      // Octave up (shimmer partial) — heavy reverb
+      if(shim>0.05) makeVoice((baseFreq+ch)*2,'triangle',atk+0.1,rel+0.3,amp*shim*0.4,schedT,(Math.random()-0.5)*spread*2,toRev*1.5,toDly*0.3);
+      // Fifth
+      if(n('X-Harm')>0.2) makeVoice((baseFreq+ch)*1.5,'sine',atk+0.05,rel,amp*0.25,schedT,(Math.random()-0.5)*spread,toRev,0);
+      break;
+    }
+
+    case 'abyss': {
+      // Microcosm freeze: enormous slow sines stacking up
+      const dur = 1.5+grain*5;
+      const atk = 0.8+n('X-Atk')*2;
+      const rel = 1.5+n('X-Rel')*dur+smear;
+      const ch  = (Math.random()-0.5)*jitter*0.4;
+      makeVoice(baseFreq*0.5+ch,'sine',atk,rel,amp*0.7,schedT,(Math.random()-0.5)*spread,toRev*1.3,toDly);
+      // Sub octave
+      makeVoice(baseFreq*0.25,'sine',atk+0.2,rel,amp*0.5,schedT,0,toRev,0);
+      // Ghost octave above
+      if(shim>0.1) makeVoice(baseFreq+ch,'triangle',atk+0.4,rel+1,amp*shim*0.25,schedT,(Math.random()-0.5)*spread,toRev*1.8,0);
+      break;
+    }
+
+    case 'crystal': {
+      // Eventide Crystal / pitched shimmer
+      const dur = 0.06+grain*0.4;
+      const atk = 0.005+n('X-Atk')*dur*0.5;
+      const rel = 0.1+n('X-Rel')*dur+smear;
+      const ch  = (Math.random()-0.5)*jitter;
+      makeVoice(baseFreq+ch,'sawtooth',atk,rel,amp*0.5,schedT,(Math.random()-0.5)*spread,toRev,toDly);
+      // Octave above pitched crystal reflection
+      makeVoice((baseFreq+ch)*2+Math.random()*20,'triangle',atk,rel*0.7,amp*0.3*shim,schedT,(Math.random()-0.5)*spread*1.5,toRev*1.4,toDly);
+      // Chorus pair
+      if(chorus>0.1) makeVoice(baseFreq+ch+(chorus*20),'sawtooth',atk,rel,amp*0.3,schedT,(Math.random()-0.5)*spread,toRev,0);
+      break;
+    }
+
+    case 'cloud': {
+      // Eventide Space / thick ambient clouds — 4 detuned voices
+      const dur = 1.8+grain*4;
+      const atk = 0.6+n('X-Atk')*2.5;
+      const rel = 1.5+n('X-Rel')*dur+smear;
+      const detuneAmt = 8+detW*0.5;
+      for(let v=0;v<4;v++){
+        const det = (v-1.5)*detuneAmt + (Math.random()-0.5)*jitter*0.3;
+        const panV = ((v/3)-0.5)*spread*2;
+        const aV = amp*0.35*(0.7+Math.random()*0.3);
+        makeVoice(baseFreq+det,'triangle',atk+(v*0.08),rel,aV,schedT,panV,toRev,v===0?toDly:0);
+      }
+      // Shimmer octave
+      if(shim>0.1) makeVoice(baseFreq*2+(Math.random()-0.5)*30,'sine',atk+0.3,rel+0.5,amp*shim*0.2,schedT,0,toRev*1.5,0);
+      break;
+    }
+
+    case 'pulse': {
+      // Rhythmic micro-transients with echo decay
+      const dur = 0.008+grain*0.08;
+      const atk = 0.002;
+      const rel = 0.02+n('X-Rel')*0.15;
+      const ch  = (Math.random()-0.5)*jitter;
+      makeVoice(baseFreq+ch,'square',atk,rel,amp*0.5,schedT,(Math.random()-0.5)*spread,toRev*0.5,toDly*1.5);
+      if(shim>0.1) makeVoice((baseFreq+ch)*2,'square',atk,rel*0.5,amp*shim*0.3,schedT,(Math.random()-0.5)*spread,toRev,toDly);
+      break;
+    }
+  }
+}
+
+function spawnGrain(){
+  if(loopRec){
+    const t=ctx.currentTime-loopRecStart;
+    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t});
+  }
+  spawnGrainAt(padX, padY, ctx.currentTime);
+}
+
+// ═══ SEQUENCER SOUNDS ════════════════════════════
+function playDR(t){
   const vol=n('DR-Vol'); if(vol<0.01) return;
-  const o1=ctx.createOscillator(), o2=ctx.createOscillator();
-  const filt=ctx.createBiquadFilter(), env=ctx.createGain(), pan=ctx.createStereoPanner();
+  const o1=ctx.createOscillator(),o2=ctx.createOscillator();
+  const filt=ctx.createBiquadFilter(),env=ctx.createGain(),pan=ctx.createStereoPanner();
   filt.type='lowpass'; filt.frequency.value=60+n('DR-Cutoff')*2200; filt.Q.value=n('DR-Reso')*22;
   o1.type='sawtooth'; o2.type='sawtooth';
   o1.frequency.value=41.20; o2.frequency.value=41.20+n('DR-Detune')*12;
@@ -746,189 +811,157 @@ function playDR(t) {
   env.gain.exponentialRampToValueAtTime(0.0001,t+atk+rel);
   pan.pan.value=n('DR-Pan')*2-1;
   o1.connect(filt); o2.connect(filt); filt.connect(env); env.connect(pan);
-  send(pan, n('DR-Rev'), n('DR-Dly'));
+  send(pan, rSend('DR','Rev'), rSend('DR','Dly'));
   o1.start(t); o2.start(t); o1.stop(t+atk+rel+0.2); o2.stop(t+atk+rel+0.2);
 }
-
-function playB(t) {
+function playB(t){
   const vol=n('B-Vol'); if(vol<0.01) return;
-  const osc=ctx.createOscillator(), env=ctx.createGain(), filt=ctx.createBiquadFilter();
-  const sub=ctx.createOscillator(), subG=ctx.createGain();
+  const osc=ctx.createOscillator(),env=ctx.createGain(),filt=ctx.createBiquadFilter();
+  const sub=ctx.createOscillator(),subG=ctx.createGain();
   const freq=NOTES[Math.floor(Math.random()*NOTES.length)];
   osc.type='triangle'; osc.frequency.value=freq;
-  sub.type='sine'; sub.frequency.value=freq*0.5;
-  subG.gain.value=n('B-Sub')*0.6;
+  sub.type='sine'; sub.frequency.value=freq*0.5; subG.gain.value=n('B-Sub')*0.6;
   filt.type='lowpass'; filt.frequency.setValueAtTime(1200,t);
-  filt.frequency.exponentialRampToValueAtTime(40+n('B-Tone')*600, t+0.12);
+  filt.frequency.exponentialRampToValueAtTime(40+n('B-Tone')*600,t+0.12);
   const atk=0.005+n('B-Punch')*0.03, rel=0.5+n('B-Rel')*2.5;
   env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+atk+rel);
   osc.connect(filt); sub.connect(subG); subG.connect(filt); filt.connect(env);
-  send(env, n('B-Rev'), n('B-Dly'));
+  send(env, rSend('B','Rev'), rSend('B','Dly'));
   osc.start(t); sub.start(t); osc.stop(t+4); sub.stop(t+4);
 }
-
-function playD(t) {
+function playD(t){
   const vol=n('D-Vol'); if(vol<0.01) return;
-  const osc=ctx.createOscillator(), env=ctx.createGain(), pan=ctx.createStereoPanner();
+  const osc=ctx.createOscillator(),env=ctx.createGain(),pan=ctx.createStereoPanner();
   osc.type='sine';
-  osc.frequency.setValueAtTime(140+n('D-Tune')*220, t);
-  osc.frequency.exponentialRampToValueAtTime(55+n('D-Thump')*50, t+0.08);
-  const snap=n('D-Snap');
+  osc.frequency.setValueAtTime(140+n('D-Tune')*220,t);
+  osc.frequency.exponentialRampToValueAtTime(55+n('D-Thump')*50,t+0.08);
   env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol,t+0.004);
-  env.gain.exponentialRampToValueAtTime(0.0001, t+0.08+n('D-Decay')*2.5);
+  env.gain.exponentialRampToValueAtTime(0.0001,t+0.08+n('D-Decay')*2.5);
   pan.pan.value=n('D-Pan')*2-1;
   osc.connect(env); env.connect(pan);
-  // Snap: short high-click
-  if (snap>0.05) {
-    const sn=ctx.createOscillator(), sg=ctx.createGain();
-    sn.type='square'; sn.frequency.value=1200+snap*3000;
-    sg.gain.setValueAtTime(snap*vol*0.5,t); sg.gain.exponentialRampToValueAtTime(0.0001,t+0.01);
-    sn.connect(sg); sg.connect(masterEQ); sn.start(t); sn.stop(t+0.02);
-  }
-  send(pan, n('D-Rev'), n('D-Dly'));
+  const snap=n('D-Snap');
+  if(snap>0.05){ const sn=ctx.createOscillator(),sg=ctx.createGain(); sn.type='square'; sn.frequency.value=1200+snap*3000; sg.gain.setValueAtTime(snap*vol*0.5,t); sg.gain.exponentialRampToValueAtTime(0.0001,t+0.01); sn.connect(sg); sg.connect(masterEQ); sn.start(t); sn.stop(t+0.02); }
+  send(pan, rSend('D','Rev'), rSend('D','Dly'));
   osc.start(t); osc.stop(t+4);
 }
-
-function playH(t) {
+function playH(t){
   const vol=n('H-Vol'); if(vol<0.01) return;
-  const osc=ctx.createOscillator(), env=ctx.createGain();
-  const hp=ctx.createBiquadFilter(), pan=ctx.createStereoPanner();
-  const jitter=n('H-Jitter');
+  const osc=ctx.createOscillator(),env=ctx.createGain(),hp=ctx.createBiquadFilter(),pan=ctx.createStereoPanner();
   osc.type='square';
-  osc.frequency.value=7000+n('H-Color')*9000 + (Math.random()-0.5)*jitter*4000;
+  osc.frequency.value=7000+n('H-Color')*9000+(Math.random()-0.5)*n('H-Jitter')*4000;
   hp.type='highpass'; hp.frequency.value=5500;
   env.gain.setValueAtTime(vol*0.22,t);
-  env.gain.exponentialRampToValueAtTime(0.0001, t+0.04+n('H-Decay')*0.35);
+  env.gain.exponentialRampToValueAtTime(0.0001,t+0.04+n('H-Decay')*0.35);
   pan.pan.value=n('H-Pan')*2-1;
   osc.connect(hp); hp.connect(env); env.connect(pan);
-  send(pan, n('H-Rev')*0.6, n('H-Dly')*0.5);
+  send(pan, rSend('H','Rev')*0.6, rSend('H','Dly')*0.5);
   osc.start(t); osc.stop(t+0.5);
 }
 
-// ═══════════════════════════════════════════
-// MAIN LOOP
-// ═══════════════════════════════════════════
-function loop() {
-  if (isPlaying) {
-    while (nextT < ctx.currentTime + 0.1) {
-      const stepLen = 60/bpm/4;
+// ═══ MAIN LOOP ════════════════════════════════════
+function loop(){
+  if(isPlaying){
+    while(nextT<ctx.currentTime+0.1){
+      const sl=60/bpm/4;
       document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing'));
       document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
-      if (drS[seqStep]) playDR(nextT);
-      if (bS[seqStep])  playB(nextT);
-      if (dS[seqStep])  playD(nextT);
-      if (hS[seqStep])  playH(nextT);
-      nextT += stepLen; seqStep = (seqStep+1)%16;
+      if(drS[seqStep]) playDR(nextT);
+      if(bS[seqStep])  playB(nextT);
+      if(dS[seqStep])  playD(nextT);
+      if(hS[seqStep])  playH(nextT);
+      nextT+=sl; seqStep=(seqStep+1)%16;
     }
   }
-  if (padActive && ctx) {
-    const now=ctx.currentTime, rate=0.015+(1-n('X-Grain'))*0.12;
-    if (now-lastGrain > rate) { spawnGrain(); lastGrain=now; }
+  // Pad grains
+  if(padActive&&ctx){
+    const now=ctx.currentTime, rate=0.03+(1-n('X-Grain'))*0.18;
+    if(now-lastGrain>rate){ spawnGrain(); lastGrain=now; }
   }
+  tickLooper();
   requestAnimationFrame(loop);
 }
 
-// ═══════════════════════════════════════════
-// UI BUILDERS
-// ═══════════════════════════════════════════
-function buildParams(cid, pre, defs) {
-  const c = document.getElementById(cid);
-  defs.forEach(({id,d}) => {
-    const fid=`${pre}-${id}`, div=document.createElement('div');
+// ═══ UI BUILDERS ══════════════════════════════════
+function buildParams(cid,pre,defs){
+  const c=document.getElementById(cid);
+  defs.forEach(({id,d})=>{
+    const fid=`${pre}-${id}`,div=document.createElement('div');
     div.className='ctrl';
     div.innerHTML=`<label>${id}</label><input type="range" id="${fid}" min="0" max="100" value="${d}"><div class="dv" id="${fid}-v">${d}</div>`;
     c.appendChild(div);
-    const sl=div.querySelector('input'), dv=div.querySelector('.dv');
-    sl.addEventListener('input', ()=>dv.textContent=sl.value);
+    const sl=div.querySelector('input'),dv=div.querySelector('.dv');
+    sl.addEventListener('input',()=>dv.textContent=sl.value);
   });
 }
-
-function buildGrid(cid, state, cls) {
+function buildGrid(cid,state,cls){
   const c=document.getElementById(cid);
-  for (let i=0;i<16;i++) {
-    const s=document.createElement('div');
-    s.className=`step s-${i}`;
+  for(let i=0;i<16;i++){
+    const s=document.createElement('div'); s.className=`step s-${i}`;
     if(state[i]) s.classList.add(cls);
     s.addEventListener('click',()=>{ state[i]=!state[i]; s.classList.toggle(cls); });
     c.appendChild(s);
   }
 }
 
-// ═══════════════════════════════════════════
-// PAD CANVAS
-// ═══════════════════════════════════════════
-let canvas, ctx2, padW, padH;
-
-function initCanvas() {
+// ═══ CANVAS ═══════════════════════════════════════
+let canvas,ctx2,padW,padH;
+function initCanvas(){
   canvas=document.getElementById('padCanvas');
   const pad=document.getElementById('xPad');
   canvas.width=padW=pad.offsetWidth; canvas.height=padH=pad.offsetHeight;
   ctx2=canvas.getContext('2d'); drawCanvas();
 }
-
-function drawCanvas() {
-  if (!ctx2) { requestAnimationFrame(drawCanvas); return; }
+function drawCanvas(){
+  if(!ctx2){ requestAnimationFrame(drawCanvas); return; }
   ctx2.clearRect(0,0,padW,padH);
-  const COLS={stardust:'rgba(0,242,255,0.25)',abyss:'rgba(140,0,255,0.3)',warp:'rgba(255,100,0,0.25)',cloud:'rgba(100,180,255,0.2)',pulse:'rgba(255,240,0,0.25)'};
-  const col=COLS[padMode]||COLS.stardust;
-  const gr=ctx2.createRadialGradient(padX*padW,padY*padH,0,padW*0.5,padH*0.5,padW*0.8);
+  const COLS={shimmer:'rgba(0,242,255,0.22)',abyss:'rgba(100,0,220,0.28)',crystal:'rgba(200,100,255,0.22)',cloud:'rgba(80,160,255,0.18)',pulse:'rgba(255,220,0,0.22)'};
+  const col=COLS[padMode]||COLS.shimmer;
+  const gr=ctx2.createRadialGradient(padX*padW,padY*padH,0,padW*0.5,padH*0.5,padW*0.85);
   gr.addColorStop(0,col); gr.addColorStop(1,'rgba(0,0,0,0)');
   ctx2.fillStyle=gr; ctx2.fillRect(0,0,padW,padH);
-
   const now=performance.now();
-  ripples=ripples.filter(r=>now-r.t<1800);
+  ripples=ripples.filter(r=>now-r.t<2200);
   ripples.forEach(r=>{
-    const age=(now-r.t)/1800, rad=age*Math.min(padW,padH)*0.55, alp=(1-age)*0.45;
+    const age=(now-r.t)/2200,rad=age*Math.min(padW,padH)*0.6,alp=(1-age)*0.4;
     ctx2.beginPath(); ctx2.arc(r.x*padW,r.y*padH,rad,0,Math.PI*2);
     ctx2.strokeStyle=`rgba(0,242,255,${alp})`; ctx2.lineWidth=1.5; ctx2.stroke();
   });
-
-  if (padActive) {
-    const cx=padX*padW, cy=padY*padH;
+  if(padActive){
+    const cx=padX*padW,cy=padY*padH;
     ctx2.beginPath(); ctx2.arc(cx,cy,7,0,Math.PI*2); ctx2.fillStyle='rgba(0,242,255,0.9)'; ctx2.fill();
-    ctx2.beginPath(); ctx2.arc(cx,cy,22,0,Math.PI*2); ctx2.strokeStyle='rgba(0,242,255,0.25)'; ctx2.lineWidth=1; ctx2.stroke();
-    ctx2.strokeStyle='rgba(0,242,255,0.12)'; ctx2.lineWidth=0.5;
+    ctx2.beginPath(); ctx2.arc(cx,cy,24,0,Math.PI*2); ctx2.strokeStyle='rgba(0,242,255,0.2)'; ctx2.lineWidth=1; ctx2.stroke();
+    ctx2.strokeStyle='rgba(0,242,255,0.1)'; ctx2.lineWidth=0.5;
     ctx2.beginPath(); ctx2.moveTo(cx,0); ctx2.lineTo(cx,padH); ctx2.stroke();
     ctx2.beginPath(); ctx2.moveTo(0,cy); ctx2.lineTo(padW,cy); ctx2.stroke();
   }
   requestAnimationFrame(drawCanvas);
 }
-
-function padPos(e) {
+function padPos(e){
   const br=document.getElementById('xPad').getBoundingClientRect();
   const t=e.touches?e.touches[0]:e;
   padX=Math.max(0,Math.min(1,(t.clientX-br.left)/br.width));
   padY=Math.max(0,Math.min(1,(t.clientY-br.top)/br.height));
 }
 
-// ═══════════════════════════════════════════
-// BOOT
-// ═══════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-  buildParams('pDR','DR',PDEFS.DR);
-  buildParams('pB', 'B', PDEFS.B);
-  buildParams('pD', 'D', PDEFS.D);
-  buildParams('pH', 'H', PDEFS.H);
+// ═══ BOOT ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  buildParams('pDR','DR',PDEFS.DR); buildParams('pB','B',PDEFS.B);
+  buildParams('pD','D',PDEFS.D);   buildParams('pH','H',PDEFS.H);
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
-  buildGrid('gD', dS, 'd-on'); buildGrid('gH',hS,'h-on');
+  buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
   buildPresets('DR'); buildPresets('B'); buildPresets('D'); buildPresets('H');
 
   const pad=document.getElementById('xPad');
-  pad.addEventListener('touchstart', e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); },{passive:false});
-  pad.addEventListener('touchmove',  e=>{ e.preventDefault(); padPos(e); },{passive:false});
-  pad.addEventListener('touchend',   ()=>{ padActive=false; });
-  pad.addEventListener('mousedown',  e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); });
-  pad.addEventListener('mousemove',  e=>{ if(padActive) padPos(e); });
-  pad.addEventListener('mouseup',    ()=>{ padActive=false; });
+  pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); },{passive:false});
+  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); },{passive:false});
+  pad.addEventListener('touchend',  ()=>{ padActive=false; });
+  pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); });
+  pad.addEventListener('mousemove', e=>{ if(padActive) padPos(e); });
+  pad.addEventListener('mouseup',   ()=>{ padActive=false; });
+  window.addEventListener('resize',()=>{ if(!canvas) return; const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; });
 
-  window.addEventListener('resize', ()=>{
-    if(!canvas) return;
-    const pad=document.getElementById('xPad');
-    canvas.width=padW=pad.offsetWidth; canvas.height=padH=pad.offsetHeight;
-  });
-
-  document.getElementById('boot').addEventListener('click', e=>{
+  document.getElementById('boot').addEventListener('click',e=>{
     init();
     e.target.style.display='none';
     document.getElementById('ui').style.display='block';
