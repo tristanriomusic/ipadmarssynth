@@ -10,11 +10,28 @@
       --drone:#aa00ff; --xs:#00f2ff; --fx:#ff4488; --bg:#050508;
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    body{ font-family:'Inter',sans-serif; margin:0; background:var(--bg); color:#fff; overflow-x:hidden; user-select:none; }
+    body{ font-family:'Inter',sans-serif; margin:0; background:#000; color:#fff; overflow-x:hidden; user-select:none; }
+
+    /* BACKGROUND IMAGE */
+    #bg{
+      position:fixed; inset:0; z-index:0;
+      background:url('bg.jpg') center/cover no-repeat;
+      will-change:filter; transition:filter 0.08s linear;
+    }
+    /* REACTIVE CANVAS OVERLAY */
+    #bgCanvas{
+      position:fixed; inset:0; z-index:1; pointer-events:none;
+      width:100%; height:100%;
+    }
+    /* DARK SCRIM so UI stays readable */
+    #scrim{
+      position:fixed; inset:0; z-index:2; pointer-events:none;
+      background:rgba(4,4,10,0.62);
+    }
 
     /* BOOT */
     #boot{ position:fixed; inset:0; background:#000; color:#fff; z-index:99999; border:none; font-size:22px; font-weight:900; letter-spacing:4px; cursor:pointer; }
-    #ui{ display:none; }
+    #ui{ display:none; position:relative; z-index:3; }
 
     /* PLAY */
     #playBtn{ display:block; width:94vw; margin:10px 3vw 0; padding:18px; border-radius:12px; border:2px solid #00ff88; font-weight:900; font-size:15px; letter-spacing:4px; cursor:pointer; background:#0d1f0d; color:#00ff88; box-shadow:0 0 20px rgba(0,255,136,0.12); transition:all .15s; }
@@ -115,6 +132,9 @@
   </style>
 </head>
 <body>
+<div id="bg"></div>
+<canvas id="bgCanvas"></canvas>
+<div id="scrim"></div>
 <button id="boot">INITIALIZE OMNIVERSE V14</button>
 <div id="ui">
 
@@ -397,6 +417,21 @@ let ctx, master, masterEQ, revNode, revPre, revWet, shimGain,
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
+
+// ── AUDIO REACTIVITY ──────────────────────────────
+let energy=0, beatFlash=0, padEnergy=0;
+let hueShift=0, moodPhase=0;
+let bgCvs, bgCtx, bgW, bgH;
+// Mood palettes cycling with the music
+const MOODS=[
+  {h:0,   s:1.4, name:'FIRE'},    // warm reds
+  {h:40,  s:1.3, name:'GOLD'},    // amber
+  {h:200, s:1.5, name:'OCEAN'},   // blue
+  {h:270, s:1.6, name:'DREAM'},   // purple
+  {h:320, s:1.4, name:'NEON'},    // pink
+  {h:140, s:1.3, name:'JUNGLE'},  // green
+];
+let moodIdx=0, moodT=0;
 const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 const NOTES=[41.20,49.00,55.00,65.41,82.41];
 const activePre={DR:0,B:0,D:0,H:0};
@@ -641,6 +676,78 @@ function makeDistCurve(amount){
   for(let i=0;i<s;i++){ const x=(i*2)/s-1; c[i]=k<0.01?x:((Math.PI+k)*x)/(Math.PI+k*Math.abs(x)); }
   return c;
 }
+function triggerEnergy(amt){ energy=Math.min(1,energy+amt); beatFlash=Math.min(1,beatFlash+amt*1.5); }
+
+function initBgCanvas(){
+  bgCvs=document.getElementById('bgCanvas');
+  bgW=bgCvs.width=window.innerWidth; bgH=bgCvs.height=window.innerHeight;
+  bgCtx=bgCvs.getContext('2d');
+  window.addEventListener('resize',()=>{ bgW=bgCvs.width=window.innerWidth; bgH=bgCvs.height=window.innerHeight; });
+  drawBg();
+}
+
+function drawBg(){
+  requestAnimationFrame(drawBg);
+  if(!bgCtx) return;
+
+  // Advance mood timer
+  moodT+=0.0008+(energy*0.003);
+  if(moodT>1){ moodT=0; moodIdx=(moodIdx+1)%MOODS.length; }
+  const nextMood=MOODS[(moodIdx+1)%MOODS.length];
+  const curMood =MOODS[moodIdx];
+  const blendedHue = curMood.h + (nextMood.h-curMood.h)*moodT;
+  const blendedSat = curMood.s + (nextMood.s-curMood.s)*moodT;
+
+  // Slow hue drift + energy burst
+  hueShift += 0.04 + energy*0.4;
+  const totalHue  = (blendedHue + hueShift) % 360;
+  const bri = 0.55 + energy*0.5 + beatFlash*0.25;
+  const sat = blendedSat + energy*0.8;
+
+  // Apply CSS filter to the background image element
+  document.getElementById('bg').style.filter=
+    `hue-rotate(${totalHue.toFixed(1)}deg) brightness(${bri.toFixed(2)}) saturate(${sat.toFixed(2)}) contrast(${(1+beatFlash*0.3).toFixed(2)})`;
+
+  // Adjust scrim opacity: darker when calm, lighter when energetic
+  document.getElementById('scrim').style.background=
+    `rgba(4,4,10,${(0.65-energy*0.2).toFixed(2)})`;
+
+  // Decay
+  energy  *=0.96;
+  beatFlash*=0.88;
+  padEnergy*=0.97;
+
+  // ── Canvas overlay effects ─────────────────────
+  bgCtx.clearRect(0,0,bgW,bgH);
+
+  // Beat flash radial burst from center
+  if(beatFlash>0.05){
+    const r=bgW*0.6*beatFlash;
+    const g=bgCtx.createRadialGradient(bgW/2,bgH/2,0,bgW/2,bgH/2,r);
+    const a=(beatFlash*0.18).toFixed(2);
+    const hsl=`hsla(${totalHue.toFixed(0)},100%,70%,${a})`;
+    g.addColorStop(0,hsl); g.addColorStop(1,'rgba(0,0,0,0)');
+    bgCtx.fillStyle=g; bgCtx.fillRect(0,0,bgW,bgH);
+  }
+
+  // Pad energy glow from touch position
+  if(padEnergy>0.05){
+    const px=padActive?0.5:0.5; // pad is a fixed region at top
+    const gy=bgH*0.18; // approx center of pad
+    const gr2=bgCtx.createRadialGradient(bgW/2,gy,0,bgW/2,gy,bgW*0.5*padEnergy);
+    gr2.addColorStop(0,`hsla(${(totalHue+40).toFixed(0)},100%,75%,${(padEnergy*0.2).toFixed(2)})`);
+    gr2.addColorStop(1,'rgba(0,0,0,0)');
+    bgCtx.fillStyle=gr2; bgCtx.fillRect(0,0,bgW,bgH);
+  }
+
+  // Slow pulsing vignette that breathes with the music
+  const vAlpha=(0.35+energy*0.2).toFixed(2);
+  const vg=bgCtx.createRadialGradient(bgW/2,bgH/2,bgW*0.3,bgW/2,bgH/2,bgW*0.8);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,`rgba(0,0,0,${vAlpha})`);
+  bgCtx.fillStyle=vg; bgCtx.fillRect(0,0,bgW,bgH);
+}
+
 function send(src,toRev,toDly){
   if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; src.connect(g); g.connect(revPre); }
   if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; src.connect(g); g.connect(delNode); }
@@ -793,6 +900,8 @@ function spawnGrainAt(px, py, schedT){
 }
 
 function spawnGrain(){
+  padEnergy=Math.min(1,padEnergy+n('X-Vol')*0.3);
+  triggerEnergy(n('X-Vol')*0.15);
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
     if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t});
@@ -803,6 +912,7 @@ function spawnGrain(){
 // ═══ SEQUENCER SOUNDS ════════════════════════════
 function playDR(t){
   const vol=n('DR-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.5);
   const o1=ctx.createOscillator(),o2=ctx.createOscillator();
   const filt=ctx.createBiquadFilter(),env=ctx.createGain(),pan=ctx.createStereoPanner();
   filt.type='lowpass'; filt.frequency.value=60+n('DR-Cutoff')*2200; filt.Q.value=n('DR-Reso')*22;
@@ -818,6 +928,7 @@ function playDR(t){
 }
 function playB(t){
   const vol=n('B-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.4);
   const osc=ctx.createOscillator(),env=ctx.createGain(),filt=ctx.createBiquadFilter();
   const sub=ctx.createOscillator(),subG=ctx.createGain();
   const freq=NOTES[Math.floor(Math.random()*NOTES.length)];
@@ -834,6 +945,7 @@ function playB(t){
 }
 function playD(t){
   const vol=n('D-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.6);
   const osc=ctx.createOscillator(),env=ctx.createGain(),pan=ctx.createStereoPanner();
   osc.type='sine';
   osc.frequency.setValueAtTime(140+n('D-Tune')*220,t);
@@ -849,6 +961,7 @@ function playD(t){
 }
 function playH(t){
   const vol=n('H-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.25);
   const osc=ctx.createOscillator(),env=ctx.createGain(),hp=ctx.createBiquadFilter(),pan=ctx.createStereoPanner();
   osc.type='square';
   osc.frequency.value=7000+n('H-Color')*9000+(Math.random()-0.5)*n('H-Jitter')*4000;
@@ -973,6 +1086,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     e.target.style.display='none';
     document.getElementById('ui').style.display='block';
     initCanvas();
+    initBgCanvas();
   });
 });
 </script>
