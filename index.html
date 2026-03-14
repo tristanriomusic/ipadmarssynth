@@ -454,16 +454,22 @@ let moodIdx=0, moodT=0;
 const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 
 // ── PER-INSTRUMENT 3-BAND EQ ───────────────────────
-// Returns {in, out} nodes. Chain: src → eq.in … eq.out → send()
+// 3-band EQ: returns {in, out}. Range ±8 dB (50=0 dB).
 function makeEQ(inst){
   const lo=ctx.createBiquadFilter(); lo.type='lowshelf';  lo.frequency.value=150;
-  lo.gain.value=(r(`${inst}-EQLo`)-50)*0.30;   // ±15 dB
+  lo.gain.value=(r(`${inst}-EQLo`)-50)*0.16;   // ±8 dB
   const mi=ctx.createBiquadFilter(); mi.type='peaking';   mi.frequency.value=600; mi.Q.value=0.8;
-  mi.gain.value=(r(`${inst}-EQMi`)-50)*0.30;
+  mi.gain.value=(r(`${inst}-EQMi`)-50)*0.16;
   const hi=ctx.createBiquadFilter(); hi.type='highshelf'; hi.frequency.value=3500;
-  hi.gain.value=(r(`${inst}-EQHi`)-50)*0.30;
+  hi.gain.value=(r(`${inst}-EQHi`)-50)*0.16;
   lo.connect(mi); mi.connect(hi);
   return {in:lo, out:hi};
+}
+// Dry path: pan → EQ → masterEQ.  Wet sends (rev/dly): from pre-EQ pan to prevent gain accumulating in delay loop.
+function sendEQ(pan, eq, toRev, toDly){
+  pan.connect(eq.in); eq.out.connect(masterEQ); eq.out.connect(waveshaper);
+  if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; pan.connect(g); g.connect(revPre); }
+  if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; pan.connect(g); g.connect(delNode); }
 }
 
 // ── DRONE — step-triggered, long release (overlaps = sustained feel) ──
@@ -511,8 +517,8 @@ function playDR(t){
   sub.type='sine'; sub.frequency.value=baseF*0.5; subG.gain.value=0.55;
   sub.connect(subG); subG.connect(filt); sub.start(t); sub.stop(t+dur+0.5);
   filt.connect(env); env.connect(pan);
-  const eq=makeEQ('DR'); pan.connect(eq.in);
-  send(eq.out,rSend('DR','Rev'),rSend('DR','Dly'));
+  const eq=makeEQ('DR');
+  sendEQ(pan,eq,rSend('DR','Rev'),rSend('DR','Dly'));
 }
 const NOTES=[41.20,49.00,55.00,65.41,82.41];
 
@@ -631,16 +637,16 @@ const PRESETS={
     ]}
 };
 const PDEFS={
-  // EQLo=low shelf 150Hz, EQMi=peak 600Hz, EQHi=high shelf 3.5kHz  (±15dB, 50=0dB)
+  // EQLo=low shelf 150Hz, EQMi=peak 600Hz, EQHi=high shelf 3.5kHz  (±8dB, 50=0dB)
   // Defaults carve frequency space: Drone=sub, Bass=low-mid, Drum=mids, HiHat=highs
   DR:[{id:'Vol',d:40},{id:'Detune',d:25},{id:'Atk',d:35},{id:'Rel',d:72},{id:'Cutoff',d:32},{id:'Reso',d:5},{id:'Pan',d:50},
-      {id:'EQLo',d:80},{id:'EQMi',d:30},{id:'EQHi',d:0}],
+      {id:'EQLo',d:88},{id:'EQMi',d:31},{id:'EQHi',d:0}],
   B: [{id:'Vol',d:60},{id:'Tone',d:28},{id:'Punch',d:12},{id:'Rel',d:72},{id:'Sub',d:68},{id:'Pan',d:50},
-      {id:'EQLo',d:60},{id:'EQMi',d:60},{id:'EQHi',d:20}],
+      {id:'EQLo',d:69},{id:'EQMi',d:63},{id:'EQHi',d:22}],
   D: [{id:'Vol',d:60},{id:'Tune',d:48},{id:'Decay',d:42},{id:'Thump',d:38},{id:'Snap',d:25},{id:'Pan',d:50},
-      {id:'EQLo',d:30},{id:'EQMi',d:80},{id:'EQHi',d:50}],
+      {id:'EQLo',d:38},{id:'EQMi',d:88},{id:'EQHi',d:50}],
   H: [{id:'Vol',d:32},{id:'Color',d:28},{id:'Decay',d:48},{id:'Jitter',d:10},{id:'Shine',d:28},{id:'Pan',d:50},
-      {id:'EQLo',d:0},{id:'EQMi',d:20},{id:'EQHi',d:70}]
+      {id:'EQLo',d:0},{id:'EQMi',d:25},{id:'EQHi',d:81}]
 };
 
 // ═══ UTILS ═══════════════════════════════════════
@@ -1131,8 +1137,8 @@ function playB(t){
   env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.68,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   osc.connect(filt); h2G.connect(filt); h3G.connect(filt); filt.connect(env); env.connect(pan);
-  const eqB=makeEQ('B'); pan.connect(eqB.in);
-  send(eqB.out,rSend('B','Rev'),rSend('B','Dly'));
+  const eqB=makeEQ('B');
+  sendEQ(pan,eqB,rSend('B','Rev'),rSend('B','Dly'));
   const stopT=t+dur+0.5;
   osc.start(t); h2.start(t); h3.start(t); sub.start(t); bodyLfo.start(t);
   osc.stop(stopT); h2.stop(stopT); h3.stop(stopT); sub.stop(stopT); bodyLfo.stop(stopT);
@@ -1169,8 +1175,8 @@ function playD(t){
     ne.gain.setValueAtTime(snap*vol*0.42,t); ne.gain.exponentialRampToValueAtTime(0.0001,t+0.03+snap*0.06);
     nsrc.connect(nbp); nbp.connect(ne); ne.connect(pan); nsrc.start(t);
   }
-  const eqD=makeEQ('D'); pan.connect(eqD.in);
-  send(eqD.out,rSend('D','Rev'),rSend('D','Dly'));
+  const eqD=makeEQ('D');
+  sendEQ(pan,eqD,rSend('D','Rev'),rSend('D','Dly'));
   o1.start(t); o2.start(t);
   const st=t+decT+0.15; o1.stop(st); o2.stop(st);
 }
@@ -1203,8 +1209,8 @@ function playH(t){
   shimG.gain.setValueAtTime(shine*vol*0.07,t); shimG.gain.exponentialRampToValueAtTime(0.0001,t+dur*0.7);
   shimO.connect(shimG); shimG.connect(pan); shimO.start(t); shimO.stop(t+dur+0.05);
   nsrc.connect(bp); bp.connect(lp); lp.connect(env); env.connect(pan);
-  const eqH=makeEQ('H'); pan.connect(eqH.in);
-  send(eqH.out,rSend('H','Rev')*0.85,rSend('H','Dly')*0.55);
+  const eqH=makeEQ('H');
+  sendEQ(pan,eqH,rSend('H','Rev')*0.85,rSend('H','Dly')*0.55);
   nsrc.start(t);
 }
 
