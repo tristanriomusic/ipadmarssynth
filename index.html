@@ -22,7 +22,6 @@
       margin: 0;
       background: var(--bg);
       color: #fff;
-      touch-action: none;
       overflow-x: hidden;
       user-select: none;
     }
@@ -92,6 +91,7 @@
       border: 2px solid var(--xs);
       box-shadow: 0 0 30px rgba(0,242,255,0.07);
       cursor: crosshair;
+      touch-action: none;
     }
     #xPad canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
     .pad-label {
@@ -425,6 +425,15 @@ function init() {
 
   wireSliders();
   loop();
+
+  // iOS suspends AudioContext on inactivity — keep it alive
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ctx.resume();
+  });
+  document.addEventListener('touchstart', () => ctx.state !== 'running' && ctx.resume(), { passive: true });
+  setInterval(() => {
+    if (ctx && ctx.state !== 'running') ctx.resume();
+  }, 8000);
 }
 
 function buildReverb(size, decay) {
@@ -627,7 +636,7 @@ function playDR(t) {
   env.gain.exponentialRampToValueAtTime(0.0001, t + atk + rel);
   pan.pan.value = n('DR-Pan') * 2 - 1;
   o1.connect(filt); o2.connect(filt); filt.connect(env); env.connect(pan);
-  send(pan, n('DR-Rev'), 0);
+  send(pan, n('DR-Rev'), n('DR-Dly'));
   o1.start(t); o2.start(t); o1.stop(t+atk+rel+0.2); o2.stop(t+atk+rel+0.2);
 }
 
@@ -643,7 +652,7 @@ function playB(t) {
   env.gain.linearRampToValueAtTime(vol, t + 0.02);
   env.gain.exponentialRampToValueAtTime(0.0001, t + 0.5 + n('B-Rel') * 2.5);
   osc.connect(filt); filt.connect(env);
-  send(env, n('B-Rev'), 0);
+  send(env, n('B-Rev'), n('B-Dly'));
   osc.start(t); osc.stop(t + 4);
 }
 
@@ -709,8 +718,8 @@ function loop() {
 // UI BUILDERS
 // ═══════════════════════════════════════════
 const PDEFS = {
-  DR: [{id:'Vol',d:25},{id:'Detune',d:50},{id:'Atk',d:30},{id:'Rel',d:50},{id:'Cutoff',d:55},{id:'Reso',d:20},{id:'Rev',d:30},{id:'Pan',d:50}],
-  B:  [{id:'Vol',d:65},{id:'Tone',d:50},{id:'Punch',d:50},{id:'Rel',d:40},{id:'Sub',d:50},{id:'Rev',d:20},{id:'Slide',d:0},{id:'Pan',d:50}],
+  DR: [{id:'Vol',d:25},{id:'Detune',d:50},{id:'Atk',d:30},{id:'Rel',d:50},{id:'Cutoff',d:55},{id:'Reso',d:20},{id:'Rev',d:30},{id:'Dly',d:0},{id:'Pan',d:50}],
+  B:  [{id:'Vol',d:65},{id:'Tone',d:50},{id:'Punch',d:50},{id:'Rel',d:40},{id:'Sub',d:50},{id:'Rev',d:20},{id:'Dly',d:0},{id:'Pan',d:50}],
   D:  [{id:'Vol',d:65},{id:'Tune',d:50},{id:'Decay',d:40},{id:'Thump',d:50},{id:'Snap',d:30},{id:'Rev',d:10},{id:'Dly',d:0},{id:'Pan',d:50}],
   H:  [{id:'Vol',d:45},{id:'Color',d:55},{id:'Decay',d:30},{id:'Jitter',d:20},{id:'Shine',d:50},{id:'Rev',d:20},{id:'Dly',d:10},{id:'Pan',d:50}]
 };
@@ -811,7 +820,7 @@ function padPos(e) {
   const br = pad.getBoundingClientRect();
   const t  = e.touches ? e.touches[0] : e;
   padX = Math.max(0, Math.min(1, (t.clientX - br.left) / br.width));
-  padY = Math.max(0, Math.min(1, 1 - (t.clientY - br.top) / br.height));
+  padY = Math.max(0, Math.min(1, (t.clientY - br.top) / br.height));
 }
 
 // ═══════════════════════════════════════════
