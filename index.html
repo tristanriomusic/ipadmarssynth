@@ -51,6 +51,22 @@
     #kill    { background: #ff0044; }
     #silence { background: #1a1a1a; border: 1px solid #333; }
 
+    /* ── PLAY BUTTON ── */
+    #playBtn {
+      display: block; width: calc(94vw); margin: 8px 3vw 0 3vw;
+      padding: 18px; border: none; border-radius: 12px;
+      font-weight: 900; font-size: 15px; letter-spacing: 4px;
+      cursor: pointer; transition: all 0.15s;
+      background: #1a3a1a; color: #00ff88;
+      border: 2px solid #00ff88;
+      box-shadow: 0 0 20px rgba(0,255,136,0.15);
+    }
+    #playBtn.playing {
+      background: #3a1a1a; color: #ff4466;
+      border-color: #ff4466;
+      box-shadow: 0 0 20px rgba(255,68,102,0.2);
+    }
+
     /* ── BPM BAR ── */
     .bpm-bar {
       display: flex; align-items: center; gap: 8px;
@@ -164,6 +180,8 @@
 <button id="boot">INITIALIZE OMNIVERSE V14</button>
 
 <div id="ui">
+
+  <button id="playBtn" onclick="togglePlay()">▶ PLAY</button>
 
   <div class="top-bar">
     <button id="kill"    class="m-btn" onclick="location.reload()">HARD RESET</button>
@@ -321,7 +339,7 @@
 // STATE
 // ═══════════════════════════════════════════
 let ctx, master, masterEQ, revNode, revPre, revWet, delNode, delFb, delDamp, delWet, waveshaper, driveMix;
-let bpm = 120, seqStep = 0, nextT = 0;
+let bpm = 120, seqStep = 0, nextT = 0, isPlaying = false;
 let padActive = false, padX = 0.5, padY = 0.5, padMode = 'stardust', lastGrain = 0;
 let ripples = [];
 
@@ -349,6 +367,21 @@ function setBpm(val) {
   document.querySelectorAll('.bpm-pre').forEach(b => b.classList.toggle('on', +b.textContent === val));
   if (delNode) delNode.delayTime.setTargetAtTime(60/bpm/2, ctx.currentTime, 0.05);
 }
+function togglePlay() {
+  isPlaying = !isPlaying;
+  const btn = document.getElementById('playBtn');
+  if (isPlaying) {
+    nextT = ctx.currentTime + 0.05;
+    seqStep = 0;
+    btn.textContent = '■ STOP';
+    btn.classList.add('playing');
+  } else {
+    btn.textContent = '▶ PLAY';
+    btn.classList.remove('playing');
+    document.querySelectorAll('.step').forEach(e => e.classList.remove('playing'));
+  }
+}
+
 function setPadMode(mode, btn) {
   padMode = mode;
   document.querySelectorAll('.pm').forEach(b=>b.classList.remove('on'));
@@ -361,6 +394,7 @@ function setPadMode(mode, btn) {
 // ═══════════════════════════════════════════
 function init() {
   ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume(); // iOS Safari starts suspended — force unlock
 
   // — Master chain —
   master   = ctx.createGain(); master.gain.value = 0.75;
@@ -647,16 +681,18 @@ function playH(t) {
 // MAIN LOOP (scheduler + grain trigger)
 // ═══════════════════════════════════════════
 function loop() {
-  while (nextT < ctx.currentTime + 0.1) {
-    const stepLen = 60 / bpm / 4;
-    document.querySelectorAll('.step').forEach(e => e.classList.remove('playing'));
-    document.querySelectorAll(`.s-${seqStep}`).forEach(e => e.classList.add('playing'));
-    if (drS[seqStep]) playDR(nextT);
-    if (bS[seqStep])  playB(nextT);
-    if (dS[seqStep])  playD(nextT);
-    if (hS[seqStep])  playH(nextT);
-    nextT += stepLen;
-    seqStep = (seqStep + 1) % 16;
+  if (isPlaying) {
+    while (nextT < ctx.currentTime + 0.1) {
+      const stepLen = 60 / bpm / 4;
+      document.querySelectorAll('.step').forEach(e => e.classList.remove('playing'));
+      document.querySelectorAll(`.s-${seqStep}`).forEach(e => e.classList.add('playing'));
+      if (drS[seqStep]) playDR(nextT);
+      if (bS[seqStep])  playB(nextT);
+      if (dS[seqStep])  playD(nextT);
+      if (hS[seqStep])  playH(nextT);
+      nextT += stepLen;
+      seqStep = (seqStep + 1) % 16;
+    }
   }
 
   // Continuous grain spawner
