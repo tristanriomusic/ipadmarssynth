@@ -62,8 +62,10 @@
     .imode-btn.deep{ background:#1e1030; color:#cc88ff; border-color:#7040aa; }
 
     /* STEP GRID */
-    .grid{ display:grid; grid-template-columns:repeat(16,1fr); gap:3px; margin-bottom:12px; }
-    .step{ height:36px; border-radius:5px; background:#111; border:1px solid #1c1c1c; cursor:pointer; transition:transform .05s; }
+    .grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:12px; }
+    .beat-group{ display:grid; grid-template-columns:repeat(4,1fr); gap:2px; background:rgba(255,255,255,0.025); border-radius:7px; padding:3px; border:1px solid rgba(255,255,255,0.04); }
+    .beat-group:nth-child(odd){ background:rgba(255,255,255,0.04); }
+    .step{ height:36px; border-radius:4px; background:#111; border:1px solid #1c1c1c; cursor:pointer; transition:transform .05s; }
     .step.playing{ border:2px solid rgba(255,255,255,.8)!important; transform:scaleY(1.08); }
     .step.b-on { background:var(--bass);  box-shadow:0 0 8px var(--bass); }
     .step.d-on { background:var(--drum);  box-shadow:0 0 8px var(--drum); }
@@ -896,11 +898,16 @@ function buildParams(cid,pre,defs){
 }
 function buildGrid(cid,state,cls){
   const c=document.getElementById(cid);
-  for(let i=0;i<16;i++){
-    const s=document.createElement('div'); s.className=`step s-${i}`;
-    if(state[i]) s.classList.add(cls);
-    s.addEventListener('click',()=>{ state[i]=!state[i]; s.classList.toggle(cls); });
-    c.appendChild(s);
+  for(let g=0;g<4;g++){
+    const grp=document.createElement('div'); grp.className='beat-group';
+    for(let s=0;s<4;s++){
+      const i=g*4+s, el=document.createElement('div');
+      el.className=`step s-${i}`;
+      if(state[i]) el.classList.add(cls);
+      el.addEventListener('click',()=>{ state[i]=!state[i]; el.classList.toggle(cls); });
+      grp.appendChild(el);
+    }
+    c.appendChild(grp);
   }
 }
 
