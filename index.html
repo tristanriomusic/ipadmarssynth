@@ -454,71 +454,76 @@ let moodIdx=0, moodT=0;
 const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 
 // ── PER-INSTRUMENT 3-BAND EQ ───────────────────────
-// 3-band EQ: returns {in, out}. Range ±8 dB (50=0 dB).
-function makeEQ(inst){
-  const lo=ctx.createBiquadFilter(); lo.type='lowshelf';  lo.frequency.value=150;
-  lo.gain.value=(r(`${inst}-EQLo`)-50)*0.16;   // ±8 dB
-  const mi=ctx.createBiquadFilter(); mi.type='peaking';   mi.frequency.value=600; mi.Q.value=0.8;
-  mi.gain.value=(r(`${inst}-EQMi`)-50)*0.16;
-  const hi=ctx.createBiquadFilter(); hi.type='highshelf'; hi.frequency.value=3500;
-  hi.gain.value=(r(`${inst}-EQHi`)-50)*0.16;
-  lo.connect(mi); mi.connect(hi);
-  return {in:lo, out:hi};
+// ── PERSISTENT PER-INSTRUMENT EQ CHAINS ───────────────────────────────
+// Created once in init(), reused by every note. Range ±8 dB (50=0 dB).
+// Each chain: lo(shelf) → mi(peak) → hi(shelf) → masterEQ
+let instEQ={};
+function initInstEQ(){
+  // Frequencies tuned to each instrument's natural range
+  const cfg={
+    DR:{lf:100, mf:350, hf:2000},  // sub/low drone
+    B: {lf:200, mf:400, hf:2500},  // low-mid bass body
+    D: {lf:200, mf:700, hf:4000},  // punch mids
+    H: {lf:500, mf:2000,hf:8000},  // air/shimmer
+  };
+  for(const inst of ['DR','B','D','H']){
+    const {lf,mf,hf}=cfg[inst];
+    const lo=ctx.createBiquadFilter(); lo.type='lowshelf';  lo.frequency.value=lf;
+    const mi=ctx.createBiquadFilter(); mi.type='peaking';   mi.frequency.value=mf; mi.Q.value=0.8;
+    const hi=ctx.createBiquadFilter(); hi.type='highshelf'; hi.frequency.value=hf;
+    lo.connect(mi); mi.connect(hi); hi.connect(masterEQ); hi.connect(waveshaper);
+    instEQ[inst]={lo,mi,hi};
+  }
+  ['DR','B','D','H'].forEach(refreshEQ);
 }
-// Dry path: pan → EQ → masterEQ.  Wet sends (rev/dly): from pre-EQ pan to prevent gain accumulating in delay loop.
-function sendEQ(pan, eq, toRev, toDly){
-  pan.connect(eq.in); eq.out.connect(masterEQ); eq.out.connect(waveshaper);
+function refreshEQ(inst){
+  if(!instEQ[inst]) return;
+  instEQ[inst].lo.gain.value=(r(`${inst}-EQLo`)-50)*0.16;
+  instEQ[inst].mi.gain.value=(r(`${inst}-EQMi`)-50)*0.16;
+  instEQ[inst].hi.gain.value=(r(`${inst}-EQHi`)-50)*0.16;
+}
+// Connect pan to persistent EQ chain (dry), plus optional rev/dly from pre-EQ pan
+function routeEQ(pan, inst, toRev, toDly){
+  pan.connect(instEQ[inst].lo);
   if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; pan.connect(g); g.connect(revPre); }
   if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; pan.connect(g); g.connect(delNode); }
 }
 
-// ── DRONE — step-triggered, long release (overlaps = sustained feel) ──
+// ── DRONE — lean 4-osc voice, release overlaps steps for sustained feel ──
 function playDR(t){
   const vol=n('DR-Vol'); if(vol<0.01) return;
   triggerEnergy(vol*0.25);
-  const detHz=n('DR-Detune')*6;
-  const atk=0.04+n('DR-Atk')*0.36;   // 0.04–0.40s
-  const rel=2.5+n('DR-Rel')*5.0;     // 2.5–7.5s — long enough to span many steps
-  const cutoff=Math.max(180,160+n('DR-Cutoff')*1800), reso=n('DR-Reso')*5;
+  const detHz=n('DR-Detune')*5;
+  const atk=0.05+n('DR-Atk')*0.35;   // 0.05–0.40s
+  const rel=0.8+n('DR-Rel')*1.5;     // 0.8–2.3s — overlaps ~6-18 steps, sounds sustained
+  const cutoff=Math.max(200,180+n('DR-Cutoff')*1600), reso=n('DR-Reso')*4;
   const panV=n('DR-Pan')*2-1, baseF=41.20, dur=atk+rel;
   const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=cutoff; filt.Q.value=reso;
   const env=ctx.createGain();
   env.gain.setValueAtTime(0,t);
-  env.gain.linearRampToValueAtTime(vol*0.55,t+atk);
+  env.gain.linearRampToValueAtTime(vol*0.72,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   const pan=ctx.createStereoPanner(); pan.pan.value=panV;
-  // Swell LFO — natural breath on the envelope
-  const swL=ctx.createOscillator(), swG=ctx.createGain();
-  swL.type='sine'; swL.frequency.value=0.12+Math.random()*0.10; swG.gain.value=vol*0.06;
-  swL.connect(swG); swG.connect(env.gain); swL.start(t); swL.stop(t+dur+0.5);
-  // 5 detuned sines — string section spread across stereo field
-  const vDefs=[
-    {df:0,           pp:0,    av:0.85, vr:0.24, vd:1.0},
-    {df:detHz,       pp:0.42, av:0.70, vr:0.29, vd:0.9},
-    {df:-detHz,      pp:-0.42,av:0.70, vr:0.23, vd:1.1},
-    {df:detHz*1.85,  pp:0.78, av:0.48, vr:0.18, vd:0.8},
-    {df:-detHz*1.85, pp:-0.78,av:0.48, vr:0.21, vd:1.2},
-  ];
-  for(const v of vDefs){
-    const o=ctx.createOscillator(), og=ctx.createGain(), op=ctx.createStereoPanner();
-    o.type='sine'; o.frequency.value=baseF+v.df; og.gain.value=v.av*0.30; op.pan.value=v.pp;
-    const vib=ctx.createOscillator(), vg=ctx.createGain();
-    vib.type='sine'; vib.frequency.value=v.vr; vg.gain.value=baseF*0.003*v.vd;
-    vib.connect(vg); vg.connect(o.frequency);
-    o.connect(og); og.connect(op); op.connect(filt);
-    o.start(t); vib.start(t); o.stop(t+dur+0.5); vib.stop(t+dur+0.5);
-  }
-  // Octave up — very quiet shimmer
-  const oct=ctx.createOscillator(), octG=ctx.createGain();
-  oct.type='sine'; oct.frequency.value=baseF*2; octG.gain.value=0.10;
-  oct.connect(octG); octG.connect(filt); oct.start(t); oct.stop(t+dur+0.5);
-  // Sub — weight and gravitas
+  // 3 detuned sines: center + wide stereo spread
+  const o1=ctx.createOscillator(), o2=ctx.createOscillator(), o3=ctx.createOscillator();
+  const p1=ctx.createStereoPanner(), p2=ctx.createStereoPanner(), p3=ctx.createStereoPanner();
+  o1.type='sine'; o1.frequency.value=baseF;        p1.pan.value=0;
+  o2.type='sine'; o2.frequency.value=baseF+detHz;  p2.pan.value=0.5;
+  o3.type='sine'; o3.frequency.value=baseF-detHz;  p3.pan.value=-0.5;
+  const g1=ctx.createGain(), g2=ctx.createGain(), g3=ctx.createGain();
+  g1.gain.value=0.38; g2.gain.value=0.28; g3.gain.value=0.28;
+  o1.connect(g1); g1.connect(p1); p1.connect(filt);
+  o2.connect(g2); g2.connect(p2); p2.connect(filt);
+  o3.connect(g3); g3.connect(p3); p3.connect(filt);
+  // Sub — weight
   const sub=ctx.createOscillator(), subG=ctx.createGain();
-  sub.type='sine'; sub.frequency.value=baseF*0.5; subG.gain.value=0.55;
-  sub.connect(subG); subG.connect(filt); sub.start(t); sub.stop(t+dur+0.5);
+  sub.type='sine'; sub.frequency.value=baseF*0.5; subG.gain.value=0.50;
+  sub.connect(subG); subG.connect(filt);
   filt.connect(env); env.connect(pan);
-  const eq=makeEQ('DR');
-  sendEQ(pan,eq,rSend('DR','Rev'),rSend('DR','Dly'));
+  const stopT=t+dur+0.3;
+  o1.start(t); o2.start(t); o3.start(t); sub.start(t);
+  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT); sub.stop(stopT);
+  routeEQ(pan,'DR',rSend('DR','Rev'),rSend('DR','Dly'));
 }
 const NOTES=[41.20,49.00,55.00,65.41,82.41];
 
@@ -769,6 +774,9 @@ function init(){
   driveMix=ctx.createGain(); driveMix.gain.value=0;
   waveshaper.connect(driveMix); driveMix.connect(masterEQ);
 
+  // Per-instrument EQ chains (persistent — created once, reused every note)
+  initInstEQ();
+
   wireSliders();
   loop();
 
@@ -901,6 +909,9 @@ function wireSliders(){
       const val=parseFloat(el.value);
       if(dv) dv.textContent=el.id==='X-FType'?['LP','BP','HP','NT'][Math.floor(val/25)]||'LP':Math.round(val);
       applyFX(el.id,val);
+      // Live-update EQ chain if it's an EQ param
+      const m=el.id.match(/^(DR|B|D|H)-EQ/);
+      if(m) refreshEQ(m[1]);
     });
   });
   document.getElementById('bpmSlider').addEventListener('input',e=>setBpm(+e.target.value));
@@ -1107,18 +1118,18 @@ function playB(t){
   const atk=0.08+punch*0.14, rel=0.9+n('B-Rel')*3.8;
   const pan=ctx.createStereoPanner(); pan.pan.value=n('B-Pan')*2-1;
   const dur=atk+rel;
-  // Fundamental — sine for warmth (upright bass body)
-  const osc=ctx.createOscillator(); osc.type='sine';
+  // Fundamental — triangle for warmth + natural harmonics
+  const osc=ctx.createOscillator(); osc.type='triangle';
   // Subtle pitch bloom — slightly flat then settles to pitch
   osc.frequency.setValueAtTime(freq*0.997,t);
   osc.frequency.linearRampToValueAtTime(freq,t+atk*0.8);
-  // 2nd harmonic — adds presence without edginess
+  // 2nd harmonic — presence in the 100-400 Hz body region
   const h2=ctx.createOscillator(), h2G=ctx.createGain();
-  h2.type='sine'; h2.frequency.value=freq*2; h2G.gain.value=tone*0.20;
+  h2.type='sine'; h2.frequency.value=freq*2; h2G.gain.value=tone*0.38;
   h2.connect(h2G);
-  // 3rd harmonic — very subtle, adds depth
+  // 3rd harmonic — growl and definition
   const h3=ctx.createOscillator(), h3G=ctx.createGain();
-  h3.type='sine'; h3.frequency.value=freq*3; h3G.gain.value=tone*0.08;
+  h3.type='sine'; h3.frequency.value=freq*3; h3G.gain.value=tone*0.18;
   h3.connect(h3G);
   // Sub octave — physical low-end resonance
   const sub=ctx.createOscillator(), subEnv=ctx.createGain();
@@ -1134,11 +1145,10 @@ function playB(t){
   bodyLfo.type='sine'; bodyLfo.frequency.value=2.8+tone*2.5; bodyG.gain.value=freq*0.0025;
   bodyLfo.connect(bodyG); bodyG.connect(osc.frequency);
   const env=ctx.createGain();
-  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.68,t+atk);
+  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.88,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   osc.connect(filt); h2G.connect(filt); h3G.connect(filt); filt.connect(env); env.connect(pan);
-  const eqB=makeEQ('B');
-  sendEQ(pan,eqB,rSend('B','Rev'),rSend('B','Dly'));
+  routeEQ(pan,'B',rSend('B','Rev'),rSend('B','Dly'));
   const stopT=t+dur+0.5;
   osc.start(t); h2.start(t); h3.start(t); sub.start(t); bodyLfo.start(t);
   osc.stop(stopT); h2.stop(stopT); h3.stop(stopT); sub.stop(stopT); bodyLfo.stop(stopT);
@@ -1175,8 +1185,7 @@ function playD(t){
     ne.gain.setValueAtTime(snap*vol*0.42,t); ne.gain.exponentialRampToValueAtTime(0.0001,t+0.03+snap*0.06);
     nsrc.connect(nbp); nbp.connect(ne); ne.connect(pan); nsrc.start(t);
   }
-  const eqD=makeEQ('D');
-  sendEQ(pan,eqD,rSend('D','Rev'),rSend('D','Dly'));
+  routeEQ(pan,'D',rSend('D','Rev'),rSend('D','Dly'));
   o1.start(t); o2.start(t);
   const st=t+decT+0.15; o1.stop(st); o2.stop(st);
 }
@@ -1209,8 +1218,7 @@ function playH(t){
   shimG.gain.setValueAtTime(shine*vol*0.07,t); shimG.gain.exponentialRampToValueAtTime(0.0001,t+dur*0.7);
   shimO.connect(shimG); shimG.connect(pan); shimO.start(t); shimO.stop(t+dur+0.05);
   nsrc.connect(bp); bp.connect(lp); lp.connect(env); env.connect(pan);
-  const eqH=makeEQ('H');
-  sendEQ(pan,eqH,rSend('H','Rev')*0.85,rSend('H','Dly')*0.55);
+  routeEQ(pan,'H',rSend('H','Rev')*0.85,rSend('H','Dly')*0.55);
   nsrc.start(t);
 }
 
