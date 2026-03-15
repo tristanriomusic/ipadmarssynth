@@ -151,6 +151,9 @@
     .omni-orb-lbl{ position:absolute; top:-20px; width:160%; left:-30%; text-align:center; font-size:9px; font-weight:900; letter-spacing:2px; white-space:nowrap; pointer-events:none; }
     .omni-orb-sub{ position:absolute; bottom:-26px; width:180%; left:-40%; text-align:center; font-size:7px; font-weight:700; letter-spacing:0.5px; white-space:nowrap; pointer-events:none; opacity:0.65; color:#fff; line-height:1.3; }
     #omniBtn{ display:block; width:94vw; margin:6px 3vw 0; padding:11px; border-radius:10px; border:1.5px solid rgba(255,0,110,0.5); font-weight:900; font-size:10px; letter-spacing:4px; cursor:pointer; background:rgba(70,0,35,0.35); color:#ff006e; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); text-shadow:0 0 12px rgba(255,0,110,0.6); }
+    .arp-div-row{ display:flex; gap:4px; margin-bottom:10px; }
+    .arp-div{ flex:1; padding:9px 2px; border-radius:6px; border:1px solid rgba(255,0,110,0.3); background:rgba(255,0,110,0.08); color:rgba(255,0,110,0.65); font-size:8px; font-weight:900; cursor:pointer; text-align:center; letter-spacing:0.5px; }
+    .arp-div.on{ background:var(--arp); color:#000; border-color:var(--arp); box-shadow:0 0 10px var(--arp); }
   </style>
 </head>
 <body>
@@ -441,17 +444,76 @@
     <!-- ARPEGGIATOR -->
     <div class="drawer" id="drARP">
       <div class="drawer-hdr" onclick="toggleD('drARP')" style="color:var(--arp)">
-        <span>ARPEGGIATOR — BLOOM</span>
-        <span class="arr">▼</span>
+        <span>ARPEGGIATOR — PROPHET</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button id="arpBtn" class="imode-btn" onclick="toggleArp();event.stopPropagation()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ START</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <button id="arpBtn" class="imode-btn" onclick="toggleArp()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ START</button>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
           <span id="arpChordLbl" style="font-size:9px;font-weight:900;color:var(--arp);letter-spacing:2px;text-shadow:0 0 8px var(--arp)">Em9</span>
-          <span id="arpPatLbl" style="font-size:9px;font-weight:900;color:rgba(255,0,110,0.5);letter-spacing:2px">UP</span>
+          <span id="arpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,0,110,0.5);letter-spacing:2px">UP</span>
         </div>
-        <div class="pg4" id="pARP"></div>
-        <div class="pg3" style="margin-top:6px">
+
+        <div class="sec">CLOCK — TEMPO SYNC</div>
+        <div class="arp-div-row">
+          <button class="arp-div"    onclick="setArpDiv(0.125,this)">1/32</button>
+          <button class="arp-div on" onclick="setArpDiv(0.25,this)">1/16</button>
+          <button class="arp-div"    onclick="setArpDiv(0.333,this)">1/8T</button>
+          <button class="arp-div"    onclick="setArpDiv(0.5,this)">1/8</button>
+          <button class="arp-div"    onclick="setArpDiv(0.667,this)">1/4T</button>
+          <button class="arp-div"    onclick="setArpDiv(1.0,this)">1/4</button>
+        </div>
+        <div class="pg2" style="margin-bottom:10px">
+          <div class="ctrl"><label>Gate %</label><input type="range" id="ARP-Gate"    min="0" max="100" value="65"><div class="dv" id="ARP-Gate-v">65</div></div>
+          <div class="ctrl"><label>Vol</label>   <input type="range" id="ARP-Vol"     min="0" max="100" value="58"><div class="dv" id="ARP-Vol-v">58</div></div>
+        </div>
+
+        <div class="sec">OSCILLATOR</div>
+        <div class="pg4">
+          <div class="ctrl"><label>Wave</label>  <input type="range" id="ARP-Wave"   min="0" max="100" value="0"> <div class="dv" id="ARP-Wave-v"  style="font-size:8px">SAW</div></div>
+          <div class="ctrl"><label>Oct</label>   <input type="range" id="ARP-Oct"    min="0" max="100" value="50"><div class="dv" id="ARP-Oct-v">0</div></div>
+          <div class="ctrl"><label>Detune</label><input type="range" id="ARP-Detune" min="0" max="100" value="28"><div class="dv" id="ARP-Detune-v">28</div></div>
+          <div class="ctrl"><label>Sub</label>   <input type="range" id="ARP-Sub"    min="0" max="100" value="22"><div class="dv" id="ARP-Sub-v">22</div></div>
+        </div>
+
+        <div class="sec">FILTER</div>
+        <div class="pg3">
+          <div class="ctrl"><label>Cutoff</label><input type="range" id="ARP-Cut"  min="0" max="100" value="62"><div class="dv" id="ARP-Cut-v">62</div></div>
+          <div class="ctrl"><label>Reso</label>  <input type="range" id="ARP-Res"  min="0" max="100" value="22"><div class="dv" id="ARP-Res-v">22</div></div>
+          <div class="ctrl"><label>F.Env</label> <input type="range" id="ARP-FEnv" min="0" max="100" value="55"><div class="dv" id="ARP-FEnv-v">55</div></div>
+        </div>
+
+        <div class="sec">ENVELOPE</div>
+        <div class="pg4">
+          <div class="ctrl"><label>Atk</label><input type="range" id="ARP-Atk" min="0" max="100" value="10"><div class="dv" id="ARP-Atk-v">10</div></div>
+          <div class="ctrl"><label>Dcy</label><input type="range" id="ARP-Dcy" min="0" max="100" value="40"><div class="dv" id="ARP-Dcy-v">40</div></div>
+          <div class="ctrl"><label>Sus</label><input type="range" id="ARP-Sus" min="0" max="100" value="65"><div class="dv" id="ARP-Sus-v">65</div></div>
+          <div class="ctrl"><label>Rel</label><input type="range" id="ARP-Rel" min="0" max="100" value="35"><div class="dv" id="ARP-Rel-v">35</div></div>
+        </div>
+
+        <div class="sec">FILTER ENVELOPE</div>
+        <div class="pg2">
+          <div class="ctrl"><label>F.Atk</label><input type="range" id="ARP-FAtk" min="0" max="100" value="8"> <div class="dv" id="ARP-FAtk-v">8</div></div>
+          <div class="ctrl"><label>F.Dcy</label><input type="range" id="ARP-FDcy" min="0" max="100" value="38"><div class="dv" id="ARP-FDcy-v">38</div></div>
+        </div>
+
+        <div class="sec">LFO</div>
+        <div class="pg2">
+          <div class="ctrl"><label>Rate</label> <input type="range" id="ARP-LRate" min="0" max="100" value="25"><div class="dv" id="ARP-LRate-v">25</div></div>
+          <div class="ctrl"><label>Depth</label><input type="range" id="ARP-LDpth" min="0" max="100" value="18"><div class="dv" id="ARP-LDpth-v">18</div></div>
+        </div>
+
+        <div class="sec">ARPEGGIO</div>
+        <div class="pg3">
+          <div class="ctrl"><label>Pattern</label><input type="range" id="ARP-Pattern" min="0" max="100" value="0"> <div class="dv" id="ARP-Pattern-v" style="font-size:8px">UP</div></div>
+          <div class="ctrl"><label>Chord</label>  <input type="range" id="ARP-Chord"   min="0" max="100" value="0"> <div class="dv" id="ARP-Chord-v"   style="font-size:7px">Em9</div></div>
+          <div class="ctrl"><label>Octaves</label><input type="range" id="ARP-Octaves" min="0" max="100" value="33"><div class="dv" id="ARP-Octaves-v">33</div></div>
+        </div>
+
+        <div class="sec">FX SEND</div>
+        <div class="pg2">
           <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="ARP-Rev" min="0" max="100" value="38"><div class="dv" id="ARP-Rev-v">38</div></div>
           <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="ARP-Dly" min="0" max="100" value="58"><div class="dv" id="ARP-Dly-v">58</div></div>
         </div>
@@ -947,7 +1009,14 @@ function wireSliders(){
     const dv=document.getElementById(el.id+'-v');
     el.addEventListener('input',()=>{
       const val=parseFloat(el.value);
-      if(dv) dv.textContent=el.id==='X-FType'?['LP','BP','HP','NT'][Math.floor(val/25)]||'LP':Math.round(val);
+      if(dv){
+        if(el.id==='X-FType')      dv.textContent=['LP','BP','HP','NT'][Math.floor(val/25)]||'LP';
+        else if(el.id==='ARP-Wave')dv.textContent=['SAW','SQR','TRI','SIN'][Math.min(3,Math.floor(val/25))];
+        else if(el.id==='ARP-Oct') dv.textContent=(Math.round(val/100*4-2)>=0?'+':'')+Math.round(val/100*4-2);
+        else if(el.id==='ARP-Pattern')dv.textContent=['UP','DWN','↑↓','RND'][Math.min(3,Math.floor(val/25))];
+        else if(el.id==='ARP-Chord')  dv.textContent=ARP_CHORDS[Math.min(ARP_CHORDS.length-1,Math.floor(val/(100/ARP_CHORDS.length)))].name;
+        else dv.textContent=Math.round(val);
+      }
       applyFX(el.id,val);
       // Live-update EQ chain if it's an EQ param
       const m=el.id.match(/^(DR|B|D|H)-EQ/);
@@ -1149,84 +1218,113 @@ function spawnGrain(){
 }
 
 // ═══ ARPEGGIATOR ══════════════════════════════════
-let arpActive=false, arpStep=0, arpNextT=0, arpTickId=null;
+let arpActive=false, arpStep=0, arpNextT=0, arpTickId=null, arpDiv=0.25;
 const ARP_CHORDS=[
-  {name:'Em9',   notes:[82.41,98.00,123.47,146.83,185.00]},
-  {name:'Cmaj7', notes:[65.41,82.41, 98.00,123.47]},
+  {name:'Em9',   notes:[82.41, 98.00,123.47,146.83,185.00]},
+  {name:'Fmaj',  notes:[87.31,110.00,130.81,174.61,220.00]}, // Baba O'Riley
+  {name:'Cmaj7', notes:[65.41, 82.41, 98.00,123.47]},
   {name:'Asus2', notes:[110.00,123.47,164.81,220.00]},
-  {name:'Dmaj9', notes:[73.42, 92.50,110.00,164.81]},
+  {name:'Dmaj9', notes:[73.42,  92.50,110.00,164.81]},
+  {name:'Amin',  notes:[110.00,130.81,164.81,220.00]},
 ];
 const ARP_PATS=['UP','DOWN','↑↓','RAND'];
+function arpChordIdx(){ return Math.min(ARP_CHORDS.length-1,Math.floor(r('ARP-Chord')/(100/ARP_CHORDS.length))); }
 function arpFreq(){
-  const ci=Math.min(3,Math.floor(r('ARP-Chord')/25));
-  const base=ARP_CHORDS[ci].notes;
+  const base=ARP_CHORDS[arpChordIdx()].notes;
   const octs=Math.max(1,Math.min(3,Math.ceil(r('ARP-Octaves')/34)));
   const full=[]; for(let o=0;o<octs;o++) base.forEach(f=>full.push(f*Math.pow(2,o)));
   const pi=Math.min(3,Math.floor(r('ARP-Pattern')/25));
-  const len=full.length;
-  let idx;
+  const len=full.length; let idx;
   switch(pi){
     case 0: idx=arpStep%len; break;
     case 1: idx=(len-1)-(arpStep%len); break;
-    case 2:{ const cy=Math.max(1,(len-1)*2); const p=arpStep%cy; idx=p<len?p:cy-p; break; }
+    case 2:{ const cy=Math.max(1,(len-1)*2),p=arpStep%cy; idx=p<len?p:cy-p; break; }
     default: idx=Math.floor(Math.random()*len);
   }
   return full[Math.max(0,Math.min(len-1,idx))];
 }
-function playArpNote(t,freq){
+function setArpDiv(div,btn){
+  arpDiv=div;
+  document.querySelectorAll('.arp-div').forEach(b=>b.classList.toggle('on',b===btn));
+}
+function playArpNote(t,freq,stepLen){
   const vol=n('ARP-Vol'); if(vol<0.01) return;
   triggerEnergy(vol*0.22);
-  const spread=n('ARP-Spread')*12;              // 0–12 Hz detune between voices
-  const atk=0.004+n('ARP-Atk')*0.046;          // 4–50ms — instant to plucky
-  const rel=0.06+n('ARP-Rel')*0.58;            // 60–640ms — staccato to legato
-  const dur=atk+rel;
-  const toRev=n('ARP-Rev'), toDly=n('ARP-Dly');
-  // Lowpass — bright but not harsh, lets sawtooth body through
-  const filt=ctx.createBiquadFilter(); filt.type='lowpass';
-  filt.frequency.value=900+n('ARP-Rel')*2800; filt.Q.value=1.4;
-  // Tiny filter envelope click — snappy attack feel
-  filt.frequency.setValueAtTime(3200,t);
-  filt.frequency.exponentialRampToValueAtTime(900+n('ARP-Rel')*2800, t+atk+0.03);
-  // Amp envelope — punchy, clear
+  // Waveform
+  const waves=['sawtooth','square','triangle','sine'];
+  const wave=waves[Math.min(3,Math.floor(r('ARP-Wave')/25))];
+  // Octave shift: slider 0-100 → −2 to +2 oct
+  const octShift=Math.round(r('ARP-Oct')/100*4-2);
+  const f=freq*Math.pow(2,octShift);
+  // Detune: 0-100 → 0-80 cents on 2nd osc
+  const detHz=f*(Math.pow(2,n('ARP-Detune')*80/1200)-1);
+  // Sub level
+  const subLvl=n('ARP-Sub')*0.35;
+  // Gate & timing
+  const gate=0.08+n('ARP-Gate')*0.92;
+  const noteDur=stepLen*gate;
+  // Amp ADSR
+  const atk=0.003+n('ARP-Atk')*0.25;          // 3ms–253ms
+  const dcy=0.01 +n('ARP-Dcy')*0.5;           // 10ms–510ms
+  const sus=Math.max(0.001,n('ARP-Sus'));
+  const rel=0.015+n('ARP-Rel')*0.6;           // 15ms–615ms
+  const holdEnd=Math.max(t+atk+0.002, t+noteDur-rel);
+  const noteEnd=holdEnd+rel;
+  // Filter
+  const baseCut=180+n('ARP-Cut')*7800;
+  const fEnvAmt=n('ARP-FEnv')*7000;
+  const fAtk=0.003+n('ARP-FAtk')*0.12;
+  const fDcy=0.02 +n('ARP-FDcy')*0.58;
+  const res=n('ARP-Res')*18;
+  // LFO
+  const lfoRate=0.1+n('ARP-LRate')*12;
+  const lfoDepth=n('ARP-LDpth')*900;
+  // Build nodes
+  const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.Q.value=res;
+  filt.frequency.setValueAtTime(baseCut+fEnvAmt,t);
+  filt.frequency.linearRampToValueAtTime(baseCut+fEnvAmt,t+fAtk);
+  filt.frequency.linearRampToValueAtTime(baseCut,t+fAtk+fDcy);
+  if(lfoDepth>10){
+    const lfo=ctx.createOscillator(),lg=ctx.createGain();
+    lfo.type='sine'; lfo.frequency.value=lfoRate; lg.gain.value=lfoDepth;
+    lfo.connect(lg); lg.connect(filt.frequency);
+    lfo.start(t); lfo.stop(noteEnd+0.1);
+  }
   const env=ctx.createGain();
   env.gain.setValueAtTime(0,t);
   env.gain.linearRampToValueAtTime(vol*0.58,t+atk);
-  env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.25;
-  // Primary sawtooth — the Townshend Lowrey organ tone
-  const o1=ctx.createOscillator(), og1=ctx.createGain();
-  o1.type='sawtooth'; o1.frequency.value=freq;
-  og1.gain.value=0.52;
-  // Slightly detuned second sawtooth — thickness/chorus
-  const o2=ctx.createOscillator(), og2=ctx.createGain(), pp2=ctx.createStereoPanner();
-  o2.type='sawtooth'; o2.frequency.value=freq+spread;
-  og2.gain.value=0.32; pp2.pan.value=0.45;
-  // Sub octave sine — root body, keeps it grounded
-  const o3=ctx.createOscillator(), og3=ctx.createGain();
-  o3.type='sine'; o3.frequency.value=freq*0.5;
-  og3.gain.value=0.22;
+  env.gain.linearRampToValueAtTime(vol*sus*0.58,t+atk+dcy);
+  env.gain.setValueAtTime(vol*sus*0.58,holdEnd);
+  env.gain.exponentialRampToValueAtTime(0.0001,noteEnd);
+  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.22;
+  // Primary osc
+  const o1=ctx.createOscillator(),og1=ctx.createGain();
+  o1.type=wave; o1.frequency.value=f; og1.gain.value=0.55;
+  // Detuned 2nd osc — chorus/thickness
+  const o2=ctx.createOscillator(),og2=ctx.createGain(),pp2=ctx.createStereoPanner();
+  o2.type=wave; o2.frequency.value=f+detHz; og2.gain.value=0.32; pp2.pan.value=0.42;
+  // Sub octave sine
+  const o3=ctx.createOscillator(),og3=ctx.createGain();
+  o3.type='sine'; o3.frequency.value=f*0.5; og3.gain.value=subLvl;
   o1.connect(og1); og1.connect(filt);
   o2.connect(og2); og2.connect(pp2); pp2.connect(filt);
   o3.connect(og3); og3.connect(filt);
   filt.connect(env); env.connect(pan);
-  send(pan,toRev,toDly);
-  const stopT=t+dur+0.08;
+  send(pan,n('ARP-Rev'),n('ARP-Dly'));
+  const stopT=noteEnd+0.05;
   o1.start(t); o2.start(t); o3.start(t);
   o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
 }
 function arpTick(){
   if(!arpActive||!ctx) return;
   while(arpNextT<ctx.currentTime+0.1){
-    playArpNote(arpNextT,arpFreq());
-    // Speed snaps to musical subdivisions: 0=quarter, 0.5≈8th, 0.57≈16th, 1=32nd
-    arpNextT+=60/bpm*Math.pow(2,-(n('ARP-Speed')*3.5));
-    arpStep++;
+    const stepLen=60/bpm*arpDiv;
+    playArpNote(arpNextT,arpFreq(),stepLen);
+    arpNextT+=stepLen; arpStep++;
   }
-  const ci=Math.min(3,Math.floor(r('ARP-Chord')/25));
-  const pi=Math.min(3,Math.floor(r('ARP-Pattern')/25));
-  const cl=document.getElementById('arpChordLbl'), pl=document.getElementById('arpPatLbl');
-  if(cl) cl.textContent=ARP_CHORDS[ci].name;
-  if(pl) pl.textContent=ARP_PATS[pi];
+  const cl=document.getElementById('arpChordLbl'),pl=document.getElementById('arpPatLbl');
+  if(cl) cl.textContent=ARP_CHORDS[arpChordIdx()].name;
+  if(pl) pl.textContent=ARP_PATS[Math.min(3,Math.floor(r('ARP-Pattern')/25))];
 }
 function toggleArp(){
   if(!ctx) return;
@@ -1452,46 +1550,83 @@ function padPos(e){
 // ═══ OMNIMODE ═════════════════════════════════════
 let omniActive=false, omniCanvas2=null, omniCtx2D=null, omniAnimId=null;
 const OMN_ORBS=[
-  {id:'reverb',  lbl:'REVERB',  sub:'← dry  wet →\n↑ small  large ↓', col:'#7722cc', nx:0.18, ny:0.28},
-  {id:'delay',   lbl:'DELAY',   sub:'← short  long →\n↑ clean  wash ↓',col:'#00e8ff', nx:0.50, ny:0.15},
-  {id:'drone',   lbl:'DRONE',   sub:'← quiet  loud →\n↑ dark  bright ↓',col:'#aa00ff', nx:0.82, ny:0.28},
-  {id:'bass',    lbl:'BASS',    sub:'← quiet  loud →\n↑ thin  sub ↓',  col:'#ffcc00', nx:0.18, ny:0.72},
-  {id:'rhythm',  lbl:'RHYTHM',  sub:'← quiet  loud →\n↑ open  closed ↓',col:'#ff6600',nx:0.50, ny:0.85},
-  {id:'master',  lbl:'MASTER',  sub:'← slow  fast →\n↑ soft  loud ↓',  col:'#ff2200', nx:0.82, ny:0.72},
+  {id:'drone',  lbl:'DRONE',  sub:'← soft  hard →\n↑ simple  complex ↓', col:'#aa00ff', nx:0.18, ny:0.28},
+  {id:'bass',   lbl:'BASS',   sub:'← soft  hard →\n↑ simple  complex ↓', col:'#ffcc00', nx:0.50, ny:0.15},
+  {id:'bongo',  lbl:'BONGO',  sub:'← soft  hard →\n↑ simple  complex ↓', col:'#ff6600', nx:0.82, ny:0.28},
+  {id:'hihat',  lbl:'HI-HAT', sub:'← soft  hard →\n↑ simple  complex ↓', col:'#00ff88', nx:0.18, ny:0.72},
+  {id:'nebula', lbl:'NEBULA', sub:'← quiet  loud →\n↑ dark  bright ↓',   col:'#00e8ff', nx:0.50, ny:0.85},
+  {id:'arp',    lbl:'ARP',    sub:'← soft  hard →\n↑ simple  complex ↓', col:'#ff006e', nx:0.82, ny:0.72},
 ];
+
+// Generate a musically sensible random pattern based on complexity (0=sparse/simple, 1=dense/complex)
+function omniPattern(state, cls, complexity, gridId){
+  state.fill(0);
+  for(let i=0;i<16;i++){
+    // Weight by rhythmic position: downbeats always likely, subdivisions scale with complexity
+    let p;
+    if(i===0)           p=0.85+complexity*0.14;   // beat 1 — almost always
+    else if(i%8===0)    p=0.55+complexity*0.38;   // beat 3
+    else if(i%4===0)    p=0.15+complexity*0.65;   // beats 2,4
+    else if(i%2===0)    p=complexity*0.55;        // 8th-note offbeats
+    else                p=complexity*0.28;        // 16th syncopation
+    if(Math.random()<p) state[i]=1;
+  }
+  // Ensure at least one step is on (minimum: beat 1)
+  if(!state.some(Boolean)) state[0]=1;
+  const grid=document.getElementById(gridId);
+  if(grid) grid.querySelectorAll('.step').forEach((el,i)=>el.classList.toggle(cls,!!state[i]));
+}
 
 function applyOrbParams(id,nx,ny){
   if(!ctx) return;
   const t=ctx.currentTime;
+  // nx = X = soft(0) → hard(1)   |   ny = Y = simple(0) → complex(1)
+  const hard=nx, cplx=ny;
   function setSlider(sid,val){
     const el=document.getElementById(sid); if(!el) return;
     el.value=Math.round(val);
     const dv=document.getElementById(sid+'-v'); if(dv) dv.textContent=Math.round(val);
   }
   switch(id){
-    case 'reverb':
-      revWet.gain.setTargetAtTime(nx*0.92,t,0.05);
-      buildReverb(0.3+ny*8.5, 0.2+ny*0.85);
-      break;
-    case 'delay':
-      delNode.delayTime.setTargetAtTime(0.03+nx*1.8,t,0.05);
-      delFb.gain.setTargetAtTime(ny*0.78,t,0.05);
-      break;
     case 'drone':
-      setSlider('DR-Vol',nx*100);
-      setSlider('DR-Cutoff',ny*100);
+      setSlider('DR-Vol',   15+hard*68);
+      setSlider('DR-Cutoff',8 +hard*75);    // dark→bright tone
+      setSlider('DR-Atk',   75-hard*58);    // slow bloom→fast attack
+      omniPattern(drS,'dr-on',cplx,'gDR');
       break;
     case 'bass':
-      setSlider('B-Vol',nx*100);
-      setSlider('B-Sub',(1-ny)*100);
+      setSlider('B-Vol',   20+hard*65);
+      setSlider('B-Punch', hard*75);        // soft pluck→hard punch
+      setSlider('B-Tone',  8 +hard*55);     // dark→brighter body
+      omniPattern(bS,'b-on',cplx,'gB');
       break;
-    case 'rhythm':
-      setSlider('D-Vol',nx*100);
-      setSlider('H-Vol',(1-ny)*100);
+    case 'bongo':
+      setSlider('D-Vol',  18+hard*65);
+      setSlider('D-Snap', hard*82);         // thud→crack
+      setSlider('D-Tune', 18+hard*52);
+      omniPattern(dS,'d-on',cplx,'gD');
       break;
-    case 'master':
-      setBpm(Math.round(60+nx*120));
-      master.gain.setTargetAtTime(0.05+(ny)*1.0,t,0.05);
+    case 'hihat':
+      setSlider('H-Vol',   12+hard*55);
+      setSlider('H-Color', 8 +hard*72);     // dark wash→bright shimmer
+      setSlider('H-Shine', hard*78);
+      setSlider('H-Decay', 18+hard*55);     // short→long
+      omniPattern(hS,'h-on',cplx,'gH');
+      break;
+    case 'nebula':
+      setSlider('X-Vol',   15+hard*68);
+      setSlider('X-Harm',  hard*65);        // pure sine→rich harmonics
+      setSlider('X-Grain', 10+cplx*72);    // sparse→dense grain
+      setSlider('X-Shim',  hard*70);
+      break;
+    case 'arp':
+      setSlider('ARP-Vol', 18+hard*65);
+      setSlider('ARP-Cut', 12+hard*72);
+      setSlider('ARP-FEnv',hard*80);
+      setSlider('ARP-Res', hard*52);
+      // Complexity: simple chord/1-oct → jazzy chord/multi-oct
+      setSlider('ARP-Chord',  cplx*100);
+      setSlider('ARP-Octaves',15+cplx*70);
       break;
   }
 }
@@ -1590,7 +1725,6 @@ function exitOmniMode(){
 document.addEventListener('DOMContentLoaded',()=>{
   buildParams('pDR','DR',PDEFS.DR); buildParams('pB','B',PDEFS.B);
   buildParams('pD','D',PDEFS.D);   buildParams('pH','H',PDEFS.H);
-  buildParams('pARP','ARP',PDEFS.ARP);
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
   buildPresets('DR'); buildPresets('B'); buildPresets('D'); buildPresets('H');
