@@ -7,7 +7,7 @@
   <style>
     :root {
       --bass:#ffcc00; --drum:#ff6600; --hihat:#00ff88;
-      --drone:#aa00ff; --xs:#00f2ff; --fx:#ff4488; --bg:#050508;
+      --drone:#aa00ff; --xs:#00f2ff; --fx:#ff4488; --bg:#050508; --arp:#ff006e;
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     body{ font-family:'Inter',sans-serif; margin:0; background:#000; color:#fff; overflow-x:hidden; user-select:none; }
@@ -426,6 +426,26 @@
       </div>
     </div>
 
+    <!-- ARPEGGIATOR -->
+    <div class="drawer" id="drARP">
+      <div class="drawer-hdr" onclick="toggleD('drARP')" style="color:var(--arp)">
+        <span>ARPEGGIATOR — BLOOM</span>
+        <span class="arr">▼</span>
+      </div>
+      <div class="drawer-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <button id="arpBtn" class="imode-btn" onclick="toggleArp()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ START</button>
+          <span id="arpChordLbl" style="font-size:9px;font-weight:900;color:var(--arp);letter-spacing:2px;text-shadow:0 0 8px var(--arp)">Em9</span>
+          <span id="arpPatLbl" style="font-size:9px;font-weight:900;color:rgba(255,0,110,0.5);letter-spacing:2px">UP</span>
+        </div>
+        <div class="pg4" id="pARP"></div>
+        <div class="pg3" style="margin-top:6px">
+          <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="ARP-Rev" min="0" max="100" value="78"><div class="dv" id="ARP-Rev-v">78</div></div>
+          <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="ARP-Dly" min="0" max="100" value="42"><div class="dv" id="ARP-Dly-v">42</div></div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- .main -->
 </div><!-- #ui -->
 
@@ -651,7 +671,9 @@ const PDEFS={
   D: [{id:'Vol',d:60},{id:'Tune',d:48},{id:'Decay',d:42},{id:'Thump',d:38},{id:'Snap',d:25},{id:'Pan',d:50},
       {id:'EQLo',d:38},{id:'EQMi',d:88},{id:'EQHi',d:50}],
   H: [{id:'Vol',d:32},{id:'Color',d:28},{id:'Decay',d:48},{id:'Jitter',d:10},{id:'Shine',d:28},{id:'Pan',d:50},
-      {id:'EQLo',d:0},{id:'EQMi',d:25},{id:'EQHi',d:81}]
+      {id:'EQLo',d:0},{id:'EQMi',d:25},{id:'EQHi',d:81}],
+  ARP:[{id:'Vol',d:52},{id:'Speed',d:38},{id:'Pattern',d:0},{id:'Chord',d:0},
+       {id:'Spread',d:32},{id:'Bloom',d:48},{id:'Tail',d:62},{id:'Octaves',d:33}]
 };
 
 // ═══ UTILS ═══════════════════════════════════════
@@ -684,7 +706,7 @@ function togglePlay(){
   isPlaying=!isPlaying;
   const btn=document.getElementById('playBtn');
   if(isPlaying){ nextT=ctx.currentTime+0.05; seqStep=0; btn.textContent='■  STOP'; btn.classList.add('playing'); }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -1108,50 +1130,137 @@ function spawnGrain(){
   if(zl) zl.textContent='· '+currentZoneName(padX);
 }
 
+// ═══ ARPEGGIATOR ══════════════════════════════════
+let arpActive=false, arpStep=0, arpNextT=0, arpTickId=null;
+const ARP_CHORDS=[
+  {name:'Em9',   notes:[82.41,98.00,123.47,146.83,185.00]},
+  {name:'Cmaj7', notes:[65.41,82.41, 98.00,123.47]},
+  {name:'Asus2', notes:[110.00,123.47,164.81,220.00]},
+  {name:'Dmaj9', notes:[73.42, 92.50,110.00,164.81]},
+];
+const ARP_PATS=['UP','DOWN','↑↓','RAND'];
+function arpFreq(){
+  const ci=Math.min(3,Math.floor(r('ARP-Chord')/25));
+  const base=ARP_CHORDS[ci].notes;
+  const octs=Math.max(1,Math.min(3,Math.ceil(r('ARP-Octaves')/34)));
+  const full=[]; for(let o=0;o<octs;o++) base.forEach(f=>full.push(f*Math.pow(2,o)));
+  const pi=Math.min(3,Math.floor(r('ARP-Pattern')/25));
+  const len=full.length;
+  let idx;
+  switch(pi){
+    case 0: idx=arpStep%len; break;
+    case 1: idx=(len-1)-(arpStep%len); break;
+    case 2:{ const cy=Math.max(1,(len-1)*2); const p=arpStep%cy; idx=p<len?p:cy-p; break; }
+    default: idx=Math.floor(Math.random()*len);
+  }
+  return full[Math.max(0,Math.min(len-1,idx))];
+}
+function playArpNote(t,freq){
+  const vol=n('ARP-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.12);
+  const spread=n('ARP-Spread')*10;         // 0–10 Hz detuning between voices
+  const bloom=0.08+n('ARP-Bloom')*1.4;    // 0.08–1.48s bloom attack
+  const tail=1.2+n('ARP-Tail')*3.5;       // 1.2–4.7s release tail
+  const dur=bloom+tail;
+  const toRev=n('ARP-Rev'), toDly=n('ARP-Dly');
+  // Lowpass — filter cutoff opens as tail increases, giving evolving warmth
+  const filt=ctx.createBiquadFilter(); filt.type='lowpass';
+  filt.frequency.value=500+n('ARP-Tail')*1600; filt.Q.value=0.45;
+  // Slow LFO on filter cutoff — dreamy movement
+  const lfo=ctx.createOscillator(), lfoG=ctx.createGain();
+  lfo.type='sine'; lfo.frequency.value=0.12+Math.random()*0.22;
+  lfoG.gain.value=350+n('ARP-Spread')*250;
+  lfo.connect(lfoG); lfoG.connect(filt.frequency);
+  // Envelope — slow bloom feel
+  const env=ctx.createGain();
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(vol*0.52,t+bloom);
+  env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  // Stereo panner for width
+  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.4;
+  // 3 layered voices: center sine + wide detuned triangle + opposite sine
+  const o1=ctx.createOscillator(), og1=ctx.createGain();
+  const o2=ctx.createOscillator(), og2=ctx.createGain(), pp2=ctx.createStereoPanner();
+  const o3=ctx.createOscillator(), og3=ctx.createGain(), pp3=ctx.createStereoPanner();
+  o1.type='sine';     o1.frequency.value=freq;
+  o2.type='triangle'; o2.frequency.value=freq+spread;
+  o3.type='sine';     o3.frequency.value=freq-spread;
+  og1.gain.value=0.50; og2.gain.value=0.36; og3.gain.value=0.36;
+  pp2.pan.value=0.55; pp3.pan.value=-0.55;
+  o1.connect(og1); og1.connect(filt);
+  o2.connect(og2); og2.connect(pp2); pp2.connect(filt);
+  o3.connect(og3); og3.connect(pp3); pp3.connect(filt);
+  filt.connect(env); env.connect(pan);
+  send(pan,toRev,toDly);
+  const stopT=t+dur+0.4;
+  o1.start(t); o2.start(t); o3.start(t); lfo.start(t);
+  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT); lfo.stop(stopT);
+}
+function arpTick(){
+  if(!arpActive||!ctx) return;
+  while(arpNextT<ctx.currentTime+0.1){
+    playArpNote(arpNextT,arpFreq());
+    // Speed 0=slow (dotted half ~2.4s at 120bpm) to 1=fast (8th note 0.25s)
+    arpNextT+=60/bpm*(2.0-n('ARP-Speed')*1.62);
+    arpStep++;
+  }
+  const ci=Math.min(3,Math.floor(r('ARP-Chord')/25));
+  const pi=Math.min(3,Math.floor(r('ARP-Pattern')/25));
+  const cl=document.getElementById('arpChordLbl'), pl=document.getElementById('arpPatLbl');
+  if(cl) cl.textContent=ARP_CHORDS[ci].name;
+  if(pl) pl.textContent=ARP_PATS[pi];
+}
+function toggleArp(){
+  if(!ctx) return;
+  arpActive=!arpActive;
+  const btn=document.getElementById('arpBtn');
+  if(arpActive){
+    arpNextT=ctx.currentTime+0.05; arpStep=0;
+    if(!arpTickId) arpTickId=setInterval(arpTick,20);
+    if(btn){ btn.textContent='■ STOP'; btn.classList.add('playing'); }
+  } else {
+    if(btn){ btn.textContent='▶ START'; btn.classList.remove('playing'); }
+  }
+}
+
 // ═══ SEQUENCER SOUNDS ════════════════════════════
 function playB(t){
   const vol=n('B-Vol'); if(vol<0.01) return;
-  triggerEnergy(vol*0.3);
+  triggerEnergy(vol*0.2);
   const freq=NOTES[Math.floor(Math.random()*NOTES.length)];
-  const punch=n('B-Punch'), tone=n('B-Tone'), subAmt=n('B-Sub');
-  // Slow bloom — no transient click, warm physical rise
-  const atk=0.08+punch*0.14, rel=0.9+n('B-Rel')*3.8;
-  const pan=ctx.createStereoPanner(); pan.pan.value=n('B-Pan')*2-1;
+  const atk=0.04+n('B-Punch')*0.04;   // 40–80ms — finger plucking a thick string
+  const rel=1.5+n('B-Rel')*0.5;       // 1.5–2.0s natural decay
   const dur=atk+rel;
-  // Fundamental — triangle for warmth + natural harmonics
-  const osc=ctx.createOscillator(); osc.type='triangle';
-  // Subtle pitch bloom — slightly flat then settles to pitch
-  osc.frequency.setValueAtTime(freq*0.997,t);
-  osc.frequency.linearRampToValueAtTime(freq,t+atk*0.8);
-  // 2nd harmonic — presence in the 100-400 Hz body region
-  const h2=ctx.createOscillator(), h2G=ctx.createGain();
-  h2.type='sine'; h2.frequency.value=freq*2; h2G.gain.value=tone*0.38;
-  h2.connect(h2G);
-  // 3rd harmonic — growl and definition
-  const h3=ctx.createOscillator(), h3G=ctx.createGain();
-  h3.type='sine'; h3.frequency.value=freq*3; h3G.gain.value=tone*0.18;
-  h3.connect(h3G);
-  // Sub octave — physical low-end resonance
-  const sub=ctx.createOscillator(), subEnv=ctx.createGain();
-  sub.type='sine'; sub.frequency.value=freq*0.5;
-  subEnv.gain.setValueAtTime(0,t); subEnv.gain.linearRampToValueAtTime(subAmt*vol*0.75,t+atk*1.3);
-  subEnv.gain.exponentialRampToValueAtTime(0.0001,t+atk*1.3+rel*1.3);
-  sub.connect(subEnv); subEnv.connect(pan);
-  // Warm lowpass — like the body cavity of a wooden instrument
+  const pan=ctx.createStereoPanner(); pan.pan.value=n('B-Pan')*2-1;
+  // Hard lowpass at ~180Hz — pure low body, no brightness
   const filt=ctx.createBiquadFilter(); filt.type='lowpass';
-  filt.frequency.value=420+tone*1400; filt.Q.value=0.65;
-  // Subtle resonance LFO (wood body vibration, almost imperceptible)
-  const bodyLfo=ctx.createOscillator(), bodyG=ctx.createGain();
-  bodyLfo.type='sine'; bodyLfo.frequency.value=2.8+tone*2.5; bodyG.gain.value=freq*0.0025;
-  bodyLfo.connect(bodyG); bodyG.connect(osc.frequency);
+  filt.frequency.value=160+n('B-Tone')*60; filt.Q.value=0.25;
+  // Subtle waveshaper — very low drive, just adds organic warmth
+  const ws=ctx.createWaveShaper();
+  const wc=new Float32Array(256);
+  for(let i=0;i<256;i++){ const x=i*2/255-1; wc[i]=x/(1+0.15*Math.abs(x)); }
+  ws.curve=wc; ws.oversample='2x';
+  // Fundamental sine
+  const o1=ctx.createOscillator(); o1.type='sine'; o1.frequency.value=freq;
+  // Sub octave — body weight at 30% (scaled by B-Sub)
+  const o2=ctx.createOscillator(), g2=ctx.createGain();
+  o2.type='sine'; o2.frequency.value=freq*0.5; g2.gain.value=0.18+n('B-Sub')*0.24;
+  o2.connect(g2);
+  // String harmonic at 1.5× — natural overtone at 10%
+  const o3=ctx.createOscillator(), g3=ctx.createGain();
+  o3.type='sine'; o3.frequency.value=freq*1.5; g3.gain.value=0.10;
+  o3.connect(g3);
   const env=ctx.createGain();
-  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.88,t+atk);
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(vol*0.62,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  osc.connect(filt); h2G.connect(filt); h3G.connect(filt); filt.connect(env); env.connect(pan);
-  routeEQ(pan,'B',rSend('B','Rev'),rSend('B','Dly'));
-  const stopT=t+dur+0.5;
-  osc.start(t); h2.start(t); h3.start(t); sub.start(t); bodyLfo.start(t);
-  osc.stop(stopT); h2.stop(stopT); h3.stop(stopT); sub.stop(stopT); bodyLfo.stop(stopT);
+  o1.connect(filt); g2.connect(filt); g3.connect(filt);
+  filt.connect(ws); ws.connect(env); env.connect(pan);
+  // Heavy reverb — puts it in physical space; sits just under drone
+  routeEQ(pan,'B', Math.max(0.68,rSend('B','Rev')), rSend('B','Dly'));
+  const stopT=t+dur+0.3;
+  o1.start(t); o2.start(t); o3.start(t);
+  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
 }
 function playD(t){
   const vol=n('D-Vol'); if(vol<0.01) return;
@@ -1326,6 +1435,7 @@ function padPos(e){
 document.addEventListener('DOMContentLoaded',()=>{
   buildParams('pDR','DR',PDEFS.DR); buildParams('pB','B',PDEFS.B);
   buildParams('pD','D',PDEFS.D);   buildParams('pH','H',PDEFS.H);
+  buildParams('pARP','ARP',PDEFS.ARP);
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
   buildPresets('DR'); buildPresets('B'); buildPresets('D'); buildPresets('H');
