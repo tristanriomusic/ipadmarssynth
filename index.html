@@ -154,6 +154,16 @@
     .arp-div-row{ display:flex; gap:4px; margin-bottom:10px; }
     .arp-div{ flex:1; padding:9px 2px; border-radius:6px; border:1px solid rgba(255,0,110,0.3); background:rgba(255,0,110,0.08); color:rgba(255,0,110,0.65); font-size:8px; font-weight:900; cursor:pointer; text-align:center; letter-spacing:0.5px; }
     .arp-div.on{ background:var(--arp); color:#000; border-color:var(--arp); box-shadow:0 0 10px var(--arp); }
+    /* CHORD SEQUENCE */
+    --chd:#ff88cc;
+    .chd-row{ display:flex; gap:5px; margin-bottom:8px; }
+    .chd-step{ flex:1; padding:12px 3px; border-radius:8px; border:1px solid rgba(255,136,200,0.3); background:rgba(255,136,200,0.07); color:rgba(255,136,200,0.75); font-size:8px; font-weight:900; cursor:pointer; text-align:center; letter-spacing:0.5px; transition:all .1s; min-height:40px; display:flex; align-items:center; justify-content:center; }
+    .chd-step.off{ opacity:0.25; }
+    .chd-step.playing{ background:#ff88cc; color:#000; border-color:#ff88cc; box-shadow:0 0 14px #ff88cc; }
+    .chd-ctrl-row{ display:flex; gap:6px; align-items:center; margin-bottom:10px; }
+    .chd-ctrl-lbl{ font-size:8px; font-weight:900; letter-spacing:2px; color:rgba(255,136,200,0.6); white-space:nowrap; }
+    .chd-btn{ padding:7px 10px; border-radius:6px; border:1px solid rgba(255,136,200,0.25); background:rgba(255,136,200,0.07); color:rgba(255,136,200,0.6); font-size:8px; font-weight:900; cursor:pointer; }
+    .chd-btn.on{ background:rgba(255,136,200,0.3); color:#fff; border-color:rgba(255,136,200,0.6); }
   </style>
 </head>
 <body>
@@ -358,6 +368,10 @@
             <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="B-Rev" min="0" max="100" value="42"><div class="dv" id="B-Rev-v">42</div></div>
             <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="B-Dly" min="0" max="100" value="8"><div class="dv" id="B-Dly-v">8</div></div>
           </div>
+          <div class="pg2" style="margin-top:6px">
+            <div class="ctrl"><label>Pattern</label><input type="range" id="B-Pat" min="0" max="100" value="0"><div class="dv" id="B-Pat-v" style="font-size:8px">UP</div></div>
+            <div class="ctrl"><label>Oct</label>    <input type="range" id="B-Oct" min="0" max="100" value="50"><div class="dv" id="B-Oct-v">0</div></div>
+          </div>
         </div>
         <div id="B-deep-section" style="display:none">
           <div class="sec">PARAMETERS</div>
@@ -438,6 +452,27 @@
             <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="H-Dly-d" min="0" max="100" value="10"><div class="dv" id="H-Dly-d-v">10</div></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- CHORD SEQUENCE -->
+    <div class="drawer open" id="drCHD">
+      <div class="drawer-hdr" onclick="toggleD('drCHD')" style="color:#ff88cc">
+        <span>CHORD SEQUENCE</span><span class="arr">▼</span>
+      </div>
+      <div class="drawer-body">
+        <div class="chd-ctrl-row">
+          <span class="chd-ctrl-lbl">STEPS</span>
+          <button class="chd-btn"    onclick="setChordLen(2,this)">2</button>
+          <button class="chd-btn on" onclick="setChordLen(4,this)">4</button>
+          <button class="chd-btn"    onclick="setChordLen(8,this)">8</button>
+          <span class="chd-ctrl-lbl" style="margin-left:8px">BARS/CHORD</span>
+          <button class="chd-btn on" onclick="setChordBars(1,this)">1</button>
+          <button class="chd-btn"    onclick="setChordBars(2,this)">2</button>
+          <button class="chd-btn"    onclick="setChordBars(4,this)">4</button>
+        </div>
+        <div class="chd-row" id="chdRow"></div>
+        <div style="font-size:7px;color:rgba(255,136,200,0.4);letter-spacing:1px;text-align:center;margin-top:2px">TAP STEP TO CYCLE CHORD  ·  GLOWING = PLAYING</div>
       </div>
     </div>
 
@@ -552,6 +587,11 @@ const MOODS=[
 ];
 let moodIdx=0, moodT=0;
 const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
+
+// ── CHORD SEQUENCE ─────────────────────────────────
+let currentChordIdx=0, chordSeqStep=0, chordBarCount=0, bassArpStep=0;
+let chordSeqLen=4, chordBarsPerStep=1;
+const CHORD_SEQ_DATA=[0,2,3,4, 0,2,5,1]; // Em9 Cmaj7 Asus2 Dmaj9 Em9 Cmaj7 Amin Fmaj
 
 // ── PER-INSTRUMENT 3-BAND EQ ───────────────────────
 // ── PERSISTENT PER-INSTRUMENT EQ CHAINS ───────────────────────────────
@@ -785,7 +825,13 @@ function setPadMode(mode,btn){
 function togglePlay(){
   isPlaying=!isPlaying;
   const btn=document.getElementById('playBtn');
-  if(isPlaying){ nextT=ctx.currentTime+0.05; seqStep=0; btn.textContent='■  STOP'; btn.classList.add('playing'); }
+  if(isPlaying){
+    nextT=ctx.currentTime+0.05; seqStep=0;
+    chordSeqStep=0; chordBarCount=0; bassArpStep=0;
+    currentChordIdx=CHORD_SEQ_DATA[0];
+    updateChordUI();
+    btn.textContent='■  STOP'; btn.classList.add('playing');
+  }
   else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); }
 }
 function toggleInstMode(inst,e){
@@ -841,6 +887,60 @@ function buildPresets(inst){
     btn.addEventListener('click',()=>selectPreset(inst,i));
     c.appendChild(btn);
   });
+}
+
+// ═══ CHORD SEQUENCE ═══════════════════════════════
+function buildChordSeq(){
+  const row=document.getElementById('chdRow');
+  for(let i=0;i<8;i++){
+    const btn=document.createElement('button');
+    btn.className='chd-step'+(i>=chordSeqLen?' off':'');
+    btn.id='chs-'+i;
+    btn.textContent=ARP_CHORDS[CHORD_SEQ_DATA[i]].name;
+    btn.addEventListener('click',()=>cycleChordStep(i));
+    row.appendChild(btn);
+  }
+  updateChordUI();
+}
+function cycleChordStep(i){
+  CHORD_SEQ_DATA[i]=(CHORD_SEQ_DATA[i]+1)%ARP_CHORDS.length;
+  document.getElementById('chs-'+i).textContent=ARP_CHORDS[CHORD_SEQ_DATA[i]].name;
+}
+function updateChordUI(){
+  for(let i=0;i<8;i++){
+    const btn=document.getElementById('chs-'+i); if(!btn) continue;
+    btn.classList.toggle('off', i>=chordSeqLen);
+    btn.classList.toggle('playing', isPlaying&&i===chordSeqStep&&i<chordSeqLen);
+  }
+  const cl=document.getElementById('arpChordLbl');
+  if(cl) cl.textContent=ARP_CHORDS[currentChordIdx].name;
+}
+function setChordLen(n,btn){
+  chordSeqLen=n;
+  document.querySelectorAll('.chd-btn').forEach(b=>{
+    if(['2','4','8'].includes(b.textContent)) b.classList.toggle('on',b===btn);
+  });
+  updateChordUI();
+}
+function setChordBars(n,btn){
+  chordBarsPerStep=n;
+  document.querySelectorAll('.chd-btn').forEach(b=>{
+    if(['1','2','4'].includes(b.textContent)) b.classList.toggle('on',b===btn);
+  });
+}
+// Get current bass note from the active chord in sequence
+function bassChordNote(){
+  const notes=ARP_CHORDS[currentChordIdx].notes;
+  const pat=Math.min(2,Math.floor(r('B-Pat')/34)); // 0=UP 1=DOWN 2=RAND
+  const octShift=Math.round(r('B-Oct')/50)-1;       // -1, 0, +1
+  let idx;
+  switch(pat){
+    case 0: idx=bassArpStep%notes.length; break;
+    case 1: idx=(notes.length-1)-(bassArpStep%notes.length); break;
+    default: idx=Math.floor(Math.random()*notes.length);
+  }
+  bassArpStep++;
+  return notes[idx]*Math.pow(2,octShift);
 }
 
 // ═══ AUDIO INIT ═══════════════════════════════════
@@ -1015,6 +1115,8 @@ function wireSliders(){
         else if(el.id==='ARP-Oct') dv.textContent=(Math.round(val/100*4-2)>=0?'+':'')+Math.round(val/100*4-2);
         else if(el.id==='ARP-Pattern')dv.textContent=['UP','DWN','↑↓','RND'][Math.min(3,Math.floor(val/25))];
         else if(el.id==='ARP-Chord')  dv.textContent=ARP_CHORDS[Math.min(ARP_CHORDS.length-1,Math.floor(val/(100/ARP_CHORDS.length)))].name;
+        else if(el.id==='B-Pat'){ dv.textContent=['UP','DWN','RND'][Math.min(2,Math.floor(val/34))]; }
+        else if(el.id==='B-Oct'){ const v=Math.round(val/50)-1; dv.textContent=(v>=0?'+':'')+v; }
         else dv.textContent=Math.round(val);
       }
       applyFX(el.id,val);
@@ -1230,7 +1332,7 @@ const ARP_CHORDS=[
 const ARP_PATS=['UP','DOWN','↑↓','RAND'];
 function arpChordIdx(){ return Math.min(ARP_CHORDS.length-1,Math.floor(r('ARP-Chord')/(100/ARP_CHORDS.length))); }
 function arpFreq(){
-  const base=ARP_CHORDS[arpChordIdx()].notes;
+  const base=ARP_CHORDS[currentChordIdx].notes;
   const octs=Math.max(1,Math.min(3,Math.ceil(r('ARP-Octaves')/34)));
   const full=[]; for(let o=0;o<octs;o++) base.forEach(f=>full.push(f*Math.pow(2,o)));
   const pi=Math.min(3,Math.floor(r('ARP-Pattern')/25));
@@ -1323,7 +1425,7 @@ function arpTick(){
     arpNextT+=stepLen; arpStep++;
   }
   const cl=document.getElementById('arpChordLbl'),pl=document.getElementById('arpPatLbl');
-  if(cl) cl.textContent=ARP_CHORDS[arpChordIdx()].name;
+  if(cl) cl.textContent=ARP_CHORDS[currentChordIdx].name;
   if(pl) pl.textContent=ARP_PATS[Math.min(3,Math.floor(r('ARP-Pattern')/25))];
 }
 function toggleArp(){
@@ -1343,7 +1445,7 @@ function toggleArp(){
 function playB(t){
   const vol=n('B-Vol'); if(vol<0.01) return;
   triggerEnergy(vol*0.2);
-  const freq=NOTES[Math.floor(Math.random()*NOTES.length)];
+  const freq=bassChordNote();
   const atk=0.04+n('B-Punch')*0.04;   // 40–80ms — finger plucking a thick string
   const rel=1.5+n('B-Rel')*0.5;       // 1.5–2.0s natural decay
   const dur=atk+rel;
@@ -1458,7 +1560,17 @@ function loop(){
       if(bS[seqStep])  playB(nextT);
       if(dS[seqStep])  playD(nextT);
       if(hS[seqStep])  playH(nextT);
-      nextT+=sl; seqStep=(seqStep+1)%16;
+      nextT+=sl;
+      const wasLast=(seqStep===15);
+      seqStep=(seqStep+1)%16;
+      if(wasLast){
+        chordBarCount++;
+        if(chordBarCount%chordBarsPerStep===0){
+          chordSeqStep=(chordSeqStep+1)%chordSeqLen;
+          currentChordIdx=CHORD_SEQ_DATA[chordSeqStep];
+          updateChordUI();
+        }
+      }
     }
   }
   // Pad grains
@@ -1741,6 +1853,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(omniCanvas2){ omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight; placeOmniOrbs(); }
   });
 
+  buildChordSeq();
   buildOmniOrbs();
 
   document.getElementById('boot').addEventListener('click',e=>{
