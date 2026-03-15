@@ -452,8 +452,8 @@
         </div>
         <div class="pg4" id="pARP"></div>
         <div class="pg3" style="margin-top:6px">
-          <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="ARP-Rev" min="0" max="100" value="78"><div class="dv" id="ARP-Rev-v">78</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="ARP-Dly" min="0" max="100" value="42"><div class="dv" id="ARP-Dly-v">42</div></div>
+          <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="ARP-Rev" min="0" max="100" value="38"><div class="dv" id="ARP-Rev-v">38</div></div>
+          <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="ARP-Dly" min="0" max="100" value="58"><div class="dv" id="ARP-Dly-v">58</div></div>
         </div>
       </div>
     </div>
@@ -690,8 +690,8 @@ const PDEFS={
       {id:'EQLo',d:38},{id:'EQMi',d:88},{id:'EQHi',d:50}],
   H: [{id:'Vol',d:32},{id:'Color',d:28},{id:'Decay',d:48},{id:'Jitter',d:10},{id:'Shine',d:28},{id:'Pan',d:50},
       {id:'EQLo',d:0},{id:'EQMi',d:25},{id:'EQHi',d:81}],
-  ARP:[{id:'Vol',d:52},{id:'Speed',d:38},{id:'Pattern',d:0},{id:'Chord',d:0},
-       {id:'Spread',d:32},{id:'Bloom',d:48},{id:'Tail',d:62},{id:'Octaves',d:33}]
+  ARP:[{id:'Vol',d:58},{id:'Speed',d:57},{id:'Pattern',d:0},{id:'Chord',d:0},
+       {id:'Spread',d:38},{id:'Atk',d:12},{id:'Rel',d:42},{id:'Octaves',d:33}]
 };
 
 // ═══ UTILS ═══════════════════════════════════════
@@ -1175,51 +1175,51 @@ function arpFreq(){
 }
 function playArpNote(t,freq){
   const vol=n('ARP-Vol'); if(vol<0.01) return;
-  triggerEnergy(vol*0.12);
-  const spread=n('ARP-Spread')*10;         // 0–10 Hz detuning between voices
-  const bloom=0.08+n('ARP-Bloom')*1.4;    // 0.08–1.48s bloom attack
-  const tail=1.2+n('ARP-Tail')*3.5;       // 1.2–4.7s release tail
-  const dur=bloom+tail;
+  triggerEnergy(vol*0.22);
+  const spread=n('ARP-Spread')*12;              // 0–12 Hz detune between voices
+  const atk=0.004+n('ARP-Atk')*0.046;          // 4–50ms — instant to plucky
+  const rel=0.06+n('ARP-Rel')*0.58;            // 60–640ms — staccato to legato
+  const dur=atk+rel;
   const toRev=n('ARP-Rev'), toDly=n('ARP-Dly');
-  // Lowpass — filter cutoff opens as tail increases, giving evolving warmth
+  // Lowpass — bright but not harsh, lets sawtooth body through
   const filt=ctx.createBiquadFilter(); filt.type='lowpass';
-  filt.frequency.value=500+n('ARP-Tail')*1600; filt.Q.value=0.45;
-  // Slow LFO on filter cutoff — dreamy movement
-  const lfo=ctx.createOscillator(), lfoG=ctx.createGain();
-  lfo.type='sine'; lfo.frequency.value=0.12+Math.random()*0.22;
-  lfoG.gain.value=350+n('ARP-Spread')*250;
-  lfo.connect(lfoG); lfoG.connect(filt.frequency);
-  // Envelope — slow bloom feel
+  filt.frequency.value=900+n('ARP-Rel')*2800; filt.Q.value=1.4;
+  // Tiny filter envelope click — snappy attack feel
+  filt.frequency.setValueAtTime(3200,t);
+  filt.frequency.exponentialRampToValueAtTime(900+n('ARP-Rel')*2800, t+atk+0.03);
+  // Amp envelope — punchy, clear
   const env=ctx.createGain();
   env.gain.setValueAtTime(0,t);
-  env.gain.linearRampToValueAtTime(vol*0.52,t+bloom);
+  env.gain.linearRampToValueAtTime(vol*0.58,t+atk);
   env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  // Stereo panner for width
-  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.4;
-  // 3 layered voices: center sine + wide detuned triangle + opposite sine
+  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.25;
+  // Primary sawtooth — the Townshend Lowrey organ tone
   const o1=ctx.createOscillator(), og1=ctx.createGain();
+  o1.type='sawtooth'; o1.frequency.value=freq;
+  og1.gain.value=0.52;
+  // Slightly detuned second sawtooth — thickness/chorus
   const o2=ctx.createOscillator(), og2=ctx.createGain(), pp2=ctx.createStereoPanner();
-  const o3=ctx.createOscillator(), og3=ctx.createGain(), pp3=ctx.createStereoPanner();
-  o1.type='sine';     o1.frequency.value=freq;
-  o2.type='triangle'; o2.frequency.value=freq+spread;
-  o3.type='sine';     o3.frequency.value=freq-spread;
-  og1.gain.value=0.50; og2.gain.value=0.36; og3.gain.value=0.36;
-  pp2.pan.value=0.55; pp3.pan.value=-0.55;
+  o2.type='sawtooth'; o2.frequency.value=freq+spread;
+  og2.gain.value=0.32; pp2.pan.value=0.45;
+  // Sub octave sine — root body, keeps it grounded
+  const o3=ctx.createOscillator(), og3=ctx.createGain();
+  o3.type='sine'; o3.frequency.value=freq*0.5;
+  og3.gain.value=0.22;
   o1.connect(og1); og1.connect(filt);
   o2.connect(og2); og2.connect(pp2); pp2.connect(filt);
-  o3.connect(og3); og3.connect(pp3); pp3.connect(filt);
+  o3.connect(og3); og3.connect(filt);
   filt.connect(env); env.connect(pan);
   send(pan,toRev,toDly);
-  const stopT=t+dur+0.4;
-  o1.start(t); o2.start(t); o3.start(t); lfo.start(t);
-  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT); lfo.stop(stopT);
+  const stopT=t+dur+0.08;
+  o1.start(t); o2.start(t); o3.start(t);
+  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
 }
 function arpTick(){
   if(!arpActive||!ctx) return;
   while(arpNextT<ctx.currentTime+0.1){
     playArpNote(arpNextT,arpFreq());
-    // Speed 0=slow (dotted half ~2.4s at 120bpm) to 1=fast (8th note 0.25s)
-    arpNextT+=60/bpm*(2.0-n('ARP-Speed')*1.62);
+    // Speed snaps to musical subdivisions: 0=quarter, 0.5≈8th, 0.57≈16th, 1=32nd
+    arpNextT+=60/bpm*Math.pow(2,-(n('ARP-Speed')*3.5));
     arpStep++;
   }
   const ci=Math.min(3,Math.floor(r('ARP-Chord')/25));
