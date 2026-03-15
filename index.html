@@ -591,6 +591,9 @@ const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Arra
 // ── CHORD SEQUENCE ─────────────────────────────────
 let currentChordIdx=0, chordSeqStep=0, chordBarCount=0, bassArpStep=0;
 let chordSeqLen=4, chordBarsPerStep=1;
+// ── OMNIMODE MACRO STATE ────────────────────────────
+let swingAmount=0;      // 0=no swing, 1=heavy swing (~33% of step length)
+let chaosMutateRate=0;  // 0=stable, 1=mutate a random pattern every bar
 const CHORD_SEQ_DATA=[0,2,3,4, 0,2,5,1]; // Em9 Cmaj7 Asus2 Dmaj9 Em9 Cmaj7 Amin Fmaj
 
 // ── PER-INSTRUMENT 3-BAND EQ ───────────────────────
@@ -1556,10 +1559,11 @@ function loop(){
       const sl=60/bpm/4;
       document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing'));
       document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
-      if(drS[seqStep]) playDR(nextT);
-      if(bS[seqStep])  playB(nextT);
-      if(dS[seqStep])  playD(nextT);
-      if(hS[seqStep])  playH(nextT);
+      const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
+      if(drS[seqStep]) playDR(nextT+swOff);
+      if(bS[seqStep])  playB(nextT+swOff);
+      if(dS[seqStep])  playD(nextT+swOff);
+      if(hS[seqStep])  playH(nextT+swOff);
       nextT+=sl;
       const wasLast=(seqStep===15);
       seqStep=(seqStep+1)%16;
@@ -1569,6 +1573,12 @@ function loop(){
           chordSeqStep=(chordSeqStep+1)%chordSeqLen;
           currentChordIdx=CHORD_SEQ_DATA[chordSeqStep];
           updateChordUI();
+        }
+        // CHAOS: randomly mutate a pattern on bar boundaries
+        if(chaosMutateRate>0.05 && Math.random()<chaosMutateRate){
+          const picks=[{s:dS,c:'d-on',g:'gD'},{s:hS,c:'h-on',g:'gH'},{s:bS,c:'b-on',g:'gB'}];
+          const p=picks[Math.floor(Math.random()*picks.length)];
+          omniPattern(p.s,p.c,0.3+Math.random()*0.6,p.g);
         }
       }
     }
@@ -1662,12 +1672,12 @@ function padPos(e){
 // ═══ OMNIMODE ═════════════════════════════════════
 let omniActive=false, omniCanvas2=null, omniCtx2D=null, omniAnimId=null;
 const OMN_ORBS=[
-  {id:'drone',  lbl:'DRONE',  sub:'← soft  hard →\n↑ simple  complex ↓', col:'#aa00ff', nx:0.18, ny:0.28},
-  {id:'bass',   lbl:'BASS',   sub:'← soft  hard →\n↑ simple  complex ↓', col:'#ffcc00', nx:0.50, ny:0.15},
-  {id:'bongo',  lbl:'BONGO',  sub:'← soft  hard →\n↑ simple  complex ↓', col:'#ff6600', nx:0.82, ny:0.28},
-  {id:'hihat',  lbl:'HI-HAT', sub:'← soft  hard →\n↑ simple  complex ↓', col:'#00ff88', nx:0.18, ny:0.72},
-  {id:'nebula', lbl:'NEBULA', sub:'← quiet  loud →\n↑ dark  bright ↓',   col:'#00e8ff', nx:0.50, ny:0.85},
-  {id:'arp',    lbl:'ARP',    sub:'← soft  hard →\n↑ simple  complex ↓', col:'#ff006e', nx:0.82, ny:0.72},
+  {id:'energy',     lbl:'ENERGY',  sub:'X: tempo  ·  Y: intensity',    col:'#ff4400', nx:0.50, ny:0.22},
+  {id:'tension',    lbl:'TENSION', sub:'X: harmony  ·  Y: edge',       col:'#ff0099', nx:0.18, ny:0.22},
+  {id:'space',      lbl:'SPACE',   sub:'X: echo  ·  Y: reverb',        col:'#7722cc', nx:0.82, ny:0.22},
+  {id:'groove',     lbl:'GROOVE',  sub:'X: density  ·  Y: swing',      col:'#ff6600', nx:0.18, ny:0.75},
+  {id:'bassweight', lbl:'BASS',    sub:'X: balance  ·  Y: weight',     col:'#ffcc00', nx:0.50, ny:0.75},
+  {id:'chaos',      lbl:'CHAOS',   sub:'X: order  ·  Y: mutation',     col:'#00e8ff', nx:0.82, ny:0.75},
 ];
 
 // Generate a musically sensible random pattern based on complexity (0=sparse/simple, 1=dense/complex)
@@ -1691,55 +1701,100 @@ function omniPattern(state, cls, complexity, gridId){
 
 function applyOrbParams(id,nx,ny){
   if(!ctx) return;
-  const t=ctx.currentTime;
-  // nx = X = soft(0) → hard(1)   |   ny = Y = simple(0) → complex(1)
-  const hard=nx, cplx=ny;
   function setSlider(sid,val){
     const el=document.getElementById(sid); if(!el) return;
     el.value=Math.round(val);
     const dv=document.getElementById(sid+'-v'); if(dv) dv.textContent=Math.round(val);
   }
   switch(id){
-    case 'drone':
-      setSlider('DR-Vol',   15+hard*68);
-      setSlider('DR-Cutoff',8 +hard*75);    // dark→bright tone
-      setSlider('DR-Atk',   75-hard*58);    // slow bloom→fast attack
-      omniPattern(drS,'dr-on',cplx,'gDR');
+
+    case 'energy':{
+      // X = tempo (60–180 BPM), Y = overall intensity
+      const newBpm=Math.round(60+nx*120);
+      setBpm(newBpm);
+      const intensity=ny;
+      master.gain.setTargetAtTime(0.38+intensity*0.62, ctx.currentTime, 0.12);
+      setSlider('FX-Vol',  38+intensity*57);
+      setSlider('DR-Vol',  8 +intensity*55);
+      setSlider('B-Vol',   12+intensity*65);
+      setSlider('D-Vol',   8 +intensity*65);
+      setSlider('H-Vol',   6 +intensity*55);
+      setSlider('ARP-Vol', 8 +intensity*65);
+      // Master EQ brightness opens up with intensity
+      masterEQ.frequency.setTargetAtTime(3000+intensity*13000, ctx.currentTime, 0.1);
       break;
-    case 'bass':
-      setSlider('B-Vol',   20+hard*65);
-      setSlider('B-Punch', hard*75);        // soft pluck→hard punch
-      setSlider('B-Tone',  8 +hard*55);     // dark→brighter body
-      omniPattern(bS,'b-on',cplx,'gB');
+    }
+
+    case 'tension':{
+      // X = harmonic colour (cycles through chords from stable→tense→release)
+      const chordI=Math.min(ARP_CHORDS.length-1, Math.round(nx*(ARP_CHORDS.length-1)));
+      currentChordIdx=chordI;
+      CHORD_SEQ_DATA[chordSeqStep]=chordI;
+      updateChordUI();
+      // Y = timbral edge (filter aggression, fast attack, bass punch)
+      const edge=ny;
+      setSlider('ARP-Cut',  8+edge*82);
+      setSlider('ARP-FEnv', edge*92);
+      setSlider('ARP-Res',  edge*68);
+      setSlider('ARP-Atk',  Math.max(1,(1-edge)*42));  // sharp edge = fast attack
+      setSlider('B-Punch',  edge*82);
+      setSlider('B-Tone',   4+edge*62);
+      setSlider('D-Snap',   edge*78);
       break;
-    case 'bongo':
-      setSlider('D-Vol',  18+hard*65);
-      setSlider('D-Snap', hard*82);         // thud→crack
-      setSlider('D-Tune', 18+hard*52);
-      omniPattern(dS,'d-on',cplx,'gD');
+    }
+
+    case 'space':{
+      // X = echo depth (delay time + feedback + mix)
+      const dlyAmt=nx;
+      const dlyTime=0.03+dlyAmt*1.6;
+      delNode.delayTime.setTargetAtTime(dlyTime, ctx.currentTime, 0.08);
+      setSlider('FX-DlyTime', dlyAmt*100);
+      delFb.gain.setTargetAtTime(dlyAmt*0.88, ctx.currentTime, 0.08);
+      setSlider('FX-DlyFb', dlyAmt*88);
+      delWet.gain.setTargetAtTime(0.04+dlyAmt*0.78, ctx.currentTime, 0.08);
+      setSlider('FX-DlyMix', 4+dlyAmt*78);
+      // Y = reverb size + wet
+      const revAmt=ny;
+      revWet.gain.setTargetAtTime(0.04+revAmt*0.88, ctx.currentTime, 0.12);
+      setSlider('FX-RevMix', 4+revAmt*88);
+      buildReverb(0.4+revAmt*9, 0.18+revAmt*0.88);
+      setSlider('FX-RevSize',  revAmt*100);
+      setSlider('FX-RevDecay', revAmt*100);
       break;
-    case 'hihat':
-      setSlider('H-Vol',   12+hard*55);
-      setSlider('H-Color', 8 +hard*72);     // dark wash→bright shimmer
-      setSlider('H-Shine', hard*78);
-      setSlider('H-Decay', 18+hard*55);     // short→long
-      omniPattern(hS,'h-on',cplx,'gH');
+    }
+
+    case 'groove':{
+      // X = rhythmic density — regenerate all patterns
+      omniPattern(dS,'d-on',nx,'gD');
+      omniPattern(hS,'h-on',nx,'gH');
+      omniPattern(bS,'b-on',nx*0.82,'gB');
+      // Y = swing amount
+      swingAmount=ny;
       break;
-    case 'nebula':
-      setSlider('X-Vol',   15+hard*68);
-      setSlider('X-Harm',  hard*65);        // pure sine→rich harmonics
-      setSlider('X-Grain', 10+cplx*72);    // sparse→dense grain
-      setSlider('X-Shim',  hard*70);
+    }
+
+    case 'bassweight':{
+      // X = drone ↔ bass balance (left=all drone, right=all bass)
+      const drVol=Math.max(0,Math.min(100,(1-nx)*2*65));
+      const bsVol=Math.max(0,Math.min(100,nx*2*68));
+      setSlider('DR-Vol', drVol);
+      setSlider('B-Vol',  bsVol);
+      // Y = low-end weight (sub depth + drone cutoff)
+      const weight=ny;
+      setSlider('B-Sub',    weight*92);
+      setSlider('DR-Cutoff',3+weight*32);   // keep drone subby/dark
+      setSlider('B-EQLo',   50+weight*40);
+      setSlider('DR-EQLo',  50+weight*40);
       break;
-    case 'arp':
-      setSlider('ARP-Vol', 18+hard*65);
-      setSlider('ARP-Cut', 12+hard*72);
-      setSlider('ARP-FEnv',hard*80);
-      setSlider('ARP-Res', hard*52);
-      // Complexity: simple chord/1-oct → jazzy chord/multi-oct
-      setSlider('ARP-Chord',  cplx*100);
-      setSlider('ARP-Octaves',15+cplx*70);
+    }
+
+    case 'chaos':{
+      // X = arp pattern order (UP → DOWN → UPDOWN → RANDOM)
+      setSlider('ARP-Pattern', nx*100);
+      // Y = mutation rate (patterns randomly regenerate each bar)
+      chaosMutateRate=ny;
       break;
+    }
   }
 }
 
