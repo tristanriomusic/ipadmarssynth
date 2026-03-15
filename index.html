@@ -140,6 +140,15 @@
     /* RANGE */
     input[type=range]{ -webkit-appearance:none; appearance:none; background:#222; height:4px; border-radius:2px; width:100%; cursor:pointer; }
     input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; background:#ddd; border-radius:50%; border:3px solid #000; box-shadow:0 0 6px rgba(0,0,0,.6); }
+    /* ══ OMNIMODE ══════════════════════════════════════ */
+    #omniMode{ position:fixed; inset:0; z-index:9000; display:none; overflow:hidden; background:#000; }
+    #omniCanvas{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; display:block; }
+    #omniExit{ position:absolute; top:20px; right:20px; z-index:9010; width:48px; height:48px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.55); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); letter-spacing:0; }
+    .omni-orb{ position:absolute; width:68px; height:68px; border-radius:50%; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; display:flex; align-items:center; justify-content:center; z-index:9005; will-change:transform; -webkit-tap-highlight-color:transparent; }
+    .omni-orb-inner{ width:38px; height:38px; border-radius:50%; transition:transform 0.12s; }
+    .omni-orb:active .omni-orb-inner{ transform:scale(1.22); }
+    .omni-orb-lbl{ position:absolute; top:-18px; width:130%; left:-15%; text-align:center; font-size:8px; font-weight:900; letter-spacing:2px; white-space:nowrap; pointer-events:none; opacity:0.9; }
+    #omniBtn{ display:block; width:94vw; margin:6px 3vw 0; padding:11px; border-radius:10px; border:1.5px solid rgba(255,0,110,0.5); font-weight:900; font-size:10px; letter-spacing:4px; cursor:pointer; background:rgba(70,0,35,0.35); color:#ff006e; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); text-shadow:0 0 12px rgba(255,0,110,0.6); }
   </style>
 </head>
 <body>
@@ -162,6 +171,7 @@
     <button id="kill"    class="m-btn" onclick="location.reload()">HARD RESET</button>
     <button id="silence" class="m-btn" onclick="clearSeq()">CLEAR STEPS</button>
   </div>
+  <button id="omniBtn" onclick="enterOmniMode()">✦ OMNIMODE</button>
 
   <div class="bpm-bar">
     <label>BPM</label>
@@ -448,6 +458,11 @@
 
   </div><!-- .main -->
 </div><!-- #ui -->
+
+<div id="omniMode">
+  <canvas id="omniCanvas"></canvas>
+  <button id="omniExit" onclick="exitOmniMode()">✕</button>
+</div>
 
 <script>
 // ═══ STATE ═══════════════════════════════════════
@@ -1431,6 +1446,151 @@ function padPos(e){
   padY=Math.max(0,Math.min(1,(t.clientY-br.top)/br.height));
 }
 
+// ═══ OMNIMODE ═════════════════════════════════════
+let omniActive=false, omniImgEl=null, omniCanvas2=null, omniCtx2D=null, omniAnimId=null;
+const OMN_ORBS=[
+  {id:'gravity', lbl:'GRAVITY', col:'#7722cc', nx:0.15, ny:0.32},
+  {id:'drift',   lbl:'DRIFT',   col:'#00e8ff', nx:0.50, ny:0.12},
+  {id:'pulse',   lbl:'PULSE',   col:'#ff0099', nx:0.83, ny:0.32},
+  {id:'shadow',  lbl:'SHADOW',  col:'#cc4400', nx:0.15, ny:0.68},
+  {id:'shimmer', lbl:'SHIMMER', col:'#ffcc00', nx:0.50, ny:0.86},
+  {id:'void',    lbl:'VOID',    col:'#ff2200', nx:0.83, ny:0.68},
+];
+
+function applyOrbParams(id,nx,ny){
+  if(!ctx) return;
+  const t=ctx.currentTime;
+  function setSlider(sid,val){
+    const el=document.getElementById(sid); if(!el) return;
+    el.value=Math.round(val);
+    const dv=document.getElementById(sid+'-v'); if(dv) dv.textContent=Math.round(val);
+  }
+  switch(id){
+    case 'gravity':
+      revPre.delayTime.setTargetAtTime(nx*0.35,t,0.05);
+      revWet.gain.setTargetAtTime(ny*0.85,t,0.05);
+      break;
+    case 'drift':
+      setSlider('ARP-Speed',nx*100);
+      setSlider('ARP-Chord',ny*100);
+      break;
+    case 'pulse':
+      masterEQ.frequency.setTargetAtTime(1000+nx*15000,t,0.05);
+      masterEQ.Q.setTargetAtTime(nx*12,t,0.05);
+      break;
+    case 'shadow':
+      setSlider('DR-Vol',nx*100); setSlider('DR-Detune',nx*100);
+      setSlider('B-Punch',ny*100); setSlider('B-Rel',ny*100);
+      break;
+    case 'shimmer':
+      setSlider('H-Decay',nx*100); setSlider('H-Color',nx*100);
+      delFb.gain.setTargetAtTime(ny*0.75,t,0.05);
+      break;
+    case 'void':
+      setBpm(Math.round(60+nx*120));
+      master.gain.setTargetAtTime(0.1+ny*0.95,t,0.05);
+      break;
+  }
+}
+
+function buildOmniOrbs(){
+  const wrap=document.getElementById('omniMode');
+  OMN_ORBS.forEach(orb=>{
+    const el=document.createElement('div');
+    el.className='omni-orb'; el.id='orb-'+orb.id;
+    el.innerHTML=`<span class="omni-orb-lbl" style="color:${orb.col}">${orb.lbl}</span>`+
+      `<div class="omni-orb-inner" style="background:radial-gradient(circle at 38% 35%,rgba(255,255,255,0.55) 0%,${orb.col} 55%,rgba(0,0,0,0.7) 100%);box-shadow:0 0 22px ${orb.col},0 0 55px ${orb.col}55;"></div>`;
+    el.addEventListener('pointerdown',e=>{ el.setPointerCapture(e.pointerId); e.preventDefault(); });
+    el.addEventListener('pointermove',e=>{
+      if(!el.hasPointerCapture(e.pointerId)) return;
+      const om=document.getElementById('omniMode');
+      const bw=om.clientWidth, bh=om.clientHeight;
+      const hw=el.offsetWidth/2, hh=el.offsetHeight/2;
+      let nx2=e.clientX-hw, ny2=e.clientY-hh;
+      nx2=Math.max(0,Math.min(bw-el.offsetWidth,nx2));
+      ny2=Math.max(0,Math.min(bh-el.offsetHeight,ny2));
+      el.style.left=nx2+'px'; el.style.top=ny2+'px';
+      orb.nx=(nx2+hw)/bw; orb.ny=(ny2+hh)/bh;
+      applyOrbParams(orb.id,orb.nx,orb.ny);
+    });
+    wrap.appendChild(el);
+  });
+}
+
+function placeOmniOrbs(){
+  const om=document.getElementById('omniMode');
+  const bw=om.clientWidth, bh=om.clientHeight;
+  OMN_ORBS.forEach(orb=>{
+    const el=document.getElementById('orb-'+orb.id); if(!el) return;
+    el.style.left=(orb.nx*bw-el.offsetWidth/2)+'px';
+    el.style.top=(orb.ny*bh-el.offsetHeight/2)+'px';
+  });
+}
+
+function omniAnimLoop(){
+  if(!omniActive) return;
+  omniAnimId=requestAnimationFrame(omniAnimLoop);
+  const c=omniCanvas2, oc=omniCtx2D; if(!c||!oc) return;
+  const w=c.width, h=c.height;
+  oc.clearRect(0,0,w,h);
+  // Music-reactive background image
+  if(omniImgEl&&omniImgEl.complete&&omniImgEl.naturalWidth>0){
+    const bri=(0.65+energy*0.75+beatFlash*0.45).toFixed(2);
+    const sat=(1.1+energy*1.8).toFixed(2);
+    const hue=((hueShift)%360).toFixed(1);
+    oc.filter=`hue-rotate(${hue}deg) brightness(${bri}) saturate(${sat})`;
+    oc.drawImage(omniImgEl,0,0,w,h);
+    oc.filter='none';
+  } else {
+    // Fallback: animated dark gradient
+    const fg=oc.createLinearGradient(0,0,w,h);
+    const hsl=`hsl(${(hueShift%360).toFixed(0)},60%,8%)`;
+    fg.addColorStop(0,hsl); fg.addColorStop(1,'#000');
+    oc.fillStyle=fg; oc.fillRect(0,0,w,h);
+  }
+  // Vignette
+  const vg=oc.createRadialGradient(w/2,h/2,w*0.2,w/2,h/2,w*0.8);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,`rgba(0,0,0,${(0.45+energy*0.15).toFixed(2)})`);
+  oc.fillStyle=vg; oc.fillRect(0,0,w,h);
+  // Orb glow halos
+  OMN_ORBS.forEach(orb=>{
+    const el=document.getElementById('orb-'+orb.id); if(!el) return;
+    const or=el.getBoundingClientRect();
+    const omr=document.getElementById('omniMode').getBoundingClientRect();
+    const ox=or.left-omr.left+or.width/2, oy=or.top-omr.top+or.height/2;
+    const rad=90+energy*90+beatFlash*45;
+    const g=oc.createRadialGradient(ox,oy,0,ox,oy,rad);
+    g.addColorStop(0,orb.col+'44'); g.addColorStop(1,'rgba(0,0,0,0)');
+    oc.fillStyle=g; oc.fillRect(ox-rad,oy-rad,rad*2,rad*2);
+  });
+  // Beat flash
+  if(beatFlash>0.05){
+    const gf=oc.createRadialGradient(w/2,h/2,0,w/2,h/2,w*0.65);
+    gf.addColorStop(0,`rgba(255,255,255,${(beatFlash*0.1).toFixed(2)})`);
+    gf.addColorStop(1,'rgba(0,0,0,0)');
+    oc.fillStyle=gf; oc.fillRect(0,0,w,h);
+  }
+}
+
+function enterOmniMode(){
+  if(!ctx) return;
+  omniActive=true;
+  const om=document.getElementById('omniMode');
+  om.style.display='block';
+  omniCanvas2=document.getElementById('omniCanvas');
+  omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight;
+  omniCtx2D=omniCanvas2.getContext('2d');
+  placeOmniOrbs();
+  omniAnimLoop();
+}
+
+function exitOmniMode(){
+  omniActive=false;
+  document.getElementById('omniMode').style.display='none';
+  if(omniAnimId){ cancelAnimationFrame(omniAnimId); omniAnimId=null; }
+}
+
 // ═══ BOOT ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
   buildParams('pDR','DR',PDEFS.DR); buildParams('pB','B',PDEFS.B);
@@ -1447,7 +1607,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); });
   pad.addEventListener('mousemove', e=>{ if(padActive) padPos(e); });
   pad.addEventListener('mouseup',   ()=>{ padActive=false; });
-  window.addEventListener('resize',()=>{ if(!canvas) return; const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; });
+  window.addEventListener('resize',()=>{
+    if(canvas){ const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; }
+    if(omniCanvas2){ omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight; placeOmniOrbs(); }
+  });
+
+  omniImgEl=new Image(); omniImgEl.src='bg.jpg';
+  buildOmniOrbs();
 
   document.getElementById('boot').addEventListener('click',e=>{
     init();
