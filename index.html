@@ -349,55 +349,84 @@
       </div>
     </div>
 
-    <!-- BASS -->
+    <!-- BASS ARP -->
     <div class="drawer" id="drB">
       <div class="drawer-hdr" onclick="toggleD('drB')" style="color:var(--bass)">
-        <span>SUB BASS — Em9</span>
+        <span>SUB BASS — SYNTH</span>
         <div style="display:flex;align-items:center;gap:6px">
-          <button id="bassArpBtn" class="imode-btn" onclick="toggleBassArp();event.stopPropagation()" style="border-color:rgba(255,204,0,0.5);color:#ffcc00;min-width:60px">▶ ARP</button>
-          <button class="imode-btn" id="imB" onclick="toggleInstMode('B',event)">DEEP</button>
+          <button id="bassArpBtn" class="imode-btn" onclick="toggleBassArp();event.stopPropagation()" style="border-color:rgba(255,204,0,0.5);color:#ffcc00;min-width:72px">▶ START</button>
           <span class="arr">▼</span>
         </div>
       </div>
       <div class="drawer-body">
-        <div class="grid" id="gB"></div>
-        <div id="B-preset-section">
-          <div class="preset-row" id="preB"></div>
-          <div class="morph-wrap">
-            <div class="morph-label"><span>MORPH</span><span id="B-morph-lbl">SUB → PUNCH</span></div>
-            <input class="morph-sl" type="range" id="B-morph" min="0" max="100" value="0" oninput="onMorph('B',+this.value)">
-          </div>
-          <div class="pg3">
-            <div class="ctrl"><label>Volume</label>    <input type="range" id="B-Vol" min="0" max="100" value="62"><div class="dv" id="B-Vol-v">62</div></div>
-            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="B-Rev" min="0" max="100" value="42"><div class="dv" id="B-Rev-v">42</div></div>
-            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="B-Dly" min="0" max="100" value="8"><div class="dv" id="B-Dly-v">8</div></div>
-          </div>
-          <div class="pg2" style="margin-top:6px">
-            <div class="ctrl"><label>Pattern</label><input type="range" id="B-Pat" min="0" max="100" value="0"><div class="dv" id="B-Pat-v" style="font-size:8px">UP</div></div>
-            <div class="ctrl"><label>Oct</label>    <input type="range" id="B-Oct" min="0" max="100" value="50"><div class="dv" id="B-Oct-v">0</div></div>
-          </div>
-          <div class="sec" style="color:var(--bass)">BASS ARP — TEMPO SYNC</div>
-          <div class="barr-div-row">
-            <button class="barr-div"    onclick="setBassArpDiv(0.25,this)">1/16</button>
-            <button class="barr-div on" onclick="setBassArpDiv(0.5,this)">1/8</button>
-            <button class="barr-div"    onclick="setBassArpDiv(0.667,this)">1/8T</button>
-            <button class="barr-div"    onclick="setBassArpDiv(1.0,this)">1/4</button>
-            <button class="barr-div"    onclick="setBassArpDiv(2.0,this)">1/2</button>
-          </div>
-          <div class="pg3">
-            <div class="ctrl"><label>Gate %</label>  <input type="range" id="B-ArpGate" min="0" max="100" value="65"><div class="dv" id="B-ArpGate-v">65</div></div>
-            <div class="ctrl"><label>Rhythm</label>  <input type="range" id="B-Rhythm"  min="0" max="100" value="0"> <div class="dv" id="B-Rhythm-v" style="font-size:8px">STEADY</div></div>
-            <div class="ctrl"><label>Octaves</label> <input type="range" id="B-ArpOct"  min="0" max="100" value="33"><div class="dv" id="B-ArpOct-v">33</div></div>
-          </div>
+        <!-- hidden grid so buildGrid('gB',...) doesn't error -->
+        <div id="gB" style="display:none"></div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+          <span id="bassArpChordLbl" style="font-size:9px;font-weight:900;color:var(--bass);letter-spacing:2px;text-shadow:0 0 8px var(--bass)">Em9</span>
+          <span id="bassArpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,204,0,0.5);letter-spacing:2px">UP</span>
         </div>
-        <div id="B-deep-section" style="display:none">
-          <div class="sec">PARAMETERS</div>
-          <div class="pg4" id="pB"></div>
-          <div class="sec">SENDS</div>
-          <div class="pg2">
-            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="B-Rev-d" min="0" max="100" value="20"><div class="dv" id="B-Rev-d-v">20</div></div>
-            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="B-Dly-d" min="0" max="100" value="0"> <div class="dv" id="B-Dly-d-v">0</div></div>
-          </div>
+
+        <div class="sec">CLOCK — TEMPO SYNC</div>
+        <div class="barr-div-row">
+          <button class="barr-div"    onclick="setBassArpDiv(0.25,this)">1/16</button>
+          <button class="barr-div"    onclick="setBassArpDiv(0.5,this)">1/8</button>
+          <button class="barr-div"    onclick="setBassArpDiv(0.333,this)">1/8T</button>
+          <button class="barr-div on" onclick="setBassArpDiv(1.0,this)">1/4</button>
+          <button class="barr-div"    onclick="setBassArpDiv(0.667,this)">1/4T</button>
+          <button class="barr-div"    onclick="setBassArpDiv(2.0,this)">1/2</button>
+        </div>
+        <div class="pg2" style="margin-bottom:10px">
+          <div class="ctrl"><label>Gate %</label><input type="range" id="BA-Gate" min="0" max="100" value="72"><div class="dv" id="BA-Gate-v">72</div></div>
+          <div class="ctrl"><label>Vol</label>   <input type="range" id="BA-Vol"  min="0" max="100" value="65"><div class="dv" id="BA-Vol-v">65</div></div>
+        </div>
+
+        <div class="sec">OSCILLATOR</div>
+        <div class="pg4">
+          <div class="ctrl"><label>Wave</label>  <input type="range" id="BA-Wave"   min="0" max="100" value="50"><div class="dv" id="BA-Wave-v"  style="font-size:8px">TRI</div></div>
+          <div class="ctrl"><label>Oct</label>   <input type="range" id="BA-Oct"    min="0" max="100" value="25"><div class="dv" id="BA-Oct-v">-1</div></div>
+          <div class="ctrl"><label>Detune</label><input type="range" id="BA-Detune" min="0" max="100" value="8"> <div class="dv" id="BA-Detune-v">8</div></div>
+          <div class="ctrl"><label>Sub</label>   <input type="range" id="BA-Sub"    min="0" max="100" value="62"><div class="dv" id="BA-Sub-v">62</div></div>
+        </div>
+
+        <div class="sec">FILTER</div>
+        <div class="pg3">
+          <div class="ctrl"><label>Cutoff</label><input type="range" id="BA-Cut"  min="0" max="100" value="38"><div class="dv" id="BA-Cut-v">38</div></div>
+          <div class="ctrl"><label>Reso</label>  <input type="range" id="BA-Res"  min="0" max="100" value="18"><div class="dv" id="BA-Res-v">18</div></div>
+          <div class="ctrl"><label>F.Env</label> <input type="range" id="BA-FEnv" min="0" max="100" value="45"><div class="dv" id="BA-FEnv-v">45</div></div>
+        </div>
+
+        <div class="sec">ENVELOPE</div>
+        <div class="pg4">
+          <div class="ctrl"><label>Atk</label><input type="range" id="BA-Atk" min="0" max="100" value="6"> <div class="dv" id="BA-Atk-v">6</div></div>
+          <div class="ctrl"><label>Dcy</label><input type="range" id="BA-Dcy" min="0" max="100" value="48"><div class="dv" id="BA-Dcy-v">48</div></div>
+          <div class="ctrl"><label>Sus</label><input type="range" id="BA-Sus" min="0" max="100" value="72"><div class="dv" id="BA-Sus-v">72</div></div>
+          <div class="ctrl"><label>Rel</label><input type="range" id="BA-Rel" min="0" max="100" value="32"><div class="dv" id="BA-Rel-v">32</div></div>
+        </div>
+
+        <div class="sec">FILTER ENVELOPE</div>
+        <div class="pg2">
+          <div class="ctrl"><label>F.Atk</label><input type="range" id="BA-FAtk" min="0" max="100" value="10"><div class="dv" id="BA-FAtk-v">10</div></div>
+          <div class="ctrl"><label>F.Dcy</label><input type="range" id="BA-FDcy" min="0" max="100" value="45"><div class="dv" id="BA-FDcy-v">45</div></div>
+        </div>
+
+        <div class="sec">LFO</div>
+        <div class="pg2">
+          <div class="ctrl"><label>Rate</label> <input type="range" id="BA-LRate" min="0" max="100" value="22"><div class="dv" id="BA-LRate-v">22</div></div>
+          <div class="ctrl"><label>Depth</label><input type="range" id="BA-LDpth" min="0" max="100" value="10"><div class="dv" id="BA-LDpth-v">10</div></div>
+        </div>
+
+        <div class="sec">BASS LINE</div>
+        <div class="pg3">
+          <div class="ctrl"><label>Pattern</label><input type="range" id="BA-Pattern" min="0" max="100" value="0"> <div class="dv" id="BA-Pattern-v" style="font-size:8px">UP</div></div>
+          <div class="ctrl"><label>Chord</label>  <input type="range" id="BA-Chord"   min="0" max="100" value="0"> <div class="dv" id="BA-Chord-v"   style="font-size:7px">Em9</div></div>
+          <div class="ctrl"><label>Octaves</label><input type="range" id="BA-Octaves" min="0" max="100" value="33"><div class="dv" id="BA-Octaves-v">33</div></div>
+        </div>
+
+        <div class="sec">FX SEND</div>
+        <div class="pg2">
+          <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="BA-Rev" min="0" max="100" value="42"><div class="dv" id="BA-Rev-v">42</div></div>
+          <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="BA-Dly" min="0" max="100" value="18"><div class="dv" id="BA-Dly-v">18</div></div>
         </div>
       </div>
     </div>
@@ -524,8 +553,8 @@
 
         <div class="sec">OSCILLATOR</div>
         <div class="pg4">
-          <div class="ctrl"><label>Wave</label>  <input type="range" id="ARP-Wave"   min="0" max="100" value="0"> <div class="dv" id="ARP-Wave-v"  style="font-size:8px">SAW</div></div>
-          <div class="ctrl"><label>Oct</label>   <input type="range" id="ARP-Oct"    min="0" max="100" value="50"><div class="dv" id="ARP-Oct-v">0</div></div>
+          <div class="ctrl"><label>Wave</label>  <input type="range" id="ARP-Wave"   min="0" max="100" value="75"><div class="dv" id="ARP-Wave-v"  style="font-size:8px">SIN</div></div>
+          <div class="ctrl"><label>Oct</label>   <input type="range" id="ARP-Oct"    min="0" max="100" value="75"><div class="dv" id="ARP-Oct-v">+1</div></div>
           <div class="ctrl"><label>Detune</label><input type="range" id="ARP-Detune" min="0" max="100" value="28"><div class="dv" id="ARP-Detune-v">28</div></div>
           <div class="ctrl"><label>Sub</label>   <input type="range" id="ARP-Sub"    min="0" max="100" value="22"><div class="dv" id="ARP-Sub-v">22</div></div>
         </div>
@@ -606,7 +635,7 @@ let moodIdx=0, moodT=0;
 const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 
 // ── CHORD SEQUENCE ─────────────────────────────────
-let currentChordIdx=0, chordSeqStep=0, chordBarCount=0, bassArpStep=0;
+let currentChordIdx=0, chordSeqStep=0, chordBarCount=0, bassChordStep=0;
 let chordSeqLen=4, chordBarsPerStep=1;
 // ── OMNIMODE MACRO STATE ────────────────────────────
 let swingAmount=0;      // 0=no swing, 1=heavy swing (~33% of step length)
@@ -847,7 +876,7 @@ function togglePlay(){
   const btn=document.getElementById('playBtn');
   if(isPlaying){
     nextT=ctx.currentTime+0.05; seqStep=0;
-    chordSeqStep=0; chordBarCount=0; bassArpStep=0; bassArpStep2=0;
+    chordSeqStep=0; chordBarCount=0; bassChordStep=0; bassArpStep=0;
     currentChordIdx=CHORD_SEQ_DATA[0];
     updateChordUI();
     btn.textContent='■  STOP'; btn.classList.add('playing');
@@ -955,11 +984,11 @@ function bassChordNote(){
   const octShift=Math.round(r('B-Oct')/50)-1;       // -1, 0, +1
   let idx;
   switch(pat){
-    case 0: idx=bassArpStep%notes.length; break;
-    case 1: idx=(notes.length-1)-(bassArpStep%notes.length); break;
+    case 0: idx=bassChordStep%notes.length; break;
+    case 1: idx=(notes.length-1)-(bassChordStep%notes.length); break;
     default: idx=Math.floor(Math.random()*notes.length);
   }
-  bassArpStep++;
+  bassChordStep++;
   return notes[idx]*Math.pow(2,octShift);
 }
 
@@ -1135,10 +1164,10 @@ function wireSliders(){
         else if(el.id==='ARP-Oct') dv.textContent=(Math.round(val/100*4-2)>=0?'+':'')+Math.round(val/100*4-2);
         else if(el.id==='ARP-Pattern')dv.textContent=['UP','DWN','↑↓','RND'][Math.min(3,Math.floor(val/25))];
         else if(el.id==='ARP-Chord')  dv.textContent=ARP_CHORDS[Math.min(ARP_CHORDS.length-1,Math.floor(val/(100/ARP_CHORDS.length)))].name;
-        else if(el.id==='B-Pat'){    dv.textContent=['UP','DWN','RND'][Math.min(2,Math.floor(val/34))]; }
-        else if(el.id==='B-Oct'){    const v=Math.round(val/50)-1; dv.textContent=(v>=0?'+':'')+v; }
-        else if(el.id==='B-Rhythm'){ dv.textContent=BASS_RHYTHMS[Math.min(3,Math.floor(val/25))]; }
-        else if(el.id==='B-ArpOct'){ dv.textContent=Math.max(1,Math.round(val/50)); }
+        else if(el.id==='BA-Wave')   { dv.textContent=['SAW','SQR','TRI','SIN'][Math.min(3,Math.floor(val/25))]; }
+        else if(el.id==='BA-Oct')    { const v=Math.round(val/100*4-2); dv.textContent=(v>=0?'+':'')+v; }
+        else if(el.id==='BA-Pattern'){ dv.textContent=['UP','DWN','↑↓','RND'][Math.min(3,Math.floor(val/25))]; }
+        else if(el.id==='BA-Chord')  { dv.textContent=ARP_CHORDS[Math.min(ARP_CHORDS.length-1,Math.floor(val/(100/ARP_CHORDS.length)))].name; }
         else dv.textContent=Math.round(val);
       }
       applyFX(el.id,val);
@@ -1341,74 +1370,100 @@ function spawnGrain(){
   if(zl) zl.textContent='· '+currentZoneName(padX);
 }
 
-// ═══ BASS ARP ═════════════════════════════════════
-let bassArpActive=false, bassArpNextT=0, bassArpTickId=null, bassArpDiv=0.5, bassArpStep2=0;
-const BASS_RHYTHMS=['STEADY','PUMP','WALK','FUNK'];
-// 8-step gate patterns (1=play, 0=rest)
-const BASS_RHYTHM_GATES=[
-  [1,1,1,1,1,1,1,1],  // STEADY — every note
-  [1,0,1,0,1,0,1,0],  // PUMP   — on the beat, driving
-  [1,0,1,1,0,1,0,1],  // WALK   — walking bass feel
-  [1,0,0,1,0,1,1,0],  // FUNK   — syncopated groove
-];
+// ═══ BASS SYNTH ARP ═══════════════════════════════
+let bassArpActive=false, bassArpStep=0, bassArpNextT=0, bassArpTickId=null, bassArpDiv=1.0;
 
-function playBArp(t, stepLen){
-  const vol=n('B-Vol'); if(vol<0.01) return;
-  triggerEnergy(vol*0.25);
-  const gate=0.08+n('B-ArpGate')*0.92;
-  const noteDur=stepLen*gate;
-  const atk=0.015+n('B-Punch')*0.045;
-  const rel=Math.min(noteDur*0.55, 0.22+n('B-Rel')*0.45);
-  const dur=atk+rel;
-  // Octave range: 1 or 2 octaves based on B-ArpOct
-  const notes=ARP_CHORDS[currentChordIdx].notes;
-  const octs=Math.max(1,Math.round(r('B-ArpOct')/50)); // 1 or 2
-  const full=[]; for(let o=0;o<octs;o++) notes.forEach(f=>full.push(f*Math.pow(2,o)));
-  const pat=Math.min(2,Math.floor(r('B-Pat')/34));
-  let freq;
-  switch(pat){
-    case 0: freq=full[bassArpStep%full.length]; break;
-    case 1: freq=full[(full.length-1)-(bassArpStep%full.length)]; break;
-    default: freq=full[Math.floor(Math.random()*full.length)];
+function bassArpFreq(){
+  const base=ARP_CHORDS[currentChordIdx].notes;
+  const octs=Math.max(1,Math.min(3,Math.ceil(r('BA-Octaves')/34)));
+  const full=[]; for(let o=0;o<octs;o++) base.forEach(f=>full.push(f*Math.pow(2,o)));
+  const pi=Math.min(3,Math.floor(r('BA-Pattern')/25));
+  const len=full.length; let idx;
+  switch(pi){
+    case 0: idx=bassArpStep%len; break;
+    case 1: idx=(len-1)-(bassArpStep%len); break;
+    case 2:{ const cy=Math.max(1,(len-1)*2),p=bassArpStep%cy; idx=p<len?p:cy-p; break; }
+    default: idx=Math.floor(Math.random()*len);
   }
-  // Apply oct slider (B-Oct)
-  const octShift=Math.round(r('B-Oct')/50)-1;
-  freq=freq*Math.pow(2,octShift);
-  const pan=ctx.createStereoPanner(); pan.pan.value=n('B-Pan')*2-1;
-  const filt=ctx.createBiquadFilter(); filt.type='lowpass';
-  filt.frequency.value=160+n('B-Tone')*60; filt.Q.value=0.25;
-  const ws=ctx.createWaveShaper();
-  const wc=new Float32Array(256);
-  for(let i=0;i<256;i++){ const x=i*2/255-1; wc[i]=x/(1+0.15*Math.abs(x)); }
-  ws.curve=wc; ws.oversample='2x';
-  const o1=ctx.createOscillator(); o1.type='sine'; o1.frequency.value=freq;
-  const o2=ctx.createOscillator(), g2=ctx.createGain();
-  o2.type='sine'; o2.frequency.value=freq*0.5; g2.gain.value=0.18+n('B-Sub')*0.24;
-  o2.connect(g2);
-  const o3=ctx.createOscillator(), g3=ctx.createGain();
-  o3.type='sine'; o3.frequency.value=freq*1.5; g3.gain.value=0.08;
-  o3.connect(g3);
+  return full[Math.max(0,Math.min(len-1,idx))];
+}
+
+function playBassArpNote(t, freq, stepLen){
+  const vol=n('BA-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.28);
+  const waves=['sawtooth','square','triangle','sine'];
+  const wave=waves[Math.min(3,Math.floor(r('BA-Wave')/25))];
+  const octShift=Math.round(r('BA-Oct')/100*4-2);
+  const f=freq*Math.pow(2,octShift);
+  const detHz=f*(Math.pow(2,n('BA-Detune')*80/1200)-1);
+  const subLvl=n('BA-Sub')*0.60;   // heavier sub than synth arp
+  const gate=0.08+n('BA-Gate')*0.92;
+  const noteDur=stepLen*gate;
+  // Amp ADSR — slightly snappier range than synth arp
+  const atk=0.003+n('BA-Atk')*0.18;
+  const dcy=0.01 +n('BA-Dcy')*0.6;
+  const sus=Math.max(0.001,n('BA-Sus'));
+  const rel=0.015+n('BA-Rel')*0.9;
+  const holdEnd=Math.max(t+atk+0.002, t+noteDur-rel);
+  const noteEnd=holdEnd+rel;
+  // Filter — lower range for bass (80–3600 Hz)
+  const baseCut=80+n('BA-Cut')*3500;
+  const fEnvAmt=n('BA-FEnv')*4200;
+  const fAtk=0.003+n('BA-FAtk')*0.12;
+  const fDcy=0.02 +n('BA-FDcy')*0.58;
+  const res=n('BA-Res')*14;
+  const lfoRate=0.1+n('BA-LRate')*12;
+  const lfoDepth=n('BA-LDpth')*700;
+  const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.Q.value=res;
+  filt.frequency.setValueAtTime(baseCut+fEnvAmt,t);
+  filt.frequency.linearRampToValueAtTime(baseCut+fEnvAmt,t+fAtk);
+  filt.frequency.linearRampToValueAtTime(baseCut,t+fAtk+fDcy);
+  if(lfoDepth>8){
+    const lfo=ctx.createOscillator(),lg=ctx.createGain();
+    lfo.type='sine'; lfo.frequency.value=lfoRate; lg.gain.value=lfoDepth;
+    lfo.connect(lg); lg.connect(filt.frequency);
+    lfo.start(t); lfo.stop(noteEnd+0.1);
+  }
   const env=ctx.createGain();
   env.gain.setValueAtTime(0,t);
-  env.gain.linearRampToValueAtTime(vol*0.65,t+atk);
-  env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  o1.connect(filt); g2.connect(filt); g3.connect(filt);
-  filt.connect(ws); ws.connect(env); env.connect(pan);
-  routeEQ(pan,'B',Math.max(0.65,rSend('B','Rev')),rSend('B','Dly'));
-  const stopT=t+dur+0.08;
-  o1.start(t); o2.start(t); o3.start(t);
-  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
+  env.gain.linearRampToValueAtTime(vol*0.68,t+atk);
+  env.gain.linearRampToValueAtTime(vol*sus*0.68,t+atk+dcy);
+  env.gain.setValueAtTime(vol*sus*0.68,holdEnd);
+  env.gain.exponentialRampToValueAtTime(0.0001,noteEnd);
+  // Very centered pan for bass
+  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.08;
+  // Primary + detuned osc
+  const o1=ctx.createOscillator(),og1=ctx.createGain();
+  o1.type=wave; o1.frequency.value=f; og1.gain.value=0.50;
+  const o2=ctx.createOscillator(),og2=ctx.createGain();
+  o2.type=wave; o2.frequency.value=f+detHz; og2.gain.value=0.26;
+  // Sub octave (more weight than synth arp)
+  const o3=ctx.createOscillator(),og3=ctx.createGain();
+  o3.type='sine'; o3.frequency.value=f*0.5; og3.gain.value=subLvl;
+  // Sub-sub for rumble on heavy settings
+  const o4=ctx.createOscillator(),og4=ctx.createGain();
+  o4.type='sine'; o4.frequency.value=f*0.25; og4.gain.value=subLvl*0.38;
+  o1.connect(og1); og1.connect(filt);
+  o2.connect(og2); og2.connect(filt);
+  o3.connect(og3); og3.connect(filt);
+  o4.connect(og4); og4.connect(filt);
+  filt.connect(env); env.connect(pan);
+  send(pan,n('BA-Rev'),n('BA-Dly'));
+  const stopT=noteEnd+0.05;
+  o1.start(t); o2.start(t); o3.start(t); o4.start(t);
+  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT); o4.stop(stopT);
 }
 
 function bassArpTick(){
   if(!bassArpActive||!ctx) return;
   while(bassArpNextT<ctx.currentTime+0.1){
     const stepLen=60/bpm*bassArpDiv;
-    const ri=Math.min(3,Math.floor(r('B-Rhythm')/25));
-    const pat=BASS_RHYTHM_GATES[ri];
-    if(pat[bassArpStep2%pat.length]) playBArp(bassArpNextT,stepLen);
-    bassArpNextT+=stepLen; bassArpStep2++;
+    playBassArpNote(bassArpNextT,bassArpFreq(),stepLen);
+    bassArpNextT+=stepLen; bassArpStep++;
   }
+  const cl=document.getElementById('bassArpChordLbl'),pl=document.getElementById('bassArpPatLbl');
+  if(cl) cl.textContent=ARP_CHORDS[currentChordIdx].name;
+  if(pl) pl.textContent=ARP_PATS[Math.min(3,Math.floor(r('BA-Pattern')/25))];
 }
 
 function toggleBassArp(){
@@ -1416,11 +1471,11 @@ function toggleBassArp(){
   bassArpActive=!bassArpActive;
   const btn=document.getElementById('bassArpBtn');
   if(bassArpActive){
-    bassArpNextT=ctx.currentTime+0.05; bassArpStep2=0;
+    bassArpNextT=ctx.currentTime+0.05; bassArpStep=0;
     if(!bassArpTickId) bassArpTickId=setInterval(bassArpTick,20);
-    if(btn){ btn.textContent='■ STOP'; btn.style.background='rgba(255,204,0,0.25)'; }
+    if(btn){ btn.textContent='■ STOP'; btn.classList.add('playing'); }
   } else {
-    if(btn){ btn.textContent='▶ ARP'; btn.style.background=''; }
+    if(btn){ btn.textContent='▶ START'; btn.classList.remove('playing'); }
   }
 }
 
@@ -1823,7 +1878,7 @@ function applyOrbParams(id,nx,ny){
       master.gain.setTargetAtTime(0.38+intensity*0.62, ctx.currentTime, 0.12);
       setSlider('FX-Vol',  38+intensity*57);
       setSlider('DR-Vol',  8 +intensity*55);
-      setSlider('B-Vol',   12+intensity*65);
+      setSlider('BA-Vol',  12+intensity*65);
       setSlider('D-Vol',   8 +intensity*65);
       setSlider('H-Vol',   6 +intensity*55);
       setSlider('ARP-Vol', 8 +intensity*65);
@@ -1844,8 +1899,8 @@ function applyOrbParams(id,nx,ny){
       setSlider('ARP-FEnv', edge*92);
       setSlider('ARP-Res',  edge*68);
       setSlider('ARP-Atk',  Math.max(1,(1-edge)*42));  // sharp edge = fast attack
-      setSlider('B-Punch',  edge*82);
-      setSlider('B-Tone',   4+edge*62);
+      setSlider('BA-Cut',   8+edge*75);
+      setSlider('BA-FEnv',  edge*88);
       setSlider('D-Snap',   edge*78);
       break;
     }
@@ -1885,13 +1940,12 @@ function applyOrbParams(id,nx,ny){
       const drVol=Math.max(0,Math.min(100,(1-nx)*2*65));
       const bsVol=Math.max(0,Math.min(100,nx*2*68));
       setSlider('DR-Vol', drVol);
-      setSlider('B-Vol',  bsVol);
-      // Y = low-end weight (sub depth + drone cutoff)
+      setSlider('BA-Vol', bsVol);
+      // Y = low-end weight (sub depth + filter + drone cutoff)
       const weight=ny;
-      setSlider('B-Sub',    weight*92);
-      setSlider('DR-Cutoff',3+weight*32);   // keep drone subby/dark
-      setSlider('B-EQLo',   50+weight*40);
-      setSlider('DR-EQLo',  50+weight*40);
+      setSlider('BA-Sub',   weight*92);
+      setSlider('BA-Cut',   5+weight*40);
+      setSlider('DR-Cutoff',3+weight*32);
       break;
     }
 
@@ -1997,11 +2051,11 @@ function exitOmniMode(){
 
 // ═══ BOOT ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
-  buildParams('pDR','DR',PDEFS.DR); buildParams('pB','B',PDEFS.B);
+  buildParams('pDR','DR',PDEFS.DR);
   buildParams('pD','D',PDEFS.D);   buildParams('pH','H',PDEFS.H);
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
-  buildPresets('DR'); buildPresets('B'); buildPresets('D'); buildPresets('H');
+  buildPresets('DR'); buildPresets('D'); buildPresets('H');
 
   const pad=document.getElementById('xPad');
   pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); },{passive:false});
