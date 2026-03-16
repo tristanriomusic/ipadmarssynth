@@ -143,6 +143,15 @@
     .loop-bar-btn.on{ background:var(--xs); color:#000; border-color:var(--xs); box-shadow:0 0 8px var(--xs); }
     .loop-status{ font-size:8px; color:rgba(255,255,255,0.5); font-weight:900; letter-spacing:2px; text-align:center; margin-top:6px; height:14px; }
 
+    /* CMR BUTTONS (clear / mute / random on drawer headers) */
+    .cmr-row{ display:flex; gap:4px; align-items:center; }
+    .cmr{ font-size:7px; font-weight:900; padding:4px 7px; border-radius:5px;
+      border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.08);
+      color:#bbb; cursor:pointer; letter-spacing:0.5px;
+      touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+    .cmr.muted{ background:rgba(255,40,40,0.45); color:#ff7777;
+      border-color:#ff4444; box-shadow:0 0 10px rgba(255,50,50,0.55); }
+
     /* RANGE */
     input[type=range]{ -webkit-appearance:none; appearance:none; background:#222; height:4px; border-radius:2px; width:100%; cursor:pointer; }
     input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; background:#ddd; border-radius:50%; border:3px solid #000; box-shadow:0 0 6px rgba(0,0,0,.6); }
@@ -229,6 +238,9 @@
       <div class="drawer-hdr" onclick="toggleD('drX')" style="color:var(--xs)">
         <span>XS NEBULA ENGINE</span>
         <div style="display:flex;align-items:center;gap:6px">
+          <div class="cmr-row">
+            <button class="cmr" id="muteX" onclick="instMute('X',this);event.stopPropagation()">MUTE</button>
+          </div>
           <button class="imode-btn" id="imX" onclick="toggleInstMode('X',event)">DEEP</button>
           <span class="arr">▼</span>
         </div>
@@ -325,6 +337,11 @@
       <div class="drawer-hdr" onclick="toggleD('drDR')" style="color:var(--drone)">
         <span>DRONE — STRING FIELD</span>
         <div style="display:flex;align-items:center;gap:6px">
+          <div class="cmr-row">
+            <button class="cmr" onclick="instClear('DR');event.stopPropagation()">CLR</button>
+            <button class="cmr" id="muteDR" onclick="instMute('DR',this);event.stopPropagation()">MUTE</button>
+            <button class="cmr" onclick="instRandom('DR');event.stopPropagation()">RND</button>
+          </div>
           <button class="imode-btn" id="imDR" onclick="toggleInstMode('DR',event)">DEEP</button>
           <span class="arr">▼</span>
         </div>
@@ -362,6 +379,11 @@
         <div style="display:flex;align-items:center;gap:6px">
           <span id="bassArpChordLbl" style="font-size:9px;font-weight:900;color:var(--bass);letter-spacing:2px">Em9</span>
           <span id="bassArpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,204,0,0.45);letter-spacing:2px">UP</span>
+          <div class="cmr-row">
+            <button class="cmr" onclick="instClear('B');event.stopPropagation()">CLR</button>
+            <button class="cmr" id="muteB" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
+            <button class="cmr" onclick="instRandom('B');event.stopPropagation()">RND</button>
+          </div>
           <span class="arr">▼</span>
         </div>
       </div>
@@ -434,7 +456,15 @@
     <!-- DRUMS -->
     <div class="drawer" id="drDRMS">
       <div class="drawer-hdr" onclick="toggleD('drDRMS')" style="color:var(--kick)">
-        <span>DRUMS</span><span class="arr">▼</span>
+        <span>DRUMS</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="cmr-row">
+            <button class="cmr" onclick="instClear('DRMS');event.stopPropagation()">CLR</button>
+            <button class="cmr" id="muteDRMS" onclick="instMute('DRMS',this);event.stopPropagation()">MUTE</button>
+            <button class="cmr" onclick="instRandom('DRMS');event.stopPropagation()">RND</button>
+          </div>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
 
@@ -442,6 +472,7 @@
         <div class="drum-sec">
           <div class="drum-sec-lbl" style="color:var(--kick)">KICK</div>
           <div class="grid" id="gK"></div>
+          <div class="preset-row" id="preK"></div>
           <div class="pg4">
             <div class="ctrl"><label>Vol</label>  <input type="range" id="K-Vol"   min="0" max="100" value="75"><div class="dv" id="K-Vol-v">75</div></div>
             <div class="ctrl"><label>Tune</label> <input type="range" id="K-Tune"  min="0" max="100" value="50"><div class="dv" id="K-Tune-v">50</div></div>
@@ -458,6 +489,7 @@
         <div class="drum-sec">
           <div class="drum-sec-lbl" style="color:var(--snare)">SNARE</div>
           <div class="grid" id="gSN"></div>
+          <div class="preset-row" id="preSN"></div>
           <div class="pg4">
             <div class="ctrl"><label>Vol</label>  <input type="range" id="SN-Vol"   min="0" max="100" value="65"><div class="dv" id="SN-Vol-v">65</div></div>
             <div class="ctrl"><label>Snap</label> <input type="range" id="SN-Snap"  min="0" max="100" value="55"><div class="dv" id="SN-Snap-v">55</div></div>
@@ -474,6 +506,7 @@
         <div class="drum-sec">
           <div class="drum-sec-lbl" style="color:var(--drum)">BONGO</div>
           <div class="grid" id="gD"></div>
+          <div class="preset-row" id="preD"></div>
           <div class="pg4">
             <div class="ctrl"><label>Vol</label>   <input type="range" id="D-Vol"   min="0" max="100" value="60"><div class="dv" id="D-Vol-v">60</div></div>
             <div class="ctrl"><label>Tune</label>  <input type="range" id="D-Tune"  min="0" max="100" value="48"><div class="dv" id="D-Tune-v">48</div></div>
@@ -491,6 +524,7 @@
         <div class="drum-sec">
           <div class="drum-sec-lbl" style="color:var(--hihat)">HI-HAT</div>
           <div class="grid" id="gH"></div>
+          <div class="preset-row" id="preH"></div>
           <div class="pg4">
             <div class="ctrl"><label>Vol</label>   <input type="range" id="H-Vol"    min="0" max="100" value="35"><div class="dv" id="H-Vol-v">35</div></div>
             <div class="ctrl"><label>Color</label> <input type="range" id="H-Color"  min="0" max="100" value="28"><div class="dv" id="H-Color-v">28</div></div>
@@ -533,6 +567,9 @@
       <div class="drawer-hdr" onclick="toggleD('drARP')" style="color:var(--arp)">
         <span>ARPEGGIATOR — PROPHET</span>
         <div style="display:flex;align-items:center;gap:6px">
+          <div class="cmr-row">
+            <button class="cmr" id="muteARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
+          </div>
           <button id="arpBtn" class="imode-btn" onclick="toggleArp();event.stopPropagation()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ START</button>
           <span class="arr">▼</span>
         </div>
@@ -624,6 +661,9 @@ let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
 
+// ── MUTE STATE ────────────────────────────────────
+const muted={X:false,DR:false,B:false,DRMS:false,ARP:false};
+
 // ── AUDIO REACTIVITY ──────────────────────────────
 let energy=0, beatFlash=0, padEnergy=0;
 let hueShift=0, moodPhase=0;
@@ -687,7 +727,7 @@ function routeEQ(pan, inst, toRev, toDly){
 
 // ── DRONE — lean 4-osc voice, release overlaps steps for sustained feel ──
 function playDR(t){
-  const vol=n('DR-Vol'); if(vol<0.01) return;
+  const vol=n('DR-Vol'); if(vol<0.01||muted.DR) return;
   triggerEnergy(vol*0.25);
   const detHz=n('DR-Detune')*5;
   const atk=0.05+n('DR-Atk')*0.35;   // 0.05–0.40s
@@ -745,7 +785,7 @@ function quantizeNebulaFreq(px){
 function currentZoneName(px){
   return NEBULA_ZONES[Math.min(Math.floor(px*NEBULA_ZONES.length),NEBULA_ZONES.length-1)].name;
 }
-const activePre={DR:0,B:0,D:0,H:0};
+const activePre={DR:0,B:0,D:0,H:0,K:0,SN:0};
 const instDeep={X:false,DR:false,B:false,D:false,H:false};
 
 // ═══ LOOPER ══════════════════════════════════════
@@ -836,6 +876,22 @@ const PRESETS={
       {Vol:28,Color:55,Decay:25,Jitter:22,Shine:58,Pan:50},
       {Vol:42,Color:8, Decay:48,Jitter:4, Shine:10,Pan:50},
       {Vol:25,Color:42,Decay:72,Jitter:32,Shine:75,Pan:50},
+    ]},
+  K:{ color:'#ff2200', names:['DEEP','PUNCH','SNAP','TIGHT','BOOM'],
+    data:[
+      {Vol:75,Tune:22,Decay:72,Punch:55}, // DEEP — low rumble, long tail
+      {Vol:78,Tune:52,Decay:50,Punch:90}, // PUNCH — balanced with max attack crack
+      {Vol:65,Tune:78,Decay:28,Punch:65}, // SNAP — high-tuned, short and snappy
+      {Vol:70,Tune:55,Decay:18,Punch:42}, // TIGHT — short, controlled, no tail
+      {Vol:82,Tune:8, Decay:88,Punch:72}, // BOOM — sub-heavy, very long decay
+    ]},
+  SN:{ color:'#ffaa44', names:['CRACK','SNAPPY','FATBACK','BRUSH','GHOST'],
+    data:[
+      {Vol:72,Snap:80,Body:32,Decay:22}, // CRACK — sharp all-noise crack
+      {Vol:65,Snap:55,Body:50,Decay:45}, // SNAPPY — balanced tone + noise
+      {Vol:68,Snap:18,Body:82,Decay:68}, // FATBACK — warm tonal body, low snap
+      {Vol:45,Snap:12,Body:35,Decay:55}, // BRUSH — soft brushed hit
+      {Vol:30,Snap:45,Body:40,Decay:28}, // GHOST — quiet ghost note
     ]}
 };
 const PDEFS={
@@ -890,6 +946,7 @@ function togglePlay(){
     chordSeqStep=0; chordBarCount=0; bassChordStep=0; bassArpStep=0;
     currentChordIdx=CHORD_SEQ_DATA[0];
     updateChordUI();
+    if(arpActive){ arpNextT=nextT; arpStep=0; } // re-sync arp to sequencer
     btn.textContent='■  STOP'; btn.classList.add('playing');
   }
   else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); }
@@ -918,7 +975,8 @@ function applyPresetVals(inst,vals){
 }
 function selectPreset(inst,idx){
   activePre[inst]=idx;
-  document.getElementById(`${inst}-morph`).value=0;
+  const morphEl=document.getElementById(`${inst}-morph`);
+  if(morphEl) morphEl.value=0;
   applyPresetVals(inst,PRESETS[inst].data[idx]);
   updateMorphLabel(inst);
   document.querySelectorAll(`#pre${inst} .prs`).forEach((b,i)=>{
@@ -927,8 +985,9 @@ function selectPreset(inst,idx){
   });
 }
 function updateMorphLabel(inst){
+  const el=document.getElementById(`${inst}-morph-lbl`); if(!el) return;
   const from=activePre[inst], to=(from+1)%PRESETS[inst].names.length;
-  document.getElementById(`${inst}-morph-lbl`).textContent=`${PRESETS[inst].names[from]} → ${PRESETS[inst].names[to]}`;
+  el.textContent=`${PRESETS[inst].names[from]} → ${PRESETS[inst].names[to]}`;
 }
 function onMorph(inst,val){
   const t=val/100, from=activePre[inst], to=(from+1)%PRESETS[inst].data.length;
@@ -1205,7 +1264,7 @@ function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly){
 }
 
 function spawnGrainAt(px, py, schedT){
-  const vol=n('X-Vol'); if(vol<0.01) return;
+  const vol=n('X-Vol'); if(vol<0.01||muted.X) return;
   const jitter  = n('X-Jitter')*800;
   const grain   = n('X-Grain');
   const harm    = 1+n('X-Harm')*2.5;
@@ -1400,7 +1459,8 @@ function bassArpFreq(){
 }
 
 function playBassArpNote(t, freq, stepLen){
-  const vol=n('BA-Vol'); if(vol<0.01) return;
+  const vol=n('BA-Vol'); if(vol<0.01||muted.B) return;
+  t=Math.max(ctx.currentTime+0.004,t); // never schedule in the past
   triggerEnergy(vol*0.28);
   const waves=['sawtooth','square','triangle','sine'];
   const wave=waves[Math.min(3,Math.floor(r('BA-Wave')/25))];
@@ -1474,7 +1534,7 @@ function setBassNoteLen(steps,btn){
 
 // ═══ KICK ══════════════════════════════════════════
 function playKick(t){
-  const vol=n('K-Vol'); if(vol<0.01) return;
+  const vol=n('K-Vol'); if(vol<0.01||muted.DRMS) return;
   triggerEnergy(vol*0.7);
   const tune=n('K-Tune'), dec=n('K-Decay'), punch=n('K-Punch');
   const startF=55+tune*110, endF=26+tune*22;
@@ -1506,7 +1566,7 @@ function playKick(t){
 
 // ═══ SNARE ═════════════════════════════════════════
 function playSnare(t){
-  const vol=n('SN-Vol'); if(vol<0.01) return;
+  const vol=n('SN-Vol'); if(vol<0.01||muted.DRMS) return;
   triggerEnergy(vol*0.45);
   const snap=n('SN-Snap'), body=n('SN-Body'), dec=n('SN-Decay');
   const decayT=0.07+dec*0.32;
@@ -1538,7 +1598,7 @@ function playSnare(t){
 }
 
 // ═══ ARPEGGIATOR ══════════════════════════════════
-let arpActive=false, arpStep=0, arpNextT=0, arpTickId=null, arpDiv=0.25;
+let arpActive=false, arpStep=0, arpNextT=0, arpDiv=0.25;
 const ARP_CHORDS=[
   {name:'Em9',   notes:[82.41, 98.00,123.47,146.83,185.00]},
   {name:'Fmaj',  notes:[87.31,110.00,130.81,174.61,220.00]}, // Baba O'Riley
@@ -1568,7 +1628,8 @@ function setArpDiv(div,btn){
   document.querySelectorAll('.arp-div').forEach(b=>b.classList.toggle('on',b===btn));
 }
 function playArpNote(t,freq,stepLen){
-  const vol=n('ARP-Vol'); if(vol<0.01) return;
+  const vol=n('ARP-Vol'); if(vol<0.01||muted.ARP) return;
+  t=Math.max(ctx.currentTime+0.004,t); // never schedule in the past
   triggerEnergy(vol*0.22);
   // Waveform
   const waves=['sawtooth','square','triangle','sine'];
@@ -1653,8 +1714,9 @@ function toggleArp(){
   arpActive=!arpActive;
   const btn=document.getElementById('arpBtn');
   if(arpActive){
-    arpNextT=ctx.currentTime+0.05; arpStep=0;
-    if(!arpTickId) arpTickId=setInterval(arpTick,20);
+    // Sync to the sequencer's next scheduled step when playing, otherwise start fresh
+    arpNextT = isPlaying ? nextT : ctx.currentTime+0.05;
+    arpStep=0;
     if(btn){ btn.textContent='■ STOP'; btn.classList.add('playing'); }
   } else {
     if(btn){ btn.textContent='▶ START'; btn.classList.remove('playing'); }
@@ -1701,7 +1763,7 @@ function playB(t){
   o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
 }
 function playD(t){
-  const vol=n('D-Vol'); if(vol<0.01) return;
+  const vol=n('D-Vol'); if(vol<0.01||muted.DRMS) return;
   triggerEnergy(vol*0.5);
   const tune=n('D-Tune'), dec=n('D-Decay'), thump=n('D-Thump'), snap=n('D-Snap');
   const pan=ctx.createStereoPanner(); pan.pan.value=n('D-Pan')*2-1;
@@ -1737,7 +1799,7 @@ function playD(t){
   const st=t+decT+0.15; o1.stop(st); o2.stop(st);
 }
 function playH(t){
-  const vol=n('H-Vol'); if(vol<0.01) return;
+  const vol=n('H-Vol'); if(vol<0.01||muted.DRMS) return;
   triggerEnergy(vol*0.15);
   const color=n('H-Color'), dec=0.06+n('H-Decay')*0.72, jitt=n('H-Jitter'), shine=n('H-Shine');
   const pan=ctx.createStereoPanner(); pan.pan.value=n('H-Pan')*2-1;
@@ -1802,6 +1864,8 @@ function loop(){
       }
     }
   }
+  // Arp — driven from same rAF loop as sequencer (no separate setInterval)
+  arpTick();
   // Pad grains
   if(padActive&&ctx){
     const now=ctx.currentTime, rate=0.12+(1-n('X-Grain'))*0.60;
@@ -1823,6 +1887,44 @@ function buildParams(cid,pre,defs){
     sl.addEventListener('input',()=>dv.textContent=sl.value);
   });
 }
+function refreshGrid(gid,cls,state){
+  const g=document.getElementById(gid); if(!g) return;
+  g.querySelectorAll('.step').forEach((el,i)=>el.classList.toggle(cls,!!state[i]));
+}
+// Per-instrument clear / random / mute ─────────────────
+const INST_CFG={
+  DR:  [{s:drS,cls:'dr-on',gid:'gDR'}],
+  B:   [{s:bS, cls:'b-on', gid:'gB'}],
+  DRMS:[{s:kS, cls:'k-on', gid:'gK'},{s:snS,cls:'sn-on',gid:'gSN'},
+        {s:dS, cls:'d-on', gid:'gD'},{s:hS, cls:'h-on', gid:'gH'}],
+};
+function instClear(key){
+  const grids=INST_CFG[key]; if(!grids) return;
+  grids.forEach(({s,cls,gid})=>{ s.fill(0); refreshGrid(gid,cls,s); });
+}
+function instRandom(key){
+  const grids=INST_CFG[key]; if(!grids) return;
+  grids.forEach(({s,cls,gid},gi)=>{
+    // musical density varies: drone sparse, bass medium, drums weighted by position
+    const density=key==='DR'?0.4 : key==='B'?0.5 : [0.55,0.45,0.6,0.7][gi]||0.5;
+    for(let i=0;i<16;i++){
+      let p;
+      if(i===0)        p=0.82+density*0.17;
+      else if(i%8===0) p=0.45+density*0.42;
+      else if(i%4===0) p=0.1+density*0.7;
+      else if(i%2===0) p=density*0.55;
+      else             p=density*0.28;
+      s[i]=Math.random()<p?1:0;
+    }
+    if(!s.some(Boolean)) s[0]=1;
+    refreshGrid(gid,cls,s);
+  });
+}
+function instMute(key,btn){
+  muted[key]=!muted[key];
+  btn.classList.toggle('muted',muted[key]);
+}
+
 function buildGrid(cid,state,cls){
   const c=document.getElementById(cid);
   for(let g=0;g<4;g++){
@@ -2113,7 +2215,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
   buildGrid('gK',kS,'k-on');    buildGrid('gSN',snS,'sn-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
-  buildPresets('DR');
+  buildPresets('DR'); buildPresets('K'); buildPresets('SN');
+  buildPresets('D');  buildPresets('H');
 
   const pad=document.getElementById('xPad');
   pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); },{passive:false});
