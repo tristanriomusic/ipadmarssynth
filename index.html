@@ -154,6 +154,9 @@
     .arp-div-row{ display:flex; gap:4px; margin-bottom:10px; }
     .arp-div{ flex:1; padding:9px 2px; border-radius:6px; border:1px solid rgba(255,0,110,0.3); background:rgba(255,0,110,0.08); color:rgba(255,0,110,0.65); font-size:8px; font-weight:900; cursor:pointer; text-align:center; letter-spacing:0.5px; }
     .arp-div.on{ background:var(--arp); color:#000; border-color:var(--arp); box-shadow:0 0 10px var(--arp); }
+    .barr-div-row{ display:flex; gap:4px; margin-bottom:10px; }
+    .barr-div{ flex:1; padding:9px 2px; border-radius:6px; border:1px solid rgba(255,204,0,0.3); background:rgba(255,204,0,0.08); color:rgba(255,204,0,0.65); font-size:8px; font-weight:900; cursor:pointer; text-align:center; letter-spacing:0.5px; }
+    .barr-div.on{ background:var(--bass); color:#000; border-color:var(--bass); box-shadow:0 0 10px var(--bass); }
     /* CHORD SEQUENCE */
     --chd:#ff88cc;
     .chd-row{ display:flex; gap:5px; margin-bottom:8px; }
@@ -351,6 +354,7 @@
       <div class="drawer-hdr" onclick="toggleD('drB')" style="color:var(--bass)">
         <span>SUB BASS — Em9</span>
         <div style="display:flex;align-items:center;gap:6px">
+          <button id="bassArpBtn" class="imode-btn" onclick="toggleBassArp();event.stopPropagation()" style="border-color:rgba(255,204,0,0.5);color:#ffcc00;min-width:60px">▶ ARP</button>
           <button class="imode-btn" id="imB" onclick="toggleInstMode('B',event)">DEEP</button>
           <span class="arr">▼</span>
         </div>
@@ -371,6 +375,19 @@
           <div class="pg2" style="margin-top:6px">
             <div class="ctrl"><label>Pattern</label><input type="range" id="B-Pat" min="0" max="100" value="0"><div class="dv" id="B-Pat-v" style="font-size:8px">UP</div></div>
             <div class="ctrl"><label>Oct</label>    <input type="range" id="B-Oct" min="0" max="100" value="50"><div class="dv" id="B-Oct-v">0</div></div>
+          </div>
+          <div class="sec" style="color:var(--bass)">BASS ARP — TEMPO SYNC</div>
+          <div class="barr-div-row">
+            <button class="barr-div"    onclick="setBassArpDiv(0.25,this)">1/16</button>
+            <button class="barr-div on" onclick="setBassArpDiv(0.5,this)">1/8</button>
+            <button class="barr-div"    onclick="setBassArpDiv(0.667,this)">1/8T</button>
+            <button class="barr-div"    onclick="setBassArpDiv(1.0,this)">1/4</button>
+            <button class="barr-div"    onclick="setBassArpDiv(2.0,this)">1/2</button>
+          </div>
+          <div class="pg3">
+            <div class="ctrl"><label>Gate %</label>  <input type="range" id="B-ArpGate" min="0" max="100" value="65"><div class="dv" id="B-ArpGate-v">65</div></div>
+            <div class="ctrl"><label>Rhythm</label>  <input type="range" id="B-Rhythm"  min="0" max="100" value="0"> <div class="dv" id="B-Rhythm-v" style="font-size:8px">STEADY</div></div>
+            <div class="ctrl"><label>Octaves</label> <input type="range" id="B-ArpOct"  min="0" max="100" value="33"><div class="dv" id="B-ArpOct-v">33</div></div>
           </div>
         </div>
         <div id="B-deep-section" style="display:none">
@@ -830,12 +847,12 @@ function togglePlay(){
   const btn=document.getElementById('playBtn');
   if(isPlaying){
     nextT=ctx.currentTime+0.05; seqStep=0;
-    chordSeqStep=0; chordBarCount=0; bassArpStep=0;
+    chordSeqStep=0; chordBarCount=0; bassArpStep=0; bassArpStep2=0;
     currentChordIdx=CHORD_SEQ_DATA[0];
     updateChordUI();
     btn.textContent='■  STOP'; btn.classList.add('playing');
   }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); if(bassArpActive) toggleBassArp(); }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -1118,8 +1135,10 @@ function wireSliders(){
         else if(el.id==='ARP-Oct') dv.textContent=(Math.round(val/100*4-2)>=0?'+':'')+Math.round(val/100*4-2);
         else if(el.id==='ARP-Pattern')dv.textContent=['UP','DWN','↑↓','RND'][Math.min(3,Math.floor(val/25))];
         else if(el.id==='ARP-Chord')  dv.textContent=ARP_CHORDS[Math.min(ARP_CHORDS.length-1,Math.floor(val/(100/ARP_CHORDS.length)))].name;
-        else if(el.id==='B-Pat'){ dv.textContent=['UP','DWN','RND'][Math.min(2,Math.floor(val/34))]; }
-        else if(el.id==='B-Oct'){ const v=Math.round(val/50)-1; dv.textContent=(v>=0?'+':'')+v; }
+        else if(el.id==='B-Pat'){    dv.textContent=['UP','DWN','RND'][Math.min(2,Math.floor(val/34))]; }
+        else if(el.id==='B-Oct'){    const v=Math.round(val/50)-1; dv.textContent=(v>=0?'+':'')+v; }
+        else if(el.id==='B-Rhythm'){ dv.textContent=BASS_RHYTHMS[Math.min(3,Math.floor(val/25))]; }
+        else if(el.id==='B-ArpOct'){ dv.textContent=Math.max(1,Math.round(val/50)); }
         else dv.textContent=Math.round(val);
       }
       applyFX(el.id,val);
@@ -1320,6 +1339,94 @@ function spawnGrain(){
   spawnGrainAt(padX, padY, ctx.currentTime);
   const zl=document.getElementById('zoneLabel');
   if(zl) zl.textContent='· '+currentZoneName(padX);
+}
+
+// ═══ BASS ARP ═════════════════════════════════════
+let bassArpActive=false, bassArpNextT=0, bassArpTickId=null, bassArpDiv=0.5, bassArpStep2=0;
+const BASS_RHYTHMS=['STEADY','PUMP','WALK','FUNK'];
+// 8-step gate patterns (1=play, 0=rest)
+const BASS_RHYTHM_GATES=[
+  [1,1,1,1,1,1,1,1],  // STEADY — every note
+  [1,0,1,0,1,0,1,0],  // PUMP   — on the beat, driving
+  [1,0,1,1,0,1,0,1],  // WALK   — walking bass feel
+  [1,0,0,1,0,1,1,0],  // FUNK   — syncopated groove
+];
+
+function playBArp(t, stepLen){
+  const vol=n('B-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.25);
+  const gate=0.08+n('B-ArpGate')*0.92;
+  const noteDur=stepLen*gate;
+  const atk=0.015+n('B-Punch')*0.045;
+  const rel=Math.min(noteDur*0.55, 0.22+n('B-Rel')*0.45);
+  const dur=atk+rel;
+  // Octave range: 1 or 2 octaves based on B-ArpOct
+  const notes=ARP_CHORDS[currentChordIdx].notes;
+  const octs=Math.max(1,Math.round(r('B-ArpOct')/50)); // 1 or 2
+  const full=[]; for(let o=0;o<octs;o++) notes.forEach(f=>full.push(f*Math.pow(2,o)));
+  const pat=Math.min(2,Math.floor(r('B-Pat')/34));
+  let freq;
+  switch(pat){
+    case 0: freq=full[bassArpStep%full.length]; break;
+    case 1: freq=full[(full.length-1)-(bassArpStep%full.length)]; break;
+    default: freq=full[Math.floor(Math.random()*full.length)];
+  }
+  // Apply oct slider (B-Oct)
+  const octShift=Math.round(r('B-Oct')/50)-1;
+  freq=freq*Math.pow(2,octShift);
+  const pan=ctx.createStereoPanner(); pan.pan.value=n('B-Pan')*2-1;
+  const filt=ctx.createBiquadFilter(); filt.type='lowpass';
+  filt.frequency.value=160+n('B-Tone')*60; filt.Q.value=0.25;
+  const ws=ctx.createWaveShaper();
+  const wc=new Float32Array(256);
+  for(let i=0;i<256;i++){ const x=i*2/255-1; wc[i]=x/(1+0.15*Math.abs(x)); }
+  ws.curve=wc; ws.oversample='2x';
+  const o1=ctx.createOscillator(); o1.type='sine'; o1.frequency.value=freq;
+  const o2=ctx.createOscillator(), g2=ctx.createGain();
+  o2.type='sine'; o2.frequency.value=freq*0.5; g2.gain.value=0.18+n('B-Sub')*0.24;
+  o2.connect(g2);
+  const o3=ctx.createOscillator(), g3=ctx.createGain();
+  o3.type='sine'; o3.frequency.value=freq*1.5; g3.gain.value=0.08;
+  o3.connect(g3);
+  const env=ctx.createGain();
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(vol*0.65,t+atk);
+  env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o1.connect(filt); g2.connect(filt); g3.connect(filt);
+  filt.connect(ws); ws.connect(env); env.connect(pan);
+  routeEQ(pan,'B',Math.max(0.65,rSend('B','Rev')),rSend('B','Dly'));
+  const stopT=t+dur+0.08;
+  o1.start(t); o2.start(t); o3.start(t);
+  o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
+}
+
+function bassArpTick(){
+  if(!bassArpActive||!ctx) return;
+  while(bassArpNextT<ctx.currentTime+0.1){
+    const stepLen=60/bpm*bassArpDiv;
+    const ri=Math.min(3,Math.floor(r('B-Rhythm')/25));
+    const pat=BASS_RHYTHM_GATES[ri];
+    if(pat[bassArpStep2%pat.length]) playBArp(bassArpNextT,stepLen);
+    bassArpNextT+=stepLen; bassArpStep2++;
+  }
+}
+
+function toggleBassArp(){
+  if(!ctx) return;
+  bassArpActive=!bassArpActive;
+  const btn=document.getElementById('bassArpBtn');
+  if(bassArpActive){
+    bassArpNextT=ctx.currentTime+0.05; bassArpStep2=0;
+    if(!bassArpTickId) bassArpTickId=setInterval(bassArpTick,20);
+    if(btn){ btn.textContent='■ STOP'; btn.style.background='rgba(255,204,0,0.25)'; }
+  } else {
+    if(btn){ btn.textContent='▶ ARP'; btn.style.background=''; }
+  }
+}
+
+function setBassArpDiv(div,btn){
+  bassArpDiv=div;
+  document.querySelectorAll('.barr-div').forEach(b=>b.classList.toggle('on',b===btn));
 }
 
 // ═══ ARPEGGIATOR ══════════════════════════════════
@@ -1561,7 +1668,7 @@ function loop(){
       document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
       if(drS[seqStep]) playDR(nextT+swOff);
-      if(bS[seqStep])  playB(nextT+swOff);
+      if(bS[seqStep]&&!bassArpActive) playB(nextT+swOff);
       if(dS[seqStep])  playD(nextT+swOff);
       if(hS[seqStep])  playH(nextT+swOff);
       nextT+=sl;
