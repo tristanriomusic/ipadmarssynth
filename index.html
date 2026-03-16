@@ -8,6 +8,7 @@
     :root {
       --bass:#ffcc00; --drum:#ff6600; --hihat:#00ff88;
       --drone:#aa00ff; --xs:#00f2ff; --fx:#ff4488; --bg:#050508; --arp:#ff006e;
+      --kick:#ff2200; --snare:#ffaa44;
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     body{ font-family:'Inter',sans-serif; margin:0; background:#000; color:#fff; overflow-x:hidden; user-select:none; }
@@ -99,6 +100,11 @@
     .step.d-on { background:var(--drum);  box-shadow:0 0 10px var(--drum); }
     .step.h-on { background:var(--hihat); box-shadow:0 0 10px var(--hihat); }
     .step.dr-on{ background:var(--drone); box-shadow:0 0 14px var(--drone); }
+    .step.k-on { background:var(--kick);  box-shadow:0 0 10px var(--kick); }
+    .step.sn-on{ background:var(--snare); box-shadow:0 0 10px var(--snare); }
+    .drum-sec{ margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.07); }
+    .drum-sec:last-child{ margin-bottom:0; padding-bottom:0; border-bottom:none; }
+    .drum-sec-lbl{ font-size:8px; font-weight:900; letter-spacing:3px; margin-bottom:7px; }
 
     /* PRESETS */
     .preset-row{ display:flex; gap:5px; margin-bottom:8px; }
@@ -349,32 +355,26 @@
       </div>
     </div>
 
-    <!-- BASS ARP -->
+    <!-- BASS SYNTH -->
     <div class="drawer" id="drB">
       <div class="drawer-hdr" onclick="toggleD('drB')" style="color:var(--bass)">
         <span>SUB BASS — SYNTH</span>
         <div style="display:flex;align-items:center;gap:6px">
-          <button id="bassArpBtn" class="imode-btn" onclick="toggleBassArp();event.stopPropagation()" style="border-color:rgba(255,204,0,0.5);color:#ffcc00;min-width:72px">▶ START</button>
+          <span id="bassArpChordLbl" style="font-size:9px;font-weight:900;color:var(--bass);letter-spacing:2px">Em9</span>
+          <span id="bassArpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,204,0,0.45);letter-spacing:2px">UP</span>
           <span class="arr">▼</span>
         </div>
       </div>
       <div class="drawer-body">
-        <!-- hidden grid so buildGrid('gB',...) doesn't error -->
-        <div id="gB" style="display:none"></div>
+        <div class="grid" id="gB"></div>
 
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-          <span id="bassArpChordLbl" style="font-size:9px;font-weight:900;color:var(--bass);letter-spacing:2px;text-shadow:0 0 8px var(--bass)">Em9</span>
-          <span id="bassArpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,204,0,0.5);letter-spacing:2px">UP</span>
-        </div>
-
-        <div class="sec">CLOCK — TEMPO SYNC</div>
+        <div class="sec">NOTE LENGTH</div>
         <div class="barr-div-row">
-          <button class="barr-div"    onclick="setBassArpDiv(0.25,this)">1/16</button>
-          <button class="barr-div"    onclick="setBassArpDiv(0.5,this)">1/8</button>
-          <button class="barr-div"    onclick="setBassArpDiv(0.333,this)">1/8T</button>
-          <button class="barr-div on" onclick="setBassArpDiv(1.0,this)">1/4</button>
-          <button class="barr-div"    onclick="setBassArpDiv(0.667,this)">1/4T</button>
-          <button class="barr-div"    onclick="setBassArpDiv(2.0,this)">1/2</button>
+          <button class="barr-div"    onclick="setBassNoteLen(1,this)">1/16</button>
+          <button class="barr-div"    onclick="setBassNoteLen(2,this)">1/8</button>
+          <button class="barr-div on" onclick="setBassNoteLen(4,this)">1/4</button>
+          <button class="barr-div"    onclick="setBassNoteLen(8,this)">1/2</button>
+          <button class="barr-div"    onclick="setBassNoteLen(16,this)">1 BAR</button>
         </div>
         <div class="pg2" style="margin-bottom:10px">
           <div class="ctrl"><label>Gate %</label><input type="range" id="BA-Gate" min="0" max="100" value="72"><div class="dv" id="BA-Gate-v">72</div></div>
@@ -383,7 +383,7 @@
 
         <div class="sec">OSCILLATOR</div>
         <div class="pg4">
-          <div class="ctrl"><label>Wave</label>  <input type="range" id="BA-Wave"   min="0" max="100" value="50"><div class="dv" id="BA-Wave-v"  style="font-size:8px">TRI</div></div>
+          <div class="ctrl"><label>Wave</label>  <input type="range" id="BA-Wave"   min="0" max="100" value="75"><div class="dv" id="BA-Wave-v"  style="font-size:8px">SIN</div></div>
           <div class="ctrl"><label>Oct</label>   <input type="range" id="BA-Oct"    min="0" max="100" value="25"><div class="dv" id="BA-Oct-v">-1</div></div>
           <div class="ctrl"><label>Detune</label><input type="range" id="BA-Detune" min="0" max="100" value="8"> <div class="dv" id="BA-Detune-v">8</div></div>
           <div class="ctrl"><label>Sub</label>   <input type="range" id="BA-Sub"    min="0" max="100" value="62"><div class="dv" id="BA-Sub-v">62</div></div>
@@ -431,73 +431,79 @@
       </div>
     </div>
 
-    <!-- BONGO -->
-    <div class="drawer" id="drD">
-      <div class="drawer-hdr" onclick="toggleD('drD')" style="color:var(--drum)">
-        <span>BONGO — PUNCH</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button class="imode-btn" id="imD" onclick="toggleInstMode('D',event)">DEEP</button>
-          <span class="arr">▼</span>
-        </div>
+    <!-- DRUMS -->
+    <div class="drawer" id="drDRMS">
+      <div class="drawer-hdr" onclick="toggleD('drDRMS')" style="color:var(--kick)">
+        <span>DRUMS</span><span class="arr">▼</span>
       </div>
       <div class="drawer-body">
-        <div class="grid" id="gD"></div>
-        <div id="D-preset-section">
-          <div class="preset-row" id="preD"></div>
-          <div class="morph-wrap">
-            <div class="morph-label"><span>MORPH</span><span id="D-morph-lbl">TIGHT → LOOSE</span></div>
-            <input class="morph-sl" type="range" id="D-morph" min="0" max="100" value="0" oninput="onMorph('D',+this.value)">
-          </div>
-          <div class="pg3">
-            <div class="ctrl"><label>Volume</label>    <input type="range" id="D-Vol" min="0" max="100" value="60"><div class="dv" id="D-Vol-v">60</div></div>
-            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="D-Rev" min="0" max="100" value="32"><div class="dv" id="D-Rev-v">32</div></div>
-            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="D-Dly" min="0" max="100" value="8"><div class="dv" id="D-Dly-v">8</div></div>
-          </div>
-        </div>
-        <div id="D-deep-section" style="display:none">
-          <div class="sec">PARAMETERS</div>
-          <div class="pg4" id="pD"></div>
-          <div class="sec">SENDS</div>
-          <div class="pg2">
-            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="D-Rev-d" min="0" max="100" value="10"><div class="dv" id="D-Rev-d-v">10</div></div>
-            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="D-Dly-d" min="0" max="100" value="0"> <div class="dv" id="D-Dly-d-v">0</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- HI-HAT -->
-    <div class="drawer" id="drH">
-      <div class="drawer-hdr" onclick="toggleD('drH')" style="color:var(--hihat)">
-        <span>HI-HAT — SHIMMER</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button class="imode-btn" id="imH" onclick="toggleInstMode('H',event)">DEEP</button>
-          <span class="arr">▼</span>
+        <!-- KICK -->
+        <div class="drum-sec">
+          <div class="drum-sec-lbl" style="color:var(--kick)">KICK</div>
+          <div class="grid" id="gK"></div>
+          <div class="pg4">
+            <div class="ctrl"><label>Vol</label>  <input type="range" id="K-Vol"   min="0" max="100" value="75"><div class="dv" id="K-Vol-v">75</div></div>
+            <div class="ctrl"><label>Tune</label> <input type="range" id="K-Tune"  min="0" max="100" value="50"><div class="dv" id="K-Tune-v">50</div></div>
+            <div class="ctrl"><label>Decay</label><input type="range" id="K-Decay" min="0" max="100" value="55"><div class="dv" id="K-Decay-v">55</div></div>
+            <div class="ctrl"><label>Punch</label><input type="range" id="K-Punch" min="0" max="100" value="65"><div class="dv" id="K-Punch-v">65</div></div>
+          </div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="K-Rev" min="0" max="100" value="18"><div class="dv" id="K-Rev-v">18</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="K-Dly" min="0" max="100" value="5"> <div class="dv" id="K-Dly-v">5</div></div>
+          </div>
         </div>
-      </div>
-      <div class="drawer-body">
-        <div class="grid" id="gH"></div>
-        <div id="H-preset-section">
-          <div class="preset-row" id="preH"></div>
-          <div class="morph-wrap">
-            <div class="morph-label"><span>MORPH</span><span id="H-morph-lbl">CLOSED → OPEN</span></div>
-            <input class="morph-sl" type="range" id="H-morph" min="0" max="100" value="0" oninput="onMorph('H',+this.value)">
+
+        <!-- SNARE -->
+        <div class="drum-sec">
+          <div class="drum-sec-lbl" style="color:var(--snare)">SNARE</div>
+          <div class="grid" id="gSN"></div>
+          <div class="pg4">
+            <div class="ctrl"><label>Vol</label>  <input type="range" id="SN-Vol"   min="0" max="100" value="65"><div class="dv" id="SN-Vol-v">65</div></div>
+            <div class="ctrl"><label>Snap</label> <input type="range" id="SN-Snap"  min="0" max="100" value="55"><div class="dv" id="SN-Snap-v">55</div></div>
+            <div class="ctrl"><label>Body</label> <input type="range" id="SN-Body"  min="0" max="100" value="50"><div class="dv" id="SN-Body-v">50</div></div>
+            <div class="ctrl"><label>Decay</label><input type="range" id="SN-Decay" min="0" max="100" value="45"><div class="dv" id="SN-Decay-v">45</div></div>
+          </div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="SN-Rev" min="0" max="100" value="35"><div class="dv" id="SN-Rev-v">35</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="SN-Dly" min="0" max="100" value="8"> <div class="dv" id="SN-Dly-v">8</div></div>
+          </div>
+        </div>
+
+        <!-- BONGO -->
+        <div class="drum-sec">
+          <div class="drum-sec-lbl" style="color:var(--drum)">BONGO</div>
+          <div class="grid" id="gD"></div>
+          <div class="pg4">
+            <div class="ctrl"><label>Vol</label>   <input type="range" id="D-Vol"   min="0" max="100" value="60"><div class="dv" id="D-Vol-v">60</div></div>
+            <div class="ctrl"><label>Tune</label>  <input type="range" id="D-Tune"  min="0" max="100" value="48"><div class="dv" id="D-Tune-v">48</div></div>
+            <div class="ctrl"><label>Decay</label> <input type="range" id="D-Decay" min="0" max="100" value="42"><div class="dv" id="D-Decay-v">42</div></div>
+            <div class="ctrl"><label>Snap</label>  <input type="range" id="D-Snap"  min="0" max="100" value="25"><div class="dv" id="D-Snap-v">25</div></div>
           </div>
           <div class="pg3">
-            <div class="ctrl"><label>Volume</label>    <input type="range" id="H-Vol" min="0" max="100" value="35"><div class="dv" id="H-Vol-v">35</div></div>
+            <div class="ctrl"><label>Thump</label> <input type="range" id="D-Thump" min="0" max="100" value="38"><div class="dv" id="D-Thump-v">38</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="D-Rev" min="0" max="100" value="32"><div class="dv" id="D-Rev-v">32</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="D-Dly" min="0" max="100" value="8"> <div class="dv" id="D-Dly-v">8</div></div>
+          </div>
+        </div>
+
+        <!-- HI-HAT -->
+        <div class="drum-sec">
+          <div class="drum-sec-lbl" style="color:var(--hihat)">HI-HAT</div>
+          <div class="grid" id="gH"></div>
+          <div class="pg4">
+            <div class="ctrl"><label>Vol</label>   <input type="range" id="H-Vol"    min="0" max="100" value="35"><div class="dv" id="H-Vol-v">35</div></div>
+            <div class="ctrl"><label>Color</label> <input type="range" id="H-Color"  min="0" max="100" value="28"><div class="dv" id="H-Color-v">28</div></div>
+            <div class="ctrl"><label>Decay</label> <input type="range" id="H-Decay"  min="0" max="100" value="48"><div class="dv" id="H-Decay-v">48</div></div>
+            <div class="ctrl"><label>Shine</label> <input type="range" id="H-Shine"  min="0" max="100" value="28"><div class="dv" id="H-Shine-v">28</div></div>
+          </div>
+          <div class="pg3">
+            <div class="ctrl"><label>Jitter</label><input type="range" id="H-Jitter" min="0" max="100" value="10"><div class="dv" id="H-Jitter-v">10</div></div>
             <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="H-Rev" min="0" max="100" value="48"><div class="dv" id="H-Rev-v">48</div></div>
             <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="H-Dly" min="0" max="100" value="18"><div class="dv" id="H-Dly-v">18</div></div>
           </div>
         </div>
-        <div id="H-deep-section" style="display:none">
-          <div class="sec">PARAMETERS</div>
-          <div class="pg4" id="pH"></div>
-          <div class="sec">SENDS</div>
-          <div class="pg2">
-            <div class="ctrl fx-ctrl"><label>→ Reverb</label><input type="range" id="H-Rev-d" min="0" max="100" value="20"><div class="dv" id="H-Rev-d-v">20</div></div>
-            <div class="ctrl fx-ctrl"><label>→ Delay</label> <input type="range" id="H-Dly-d" min="0" max="100" value="10"><div class="dv" id="H-Dly-d-v">10</div></div>
-          </div>
-        </div>
+
       </div>
     </div>
 
@@ -632,7 +638,8 @@ const MOODS=[
   {h:140, s:1.3, name:'JUNGLE'},  // green
 ];
 let moodIdx=0, moodT=0;
-const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
+const bS=Array(16).fill(1), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
+const kS=Array(16).fill(0), snS=Array(16).fill(0);
 
 // ── CHORD SEQUENCE ─────────────────────────────────
 let currentChordIdx=0, chordSeqStep=0, chordBarCount=0, bassChordStep=0;
@@ -686,7 +693,8 @@ function playDR(t){
   const atk=0.05+n('DR-Atk')*0.35;   // 0.05–0.40s
   const rel=0.8+n('DR-Rel')*1.5;     // 0.8–2.3s — overlaps ~6-18 steps, sounds sustained
   const cutoff=Math.max(200,180+n('DR-Cutoff')*1600), reso=n('DR-Reso')*4;
-  const panV=n('DR-Pan')*2-1, baseF=41.20, dur=atk+rel;
+  // Root note follows chord sequence (lowest note of current chord, down 2 octaves)
+  const panV=n('DR-Pan')*2-1, baseF=ARP_CHORDS[currentChordIdx].notes[0]*0.25, dur=atk+rel;
   const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=cutoff; filt.Q.value=reso;
   const env=ctx.createGain();
   env.gain.setValueAtTime(0,t);
@@ -855,8 +863,11 @@ function rSend(inst,type){
 
 function toggleD(id){ document.getElementById(id).classList.toggle('open'); }
 function clearSeq(){
-  [bS,dS,hS,drS].forEach(a=>a.fill(0));
-  document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on','dr-on'));
+  [dS,hS,drS,kS,snS].forEach(a=>a.fill(0));
+  bS.fill(1); // bass resets to all-on
+  document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on','dr-on','k-on','sn-on'));
+  // re-light bass steps
+  document.querySelectorAll('#gB .step').forEach(el=>el.classList.add('b-on'));
 }
 function setBpm(val){
   bpm=val;
@@ -881,7 +892,7 @@ function togglePlay(){
     updateChordUI();
     btn.textContent='■  STOP'; btn.classList.add('playing');
   }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); if(bassArpActive) toggleBassArp(); }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -1370,8 +1381,8 @@ function spawnGrain(){
   if(zl) zl.textContent='· '+currentZoneName(padX);
 }
 
-// ═══ BASS SYNTH ARP ═══════════════════════════════
-let bassArpActive=false, bassArpStep=0, bassArpNextT=0, bassArpTickId=null, bassArpDiv=1.0;
+// ═══ BASS SYNTH ARP (grid-driven) ═════════════════
+let bassArpStep=0, bassNoteSteps=4; // 4 = 1 quarter note per triggered step
 
 function bassArpFreq(){
   const base=ARP_CHORDS[currentChordIdx].notes;
@@ -1425,11 +1436,13 @@ function playBassArpNote(t, freq, stepLen){
     lfo.start(t); lfo.stop(noteEnd+0.1);
   }
   const env=ctx.createGain();
+  env.gain.value=0;  // prevent pop if t is slightly in past
   env.gain.setValueAtTime(0,t);
   env.gain.linearRampToValueAtTime(vol*0.68,t+atk);
   env.gain.linearRampToValueAtTime(vol*sus*0.68,t+atk+dcy);
   env.gain.setValueAtTime(vol*sus*0.68,holdEnd);
   env.gain.exponentialRampToValueAtTime(0.0001,noteEnd);
+  env.gain.linearRampToValueAtTime(0,noteEnd+0.004); // de-click
   // Very centered pan for bass
   const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.08;
   // Primary + detuned osc
@@ -1449,39 +1462,79 @@ function playBassArpNote(t, freq, stepLen){
   o4.connect(og4); og4.connect(filt);
   filt.connect(env); env.connect(pan);
   send(pan,n('BA-Rev'),n('BA-Dly'));
-  const stopT=noteEnd+0.05;
+  const stopT=noteEnd+0.02;
   o1.start(t); o2.start(t); o3.start(t); o4.start(t);
   o1.stop(stopT); o2.stop(stopT); o3.stop(stopT); o4.stop(stopT);
 }
 
-function bassArpTick(){
-  if(!bassArpActive||!ctx) return;
-  while(bassArpNextT<ctx.currentTime+0.1){
-    const stepLen=60/bpm*bassArpDiv;
-    playBassArpNote(bassArpNextT,bassArpFreq(),stepLen);
-    bassArpNextT+=stepLen; bassArpStep++;
-  }
-  const cl=document.getElementById('bassArpChordLbl'),pl=document.getElementById('bassArpPatLbl');
-  if(cl) cl.textContent=ARP_CHORDS[currentChordIdx].name;
-  if(pl) pl.textContent=ARP_PATS[Math.min(3,Math.floor(r('BA-Pattern')/25))];
-}
-
-function toggleBassArp(){
-  if(!ctx) return;
-  bassArpActive=!bassArpActive;
-  const btn=document.getElementById('bassArpBtn');
-  if(bassArpActive){
-    bassArpNextT=ctx.currentTime+0.05; bassArpStep=0;
-    if(!bassArpTickId) bassArpTickId=setInterval(bassArpTick,20);
-    if(btn){ btn.textContent='■ STOP'; btn.classList.add('playing'); }
-  } else {
-    if(btn){ btn.textContent='▶ START'; btn.classList.remove('playing'); }
-  }
-}
-
-function setBassArpDiv(div,btn){
-  bassArpDiv=div;
+function setBassNoteLen(steps,btn){
+  bassNoteSteps=steps;
   document.querySelectorAll('.barr-div').forEach(b=>b.classList.toggle('on',b===btn));
+}
+
+// ═══ KICK ══════════════════════════════════════════
+function playKick(t){
+  const vol=n('K-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.7);
+  const tune=n('K-Tune'), dec=n('K-Decay'), punch=n('K-Punch');
+  const startF=55+tune*110, endF=26+tune*22;
+  const sweepT=0.04+dec*0.12, decayT=0.08+dec*0.55;
+  const o=ctx.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(startF,t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(15,endF),t+sweepT);
+  const env=ctx.createGain();
+  env.gain.value=0;
+  env.gain.setValueAtTime(0,t);
+  env.gain.linearRampToValueAtTime(vol*0.92,t+0.002);
+  env.gain.exponentialRampToValueAtTime(0.0001,t+decayT);
+  env.gain.linearRampToValueAtTime(0,t+decayT+0.004);
+  const pan=ctx.createStereoPanner(); pan.pan.value=0;
+  o.connect(env); env.connect(pan);
+  send(pan,n('K-Rev'),n('K-Dly'));
+  o.start(t); o.stop(t+decayT+0.04);
+  if(punch>0.02){
+    const nlen=Math.ceil(ctx.sampleRate*0.006);
+    const nbuf=ctx.createBuffer(1,nlen,ctx.sampleRate);
+    const nd=nbuf.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
+    const ns=ctx.createBufferSource(), ng=ctx.createGain();
+    ns.buffer=nbuf; ng.gain.value=0;
+    ng.gain.setValueAtTime(punch*vol*0.55,t); ng.gain.exponentialRampToValueAtTime(0.0001,t+0.009);
+    ng.gain.linearRampToValueAtTime(0,t+0.013);
+    ns.connect(ng); ng.connect(pan); ns.start(t);
+  }
+}
+
+// ═══ SNARE ═════════════════════════════════════════
+function playSnare(t){
+  const vol=n('SN-Vol'); if(vol<0.01) return;
+  triggerEnergy(vol*0.45);
+  const snap=n('SN-Snap'), body=n('SN-Body'), dec=n('SN-Decay');
+  const decayT=0.07+dec*0.32;
+  const pan=ctx.createStereoPanner(); pan.pan.value=0;
+  // Tonal body — sine sweep
+  if(body>0.02){
+    const o=ctx.createOscillator(), eg=ctx.createGain();
+    o.type='triangle'; o.frequency.value=150+body*120;
+    o.frequency.exponentialRampToValueAtTime(Math.max(40,70+body*40),t+0.04+dec*0.08);
+    eg.gain.value=0;
+    eg.gain.setValueAtTime(0,t); eg.gain.linearRampToValueAtTime(body*vol*0.62,t+0.003);
+    eg.gain.exponentialRampToValueAtTime(0.0001,t+0.05+dec*0.14);
+    eg.gain.linearRampToValueAtTime(0,t+0.05+dec*0.14+0.004);
+    o.connect(eg); eg.connect(pan); o.start(t); o.stop(t+0.05+dec*0.14+0.05);
+  }
+  // Noise component (snare rattle)
+  const nlen=Math.ceil(ctx.sampleRate*(0.10+dec*0.38));
+  const nbuf=ctx.createBuffer(1,nlen,ctx.sampleRate);
+  const nd=nbuf.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
+  const ns=ctx.createBufferSource(), np=ctx.createBiquadFilter(), ng=ctx.createGain();
+  ns.buffer=nbuf; np.type='highpass'; np.frequency.value=1600+snap*3000;
+  ng.gain.value=0;
+  ng.gain.setValueAtTime(0,t); ng.gain.linearRampToValueAtTime(vol*0.58,t+0.003);
+  ng.gain.exponentialRampToValueAtTime(0.0001,t+decayT);
+  ng.gain.linearRampToValueAtTime(0,t+decayT+0.004);
+  ns.connect(np); np.connect(ng); ng.connect(pan);
+  send(pan,n('SN-Rev'),n('SN-Dly'));
+  ns.start(t);
 }
 
 // ═══ ARPEGGIATOR ══════════════════════════════════
@@ -1531,7 +1584,7 @@ function playArpNote(t,freq,stepLen){
   const gate=0.08+n('ARP-Gate')*0.92;
   const noteDur=stepLen*gate;
   // Amp ADSR
-  const atk=0.003+n('ARP-Atk')*0.25;          // 3ms–253ms
+  const atk=0.005+n('ARP-Atk')*0.25;          // 5ms–255ms (min 5ms avoids click)
   const dcy=0.01 +n('ARP-Dcy')*0.5;           // 10ms–510ms
   const sus=Math.max(0.001,n('ARP-Sus'));
   const rel=0.015+n('ARP-Rel')*0.6;           // 15ms–615ms
@@ -1558,11 +1611,13 @@ function playArpNote(t,freq,stepLen){
     lfo.start(t); lfo.stop(noteEnd+0.1);
   }
   const env=ctx.createGain();
+  env.gain.value=0;  // init to 0 prevents pop if t is slightly in past
   env.gain.setValueAtTime(0,t);
   env.gain.linearRampToValueAtTime(vol*0.58,t+atk);
   env.gain.linearRampToValueAtTime(vol*sus*0.58,t+atk+dcy);
   env.gain.setValueAtTime(vol*sus*0.58,holdEnd);
   env.gain.exponentialRampToValueAtTime(0.0001,noteEnd);
+  env.gain.linearRampToValueAtTime(0,noteEnd+0.004); // de-click ramp
   const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.22;
   // Primary osc
   const o1=ctx.createOscillator(),og1=ctx.createGain();
@@ -1578,7 +1633,7 @@ function playArpNote(t,freq,stepLen){
   o3.connect(og3); og3.connect(filt);
   filt.connect(env); env.connect(pan);
   send(pan,n('ARP-Rev'),n('ARP-Dly'));
-  const stopT=noteEnd+0.05;
+  const stopT=noteEnd+0.02;
   o1.start(t); o2.start(t); o3.start(t);
   o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
 }
@@ -1723,7 +1778,9 @@ function loop(){
       document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
       if(drS[seqStep]) playDR(nextT+swOff);
-      if(bS[seqStep]&&!bassArpActive) playB(nextT+swOff);
+      if(bS[seqStep]){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
+      if(kS[seqStep])  playKick(nextT+swOff);
+      if(snS[seqStep]) playSnare(nextT+swOff);
       if(dS[seqStep])  playD(nextT+swOff);
       if(hS[seqStep])  playH(nextT+swOff);
       nextT+=sl;
@@ -1738,7 +1795,7 @@ function loop(){
         }
         // CHAOS: randomly mutate a pattern on bar boundaries
         if(chaosMutateRate>0.05 && Math.random()<chaosMutateRate){
-          const picks=[{s:dS,c:'d-on',g:'gD'},{s:hS,c:'h-on',g:'gH'},{s:bS,c:'b-on',g:'gB'}];
+          const picks=[{s:dS,c:'d-on',g:'gD'},{s:hS,c:'h-on',g:'gH'},{s:kS,c:'k-on',g:'gK'},{s:snS,c:'sn-on',g:'gSN'}];
           const p=picks[Math.floor(Math.random()*picks.length)];
           omniPattern(p.s,p.c,0.3+Math.random()*0.6,p.g);
         }
@@ -1927,9 +1984,10 @@ function applyOrbParams(id,nx,ny){
 
     case 'groove':{
       // X = rhythmic density — regenerate all patterns
+      omniPattern(kS,'k-on',nx*0.65,'gK');
+      omniPattern(snS,'sn-on',nx*0.5,'gSN');
       omniPattern(dS,'d-on',nx,'gD');
       omniPattern(hS,'h-on',nx,'gH');
-      omniPattern(bS,'b-on',nx*0.82,'gB');
       // Y = swing amount
       swingAmount=ny;
       break;
@@ -2052,10 +2110,10 @@ function exitOmniMode(){
 // ═══ BOOT ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
   buildParams('pDR','DR',PDEFS.DR);
-  buildParams('pD','D',PDEFS.D);   buildParams('pH','H',PDEFS.H);
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
+  buildGrid('gK',kS,'k-on');    buildGrid('gSN',snS,'sn-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
-  buildPresets('DR'); buildPresets('D'); buildPresets('H');
+  buildPresets('DR');
 
   const pad=document.getElementById('xPad');
   pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); },{passive:false});
