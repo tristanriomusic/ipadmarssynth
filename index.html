@@ -118,6 +118,19 @@
     .step.smp-on{ background:#a855f7;      box-shadow:0 0 10px #a855f7; }
     .smp-pad-mode-btn{ font-size:8px; font-weight:900; padding:5px 10px; border-radius:6px; border:1px solid rgba(168,85,247,0.4); background:rgba(168,85,247,0.12); color:rgba(168,85,247,0.7); cursor:pointer; letter-spacing:1px; transition:all .2s; }
     .smp-pad-mode-btn.active{ background:rgba(168,85,247,0.4); color:#d4aaff; border-color:rgba(168,85,247,0.8); box-shadow:0 0 10px rgba(168,85,247,0.4); }
+    /* SMPLR 4-bar grid */
+    .smp-bar-grid{ display:flex; gap:5px; margin-bottom:12px; }
+    .smp-bar-group{ display:flex; flex-direction:column; gap:3px; flex:1; background:rgba(168,85,247,0.06); border-radius:7px; padding:5px 4px 4px; border:1px solid rgba(168,85,247,0.15); }
+    .smp-bar-lbl{ font-size:7px; font-weight:900; color:rgba(168,85,247,0.5); letter-spacing:1.5px; text-align:center; }
+    .smp-beat-row{ display:flex; gap:3px; }
+    .step.smp-step{ height:40px; border-radius:5px; background:rgba(0,0,0,0.45); border:1px solid rgba(168,85,247,0.18); flex:1; }
+    .step.smp-step.playing{ border:2px solid #d4aaff!important; box-shadow:0 0 10px rgba(168,85,247,0.8); transform:scaleY(1.06); }
+    /* HOLOGRAM pad mode */
+    .pad-assign-btn.holo.on{ background:rgba(255,80,220,0.18); color:#ff88ee; border-color:rgba(255,80,220,0.6); box-shadow:0 0 10px rgba(255,80,220,0.22); }
+    .holo-preset-row{ display:none; flex-wrap:wrap; gap:5px; padding:0 3vw 6px; }
+    .holo-preset-row.active{ display:flex; }
+    .holo-btn{ font-size:8px; font-weight:900; padding:6px 10px; border-radius:6px; border:1px solid rgba(255,80,220,0.25); background:rgba(255,80,220,0.08); color:rgba(255,80,220,0.7); cursor:pointer; letter-spacing:.8px; flex:1; text-align:center; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+    .holo-btn.on{ background:rgba(255,80,220,0.3); color:#ffaaee; border-color:rgba(255,80,220,0.7); box-shadow:0 0 8px rgba(255,80,220,0.35); }
     .drum-sec{ margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.07); }
     .drum-sec:last-child{ margin-bottom:0; padding-bottom:0; border-bottom:none; }
     .drum-sec-lbl{ font-size:8px; font-weight:900; letter-spacing:3px; margin-bottom:7px; }
@@ -311,6 +324,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   <div class="pad-assign-row">
     <button class="pad-assign-btn on" onclick="setPadAssign('xs',this)">XS NEBULA</button>
     <button class="pad-assign-btn smp" onclick="setPadAssign('sampler',this)">SAMPLERIZER</button>
+    <button class="pad-assign-btn holo" onclick="setPadAssign('hologram',this)">✦ HOLOGRAM</button>
   </div>
 
   <div class="pad-mode-row">
@@ -330,9 +344,20 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   </div>
   <input type="file" id="samplerFileInput" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.flac,audio/mp4,audio/m4a,audio/x-m4a,audio/aac" style="display:none" onchange="samplerOnFile(this)">
 
+  <!-- HOLOGRAM PRESETS -->
+  <div class="holo-preset-row" id="holoPresetRow">
+    <button class="holo-btn on" onclick="setHoloPreset(0,this)">NEBULA</button>
+    <button class="holo-btn"    onclick="setHoloPreset(1,this)">SHATTER</button>
+    <button class="holo-btn"    onclick="setHoloPreset(2,this)">COSMOS</button>
+    <button class="holo-btn"    onclick="setHoloPreset(3,this)">VAPOR</button>
+    <button class="holo-btn"    onclick="setHoloPreset(4,this)">PULSE</button>
+    <button class="holo-btn"    onclick="setHoloPreset(5,this)">ATOM</button>
+  </div>
+
   <div id="xPad">
     <span class="pad-label" id="xsLabel">XS NEBULA — <span id="modeLabel">SHIMMER</span> <span id="zoneLabel" style="color:rgba(255,220,80,0.9);font-size:9px;letter-spacing:2px;"></span></span>
     <span class="pad-label" id="samplerLabel" style="display:none;color:rgba(180,100,255,0.85);text-shadow:0 0 10px rgba(160,80,255,0.7)">SAMPLERIZER</span>
+    <span class="pad-label" id="holoLabel" style="display:none;color:rgba(255,80,220,0.9);text-shadow:0 0 12px rgba(255,80,220,0.7)">✦ HOLOGRAM — <span id="holoPresetLbl">NEBULA</span> &nbsp;·&nbsp; X=POS Y=PITCH</span>
     <canvas id="padCanvas"></canvas>
   </div>
 
@@ -1169,6 +1194,8 @@ let padAssign='xs'; // 'xs' | 'sampler'
 let samplerBuf=null, samplerSrc=null, samplerMicRec=null, samplerMicChunks=[], samplerMicActive=false;
 const smpS=new Array(16).fill(0);
 let smpPadMode=false, smpSeqSrc=null, smpSeqGain=null;
+let smpBeatCount=0;
+let lastHoloGrain=0, holoPresetIdx=0;
 
 // ── MUTE STATE ────────────────────────────────────
 const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:false,SMP:false};
@@ -1915,14 +1942,14 @@ function togglePlay(){
   isPlaying=!isPlaying;
   const btn=document.getElementById('playBtn');
   if(isPlaying){
-    nextT=ctx.currentTime+0.05; seqStep=0;
+    nextT=ctx.currentTime+0.05; seqStep=0; smpBeatCount=0;
     chordSeqStep=0; chordBarCount=0; bassChordStep=0; bassArpStep=0;
     currentChordIdx=CHORD_SEQ_DATA[0];
     updateChordUI();
     if(arpActive){ arpNextT=nextT; arpStep=0; } // re-sync arp to sequencer
     btn.textContent='■  STOP'; btn.classList.add('playing');
   }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); if(arpActive) toggleArp(); }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); smpBeatCount=0; if(arpActive) toggleArp(); }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -2392,15 +2419,18 @@ function chordFreqFromX(px){
 function setPadAssign(mode,btn){
   padAssign=mode;
   document.querySelectorAll('.pad-assign-btn').forEach(b=>b.classList.toggle('on',b===btn));
-  const isSmp=mode==='sampler';
+  const isXS=mode==='xs', isSmp=mode==='sampler', isHolo=mode==='hologram';
   document.getElementById('samplerCtrlRow').classList.toggle('active',isSmp);
-  document.querySelector('.pad-mode-row').style.display=isSmp?'none':'';
-  document.getElementById('xsLabel').style.display=isSmp?'none':'';
+  document.getElementById('holoPresetRow').classList.toggle('active',isHolo);
+  document.querySelector('.pad-mode-row').style.display=(isSmp||isHolo)?'none':'';
+  document.getElementById('xsLabel').style.display=isXS?'':'none';
   document.getElementById('samplerLabel').style.display=isSmp?'':'none';
-  document.getElementById('xPad').style.borderColor=isSmp?'rgba(160,80,255,0.7)':'rgba(0,242,255,0.7)';
-  document.getElementById('xPad').style.boxShadow=isSmp?'0 0 25px rgba(160,80,255,0.25)':'0 0 25px rgba(0,242,255,0.25)';
-  if(!isSmp){ stopPadVoice(false); drawCanvas(); }
-  else { samplerStop(); drawSamplerWaveform(); }
+  document.getElementById('holoLabel').style.display=isHolo?'':'none';
+  const padEl=document.getElementById('xPad');
+  padEl.style.borderColor=isHolo?'rgba(255,80,220,0.7)':isSmp?'rgba(160,80,255,0.7)':'rgba(0,242,255,0.7)';
+  padEl.style.boxShadow=isHolo?'0 0 25px rgba(255,80,220,0.25)':isSmp?'0 0 25px rgba(160,80,255,0.25)':'0 0 25px rgba(0,242,255,0.25)';
+  if(isXS){ stopPadVoice(false); drawCanvas(); }
+  else if(isSmp){ samplerStop(); drawSamplerWaveform(); }
 }
 
 // ═══ SAMPLERIZER ══════════════════════════════════
@@ -2482,6 +2512,101 @@ function samplerStop(){
   try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
   samplerSrc=null;
 }
+// ─── HOLOGRAM GRANULAR ────────────────────────────
+const HOLO_PRESETS=[
+  // name, grainMs, scatter(0-1), pitchRange(semitones), spawnRate(s), revAmt, dlyAmt, harmonics, atk%, rel%, rhythmic
+  {name:'NEBULA',  grainMs:220, scatter:0.12, pitchRange:7,  spawnRate:0.11, revAmt:0.80, dlyAmt:0.28, harmonics:true,  atk:0.25, rel:0.70},
+  {name:'SHATTER', grainMs:22,  scatter:0.95, pitchRange:24, spawnRate:0.022,revAmt:0.38, dlyAmt:0.55, harmonics:false, atk:0.05, rel:0.80},
+  {name:'COSMOS',  grainMs:540, scatter:0.04, pitchRange:5,  spawnRate:0.24, revAmt:0.94, dlyAmt:0.36, harmonics:true,  atk:0.40, rel:0.52},
+  {name:'VAPOR',   grainMs:160, scatter:0.28, pitchRange:12, spawnRate:0.09, revAmt:0.70, dlyAmt:0.44, harmonics:false, atk:0.72, rel:0.22}, // long atk = ghostly swell
+  {name:'PULSE',   grainMs:85,  scatter:0.32, pitchRange:9,  spawnRate:0.07, revAmt:0.55, dlyAmt:0.68, harmonics:false, atk:0.08, rel:0.82, rhythmic:true},
+  {name:'ATOM',    grainMs:9,   scatter:1.0,  pitchRange:36, spawnRate:0.016,revAmt:0.28, dlyAmt:0.22, harmonics:false, atk:0.10, rel:0.85},
+];
+
+function setHoloPreset(idx,btn){
+  holoPresetIdx=idx;
+  document.querySelectorAll('.holo-btn').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  const lbl=document.getElementById('holoPresetLbl'); if(lbl) lbl.textContent=HOLO_PRESETS[idx].name;
+}
+
+function holoSpawnGrain(){
+  if(!ctx) return;
+  const p=HOLO_PRESETS[holoPresetIdx];
+  const vol=0.28+padY*0.58;
+
+  // Build source buffer — use samplerBuf if loaded, else a short self-oscillating tone
+  let buf;
+  if(samplerBuf){
+    buf=samplerBuf;
+  } else {
+    const durS=Math.max(0.01,p.grainMs/1000);
+    buf=ctx.createBuffer(2,Math.floor(ctx.sampleRate*durS),ctx.sampleRate);
+    const hz=110*Math.pow(2,padX*3); // X=pitch if no buffer
+    for(let ch=0;ch<2;ch++){
+      const d=buf.getChannelData(ch);
+      for(let i=0;i<d.length;i++) d[i]=Math.sin(2*Math.PI*hz*(i/ctx.sampleRate))*(1-i/d.length);
+    }
+  }
+
+  const grainDur=Math.max(0.005,(p.grainMs/1000)*(0.5+padY*1.0)); // Y=grain size
+  const pos=padX*Math.max(0,buf.duration-grainDur);
+  const scatter=(Math.random()-0.5)*p.scatter*grainDur;
+  const offset=Math.max(0,Math.min(buf.duration-0.001,pos+scatter));
+  const playDur=Math.min(grainDur,buf.duration-offset);
+
+  // Y maps to pitch ±pitchRange semitones; scatter adds microtonal drift
+  const pitchSt=(0.5-padY)*p.pitchRange;
+  const detuneCents=(Math.random()-0.5)*p.scatter*180;
+
+  const spawnOne=(pitchSt2,detuneC,volMult)=>{
+    const src=ctx.createBufferSource();
+    src.buffer=buf;
+    src.playbackRate.value=Math.pow(2,pitchSt2/12);
+    src.detune.value=detuneC;
+    const env=ctx.createGain();
+    const t=ctx.currentTime;
+    const atkT=Math.max(0.003,playDur*p.atk);
+    const relT=Math.max(0.005,playDur*p.rel);
+    env.gain.setValueAtTime(0,t);
+    env.gain.linearRampToValueAtTime(vol*volMult,t+atkT);
+    env.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(atkT+0.002,playDur*(p.atk+p.rel)));
+    src.connect(env); env.connect(masterEQ);
+    if(p.revAmt>0.01){const rv=ctx.createGain();rv.gain.value=p.revAmt;env.connect(rv);rv.connect(revPre);}
+    if(p.dlyAmt>0.01){const dl=ctx.createGain();dl.gain.value=p.dlyAmt;env.connect(dl);dl.connect(delNode);}
+    src.start(t,offset,Math.max(0.001,playDur));
+    triggerEnergy(vol*volMult*0.1);
+  };
+
+  spawnOne(pitchSt, detuneCents, 1.0);
+  // Harmonic ghost layers for NEBULA/COSMOS
+  if(p.harmonics){
+    if(Math.random()<0.4) spawnOne(pitchSt+12, detuneCents+15, 0.22); // octave shimmer
+    if(Math.random()<0.25) spawnOne(pitchSt-12, detuneCents-8, 0.18); // sub octave
+  }
+}
+
+// ─── SMPLR 4-BAR GRID BUILDER ────────────────────
+function buildSmpGrid(cid,state,cls){
+  const c=document.getElementById(cid); if(!c) return;
+  const row=document.createElement('div'); row.className='smp-bar-grid';
+  for(let bar=0;bar<4;bar++){
+    const bg=document.createElement('div'); bg.className='smp-bar-group';
+    const lbl=document.createElement('div'); lbl.className='smp-bar-lbl'; lbl.textContent='BAR '+(bar+1);
+    const br=document.createElement('div'); br.className='smp-beat-row';
+    for(let beat=0;beat<4;beat++){
+      const i=bar*4+beat;
+      const el=document.createElement('div');
+      el.className=`step smp-step s-${i}`;
+      if(state[i]) el.classList.add(cls);
+      el.addEventListener('click',()=>{ state[i]=!state[i]; el.classList.toggle(cls); });
+      br.appendChild(el);
+    }
+    bg.appendChild(lbl); bg.appendChild(br); row.appendChild(bg);
+  }
+  c.appendChild(row);
+}
+
 // ─── SAMPLER SEQUENCER ────────────────────────────
 function playSamplerStep(t){
   if(!samplerBuf||!ctx||muted.SMP) return;
@@ -3382,8 +3507,9 @@ function loop(){
   if(isPlaying){
     while(nextT<ctx.currentTime+0.1){
       const sl=60/bpm/4;
-      document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing'));
-      document.querySelectorAll(`.s-${seqStep}`).forEach(e=>e.classList.add('playing'));
+      // Global playhead — exclude smp-step (has its own beat-based playhead)
+      document.querySelectorAll('.step:not(.smp-step)').forEach(e=>e.classList.remove('playing'));
+      document.querySelectorAll(`.s-${seqStep}:not(.smp-step)`).forEach(e=>e.classList.add('playing'));
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
       if(drS[seqStep]) playDR(nextT+swOff);
       if(bS[seqStep]){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
@@ -3391,7 +3517,14 @@ function loop(){
       if(snS[seqStep]) playSnare(nextT+swOff);
       if(dS[seqStep])  playD(nextT+swOff);
       if(hS[seqStep])  playH(nextT+swOff);
-      if(smpS[seqStep]&&!muted.SMP) playSamplerStep(nextT+swOff);
+      // SMPLR: 16 steps over 4 bars — fires on every quarter note (every 4 main steps)
+      if(seqStep%4===0){
+        if(smpS[smpBeatCount]&&!muted.SMP) playSamplerStep(nextT+swOff);
+        document.querySelectorAll('#gSMPLR .smp-step').forEach(e=>e.classList.remove('playing'));
+        const smpEl=document.querySelector('#gSMPLR .s-'+smpBeatCount);
+        if(smpEl) smpEl.classList.add('playing');
+        smpBeatCount=(smpBeatCount+1)%16;
+      }
       nextT+=sl;
       const wasLast=(seqStep===15);
       seqStep=(seqStep+1)%16;
@@ -3412,6 +3545,12 @@ function loop(){
   if(padActive&&ctx&&padAssign==='xs'){
     const now=ctx.currentTime, rate=0.12+(1-n('X-Grain'))*0.60;
     if(now-lastGrain>rate){ spawnGrain(); lastGrain=now; }
+  }
+  if(padActive&&ctx&&padAssign==='hologram'){
+    const p=HOLO_PRESETS[holoPresetIdx];
+    const rate=p.rhythmic?(60/bpm/4*(0.5+padX)):p.spawnRate*(0.3+padY*1.4);
+    const now=ctx.currentTime;
+    if(now-lastHoloGrain>rate){ holoSpawnGrain(); lastHoloGrain=now; }
   }
   tickLooper();
   drawGloopVU();
@@ -3786,17 +3925,20 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
   buildGrid('gK',kS,'k-on');    buildGrid('gSN',snS,'sn-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
-  buildGrid('gSMPLR',smpS,'smp-on');
+  buildSmpGrid('gSMPLR',smpS,'smp-on');
   buildPresets('DR'); buildPresets('K'); buildPresets('SN');
   buildPresets('D');  buildPresets('H');
 
   const pad=document.getElementById('xPad');
-  pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else startPadVoice(padX,padY); },{passive:false});
-  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); if(smpPadMode&&smpSeqSrc){ smpSeqSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-padY)*2.0),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); },{passive:false});
-  pad.addEventListener('touchend',  ()=>{ padActive=false; if(padAssign!=='sampler') stopPadVoice(false); });
-  pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else startPadVoice(padX,padY); });
-  pad.addEventListener('mousemove', e=>{ if(padActive){ padPos(e); if(smpPadMode&&smpSeqSrc){ smpSeqSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-padY)*2.0),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); } });
-  pad.addEventListener('mouseup',   ()=>{ padActive=false; if(padAssign!=='sampler') stopPadVoice(false); });
+  function padStart(e){ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else if(padAssign==='hologram'){ if(!ctx) initAudio(); } else startPadVoice(padX,padY); }
+  function padMove(e){ padPos(e); if(smpPadMode&&smpSeqSrc){ smpSeqSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-padY)*2.0),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else if(padAssign!=='hologram') updatePadVoice(padX,padY); }
+  function padEnd(){ padActive=false; if(padAssign==='xs') stopPadVoice(false); }
+  pad.addEventListener('touchstart',e=>{ e.preventDefault(); padStart(e); },{passive:false});
+  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padMove(e); },{passive:false});
+  pad.addEventListener('touchend',  ()=>{ padEnd(); });
+  pad.addEventListener('mousedown', e=>{ padStart(e); });
+  pad.addEventListener('mousemove', e=>{ if(padActive) padMove(e); });
+  pad.addEventListener('mouseup',   ()=>{ padEnd(); });
   window.addEventListener('resize',()=>{
     if(canvas){ const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; }
     if(omniCanvas2){ omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight; placeOmniOrbs(); }
