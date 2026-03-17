@@ -210,20 +210,26 @@
 #popup-bg.active{ display:block; }
 .drawer.popup-mode{ position:fixed!important; top:50%!important; left:50%!important; transform:translate(-50%,-50%)!important; z-index:500!important; max-height:88vh!important; overflow-y:auto!important; width:96vw!important; display:block!important; -webkit-overflow-scrolling:touch; }
 .drawer.popup-mode .drawer-body{ display:block!important; }
-#circles-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:8px 3vw 6px; }
-.inst-circle{ display:flex; flex-direction:column; align-items:center; gap:3px; }
-.circ-body{ position:relative; width:62px; height:62px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:2px solid rgba(255,255,255,0.12); background:rgba(0,0,10,0.6); cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .1s,box-shadow .1s; }
-.circ-body:active{ transform:scale(0.94); }
-.circ-ring{ position:absolute; inset:-5px; border-radius:50%; border:2px solid transparent; pointer-events:none; opacity:0; }
-.circ-name{ font-size:7px; font-weight:900; letter-spacing:0.8px; color:rgba(255,255,255,0.75); text-align:center; pointer-events:none; }
-.circ-mute-btn{ font-size:6px; font-weight:900; padding:2px 4px; border-radius:3px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.45); cursor:pointer; line-height:1; }
-.circ-mute-btn.muted{ background:rgba(255,60,60,0.3); color:#ff8888; border-color:rgba(255,60,60,0.45); }
-.circ-vol{ width:58px; -webkit-appearance:none; appearance:none; height:3px; background:rgba(255,255,255,0.18); border-radius:2px; outline:none; cursor:pointer; }
-.circ-vol::-webkit-slider-thumb{ -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:#fff; cursor:pointer; }
-@keyframes circBeat{ 0%{transform:scale(1)} 40%{transform:scale(1.13)} 100%{transform:scale(1)} }
-@keyframes ringBeat{ 0%{opacity:0;transform:scale(1)} 30%{opacity:0.9} 100%{opacity:0;transform:scale(1.25)} }
+#circles-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:10px 3vw 8px; justify-items:center; }
+.inst-circle{ display:flex; flex-direction:column; align-items:center; gap:5px; }
+.circ-body{ position:relative; width:82px; height:82px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); transition:transform .1s,filter .1s; }
+.circ-body:active{ transform:scale(0.91); }
+.circ-ring{ position:absolute; inset:-6px; border-radius:50%; border:2px solid transparent; pointer-events:none; opacity:0; }
+.circ-name{ font-size:8.5px; font-weight:900; letter-spacing:0.8px; color:rgba(255,255,255,0.92); text-align:center; pointer-events:none; text-shadow:0 1px 4px rgba(0,0,0,0.7); }
+.circ-mute-btn{ font-size:7px; font-weight:900; padding:3px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.22); background:rgba(0,0,0,0.35); color:rgba(255,255,255,0.55); cursor:pointer; line-height:1; }
+.circ-mute-btn.muted{ background:rgba(255,60,60,0.35); color:#ff8888; border-color:rgba(255,60,60,0.5); }
+.circ-vol{ width:78px; -webkit-appearance:none; appearance:none; height:4px; background:rgba(255,255,255,0.2); border-radius:2px; outline:none; cursor:pointer; }
+.circ-vol::-webkit-slider-thumb{ -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:#fff; cursor:pointer; }
+@keyframes circBeat{ 0%{transform:scale(1)} 40%{transform:scale(1.14)} 100%{transform:scale(1)} }
+@keyframes ringBeat{ 0%{opacity:0;transform:scale(1)} 30%{opacity:1} 100%{opacity:0;transform:scale(1.28)} }
 .circ-body.beat{ animation:circBeat 0.35s ease-out forwards; }
-.circ-ring.beat{ animation:ringBeat 0.35s ease-out forwards; }
+.circ-ring.beat{ animation:ringBeat 0.38s ease-out forwards; }
+/* Hide drawer list — drawers only shown as popups via circles */
+.main{ padding:0!important; margin:0!important; gap:0!important; }
+.main .drawer{ display:none; }
+.main .drawer.popup-mode{ display:block!important; }
+/* ARP preset buttons */
+.arp-preset-btn.on{ background:rgba(255,0,110,0.35)!important; color:#ff66aa!important; border-color:rgba(255,0,110,0.6)!important; }
 /* DELAY SYNC */
 .dly-sync-row{ display:flex; gap:4px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
 .dly-sync-lbl{ font-size:8px; font-weight:900; letter-spacing:2px; color:rgba(255,68,136,0.6); margin-right:2px; }
@@ -288,9 +294,25 @@
 
   <!-- INSTRUMENT CIRCLES -->
   <div id="circles-grid">
+    <!-- XS LOOP -->
+    <div class="inst-circle" id="circ-X">
+      <div class="circ-body" style="background:rgba(0,242,255,0.2);border:2px solid rgba(0,242,255,0.65);box-shadow:0 0 16px rgba(0,242,255,0.2),inset 0 0 20px rgba(0,242,255,0.1)" onclick="openCirclePopup('drX',event)">
+        <div class="circ-ring" id="cring-X" style="border-color:#00f2ff"></div>
+        <div class="circ-name">XS LOOP</div>
+        <button class="circ-mute-btn" id="cmute-X" onclick="instMute('X',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="62" style="accent-color:#00f2ff" oninput="syncCircVol('X-Vol',this.value)">
+    </div>
+    <!-- GTR LOOP -->
+    <div class="inst-circle" id="circ-GL">
+      <div class="circ-body" style="background:rgba(255,153,68,0.2);border:2px solid rgba(255,153,68,0.65);box-shadow:0 0 16px rgba(255,153,68,0.2),inset 0 0 20px rgba(255,153,68,0.1)" onclick="openCirclePopup('drGLOOP',event)">
+        <div class="circ-ring" id="cring-GL" style="border-color:#ff9944"></div>
+        <div class="circ-name">GTR LOOP</div>
+      </div>
+    </div>
     <!-- KICK -->
     <div class="inst-circle" id="circ-K">
-      <div class="circ-body" style="border-color:rgba(255,34,0,0.5);box-shadow:0 0 10px rgba(255,34,0,0.15)" onclick="openCirclePopup('drDRMS',event)">
+      <div class="circ-body" style="background:rgba(255,34,0,0.2);border:2px solid rgba(255,34,0,0.65);box-shadow:0 0 16px rgba(255,34,0,0.2),inset 0 0 20px rgba(255,34,0,0.1)" onclick="openCirclePopup('drDRMS',event)">
         <div class="circ-ring" id="cring-K" style="border-color:#ff2200"></div>
         <div class="circ-name">KICK</div>
         <button class="circ-mute-btn" id="cmute-K" onclick="instMute('K',this);event.stopPropagation()">MUTE</button>
@@ -299,25 +321,43 @@
     </div>
     <!-- SNARE -->
     <div class="inst-circle" id="circ-SN">
-      <div class="circ-body" style="border-color:rgba(255,170,68,0.5);box-shadow:0 0 10px rgba(255,170,68,0.15)" onclick="openCirclePopup('drDRMS',event)">
+      <div class="circ-body" style="background:rgba(255,170,68,0.2);border:2px solid rgba(255,170,68,0.65);box-shadow:0 0 16px rgba(255,170,68,0.2),inset 0 0 20px rgba(255,170,68,0.1)" onclick="openCirclePopup('drDRMS',event)">
         <div class="circ-ring" id="cring-SN" style="border-color:#ffaa44"></div>
         <div class="circ-name">SNARE</div>
         <button class="circ-mute-btn" id="cmute-SN" onclick="instMute('SN',this);event.stopPropagation()">MUTE</button>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="65" style="accent-color:#ffaa44" oninput="syncCircVol('SN-Vol',this.value)">
     </div>
-    <!-- HIHAT -->
+    <!-- BONGO -->
+    <div class="inst-circle" id="circ-D">
+      <div class="circ-body" style="background:rgba(255,102,0,0.2);border:2px solid rgba(255,102,0,0.65);box-shadow:0 0 16px rgba(255,102,0,0.2),inset 0 0 20px rgba(255,102,0,0.1)" onclick="openCirclePopup('drDRMS',event)">
+        <div class="circ-ring" id="cring-D" style="border-color:#ff6600"></div>
+        <div class="circ-name">BONGO</div>
+        <button class="circ-mute-btn" id="cmute-D" onclick="instMute('D',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="60" style="accent-color:#ff6600" oninput="syncCircVol('D-Vol',this.value)">
+    </div>
+    <!-- HI-HAT -->
     <div class="inst-circle" id="circ-H">
-      <div class="circ-body" style="border-color:rgba(0,255,136,0.5);box-shadow:0 0 10px rgba(0,255,136,0.15)" onclick="openCirclePopup('drDRMS',event)">
+      <div class="circ-body" style="background:rgba(0,255,136,0.2);border:2px solid rgba(0,255,136,0.65);box-shadow:0 0 16px rgba(0,255,136,0.2),inset 0 0 20px rgba(0,255,136,0.1)" onclick="openCirclePopup('drDRMS',event)">
         <div class="circ-ring" id="cring-H" style="border-color:#00ff88"></div>
-        <div class="circ-name">H-HAT</div>
+        <div class="circ-name">HI-HAT</div>
         <button class="circ-mute-btn" id="cmute-H" onclick="instMute('H',this);event.stopPropagation()">MUTE</button>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="35" style="accent-color:#00ff88" oninput="syncCircVol('H-Vol',this.value)">
     </div>
+    <!-- ARP -->
+    <div class="inst-circle" id="circ-ARP">
+      <div class="circ-body" style="background:rgba(255,0,110,0.2);border:2px solid rgba(255,0,110,0.65);box-shadow:0 0 16px rgba(255,0,110,0.2),inset 0 0 20px rgba(255,0,110,0.1)" onclick="openCirclePopup('drARP',event)">
+        <div class="circ-ring" id="cring-ARP" style="border-color:#ff006e"></div>
+        <div class="circ-name">ARP</div>
+        <button class="circ-mute-btn" id="cmute-ARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="58" style="accent-color:#ff006e" oninput="syncCircVol('ARP-Vol',this.value)">
+    </div>
     <!-- BASS -->
     <div class="inst-circle" id="circ-B">
-      <div class="circ-body" style="border-color:rgba(255,204,0,0.5);box-shadow:0 0 10px rgba(255,204,0,0.15)" onclick="openCirclePopup('drB',event)">
+      <div class="circ-body" style="background:rgba(255,204,0,0.2);border:2px solid rgba(255,204,0,0.65);box-shadow:0 0 16px rgba(255,204,0,0.2),inset 0 0 20px rgba(255,204,0,0.1)" onclick="openCirclePopup('drB',event)">
         <div class="circ-ring" id="cring-B" style="border-color:#ffcc00"></div>
         <div class="circ-name">BASS</div>
         <button class="circ-mute-btn" id="cmute-B" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
@@ -326,50 +366,25 @@
     </div>
     <!-- DRONE -->
     <div class="inst-circle" id="circ-DR">
-      <div class="circ-body" style="border-color:rgba(170,0,255,0.5);box-shadow:0 0 10px rgba(170,0,255,0.15)" onclick="openCirclePopup('drDR',event)">
+      <div class="circ-body" style="background:rgba(170,0,255,0.2);border:2px solid rgba(170,0,255,0.65);box-shadow:0 0 16px rgba(170,0,255,0.2),inset 0 0 20px rgba(170,0,255,0.1)" onclick="openCirclePopup('drDR',event)">
         <div class="circ-ring" id="cring-DR" style="border-color:#aa00ff"></div>
         <div class="circ-name">DRONE</div>
         <button class="circ-mute-btn" id="cmute-DR" onclick="instMute('DR',this);event.stopPropagation()">MUTE</button>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="40" style="accent-color:#aa00ff" oninput="syncCircVol('DR-Vol',this.value)">
     </div>
-    <!-- NEBULA -->
-    <div class="inst-circle" id="circ-X">
-      <div class="circ-body" style="border-color:rgba(0,242,255,0.5);box-shadow:0 0 10px rgba(0,242,255,0.15)" onclick="openCirclePopup('drX',event)">
-        <div class="circ-ring" id="cring-X" style="border-color:#00f2ff"></div>
-        <div class="circ-name">NEBULA</div>
-        <button class="circ-mute-btn" id="cmute-X" onclick="instMute('X',this);event.stopPropagation()">MUTE</button>
-      </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="62" style="accent-color:#00f2ff" oninput="syncCircVol('X-Vol',this.value)">
-    </div>
-    <!-- ARP -->
-    <div class="inst-circle" id="circ-ARP">
-      <div class="circ-body" style="border-color:rgba(255,0,110,0.5);box-shadow:0 0 10px rgba(255,0,110,0.15)" onclick="openCirclePopup('drARP',event)">
-        <div class="circ-ring" id="cring-ARP" style="border-color:#ff006e"></div>
-        <div class="circ-name">ARP</div>
-        <button class="circ-mute-btn" id="cmute-ARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
-      </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="58" style="accent-color:#ff006e" oninput="syncCircVol('ARP-Vol',this.value)">
-    </div>
     <!-- CHORDS -->
     <div class="inst-circle" id="circ-CHD">
-      <div class="circ-body" style="border-color:rgba(255,136,200,0.5);box-shadow:0 0 10px rgba(255,136,200,0.15)" onclick="openCirclePopup('drCHD',event)">
+      <div class="circ-body" style="background:rgba(255,136,204,0.2);border:2px solid rgba(255,136,204,0.65);box-shadow:0 0 16px rgba(255,136,204,0.2),inset 0 0 20px rgba(255,136,204,0.1)" onclick="openCirclePopup('drCHD',event)">
         <div class="circ-ring" id="cring-CHD" style="border-color:#ff88cc"></div>
         <div class="circ-name">CHORDS</div>
       </div>
     </div>
     <!-- FX -->
     <div class="inst-circle" id="circ-FX">
-      <div class="circ-body" style="border-color:rgba(255,68,136,0.5);box-shadow:0 0 10px rgba(255,68,136,0.15)" onclick="openCirclePopup('drFX',event)">
+      <div class="circ-body" style="background:rgba(255,68,136,0.2);border:2px solid rgba(255,68,136,0.65);box-shadow:0 0 16px rgba(255,68,136,0.2),inset 0 0 20px rgba(255,68,136,0.1)" onclick="openCirclePopup('drFX',event)">
         <div class="circ-ring" id="cring-FX" style="border-color:#ff4488"></div>
         <div class="circ-name">FX RACK</div>
-      </div>
-    </div>
-    <!-- LOOP -->
-    <div class="inst-circle" id="circ-GL">
-      <div class="circ-body" style="border-color:rgba(255,153,68,0.5);box-shadow:0 0 10px rgba(255,153,68,0.15)" onclick="openCirclePopup('drGLOOP',event)">
-        <div class="circ-ring" id="cring-GL" style="border-color:#ff9944"></div>
-        <div class="circ-name">GTR LOOP</div>
       </div>
     </div>
   </div>
@@ -857,6 +872,16 @@
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
           <span id="arpChordLbl" style="font-size:9px;font-weight:900;color:var(--arp);letter-spacing:2px;text-shadow:0 0 8px var(--arp)">Em9</span>
           <span id="arpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,0,110,0.5);letter-spacing:2px">UP</span>
+        </div>
+
+        <div class="sec">PRESETS</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="cmr arp-preset-btn on" onclick="loadArpPreset(0,this)">DEFAULT</button>
+          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(1,this)">ACID</button>
+          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(2,this)">DREAMY</button>
+          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(3,this)">PLUCK</button>
+          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(4,this)">CRYSTALS</button>
+          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(5,this)">BASS ARP</button>
         </div>
 
         <div class="sec">CLOCK — TEMPO SYNC</div>
@@ -2503,6 +2528,24 @@ const ARP_CHORDS=[
 // Snapshot of the original custom chords — restored when user switches back from SCALE mode
 const CHORD_CUSTOM=ARP_CHORDS.map(c=>({name:c.name,notes:[...c.notes]}));
 const ARP_PATS=['UP','DOWN','↑↓','RAND'];
+
+// ── ARP PRESETS ────────────────────────────────────
+const ARP_PRESETS=[
+  {name:'DEFAULT',  Gate:65,Vol:58,Wave:75,Oct:75,Detune:28,Sub:22,Cut:62,Res:22,FEnv:55,Atk:10,Dcy:40,Sus:65,Rel:35,FAtk:8, FDcy:38,LRate:25,LDpth:18,Pattern:0, Octaves:33,Rev:38,Dly:58},
+  {name:'ACID',     Gate:55,Vol:70,Wave:0, Oct:50,Detune:0, Sub:0, Cut:32,Res:82,FEnv:88,Atk:4, Dcy:18,Sus:18,Rel:12,FAtk:2, FDcy:22,LRate:18,LDpth:0, Pattern:0, Octaves:33,Rev:12,Dly:38},
+  {name:'DREAMY',   Gate:82,Vol:55,Wave:75,Oct:75,Detune:44,Sub:28,Cut:55,Res:14,FEnv:25,Atk:48,Dcy:58,Sus:78,Rel:72,FAtk:38,FDcy:62,LRate:11,LDpth:36,Pattern:2, Octaves:66,Rev:78,Dly:68},
+  {name:'PLUCK',    Gate:38,Vol:65,Wave:50,Oct:75,Detune:12,Sub:6, Cut:72,Res:38,FEnv:72,Atk:2, Dcy:20,Sus:8, Rel:15,FAtk:4, FDcy:16,LRate:20,LDpth:8, Pattern:0, Octaves:33,Rev:25,Dly:20},
+  {name:'CRYSTALS', Gate:72,Vol:52,Wave:75,Oct:100,Detune:58,Sub:4,Cut:68,Res:26,FEnv:38,Atk:8, Dcy:32,Sus:58,Rel:48,FAtk:14,FDcy:28,LRate:34,LDpth:28,Pattern:2,Octaves:66,Rev:58,Dly:48},
+  {name:'BASS ARP', Gate:78,Vol:68,Wave:0, Oct:25,Detune:8, Sub:72,Cut:35,Res:20,FEnv:45,Atk:5, Dcy:52,Sus:70,Rel:30,FAtk:10,FDcy:44,LRate:22,LDpth:10,Pattern:0,Octaves:33,Rev:10,Dly:6},
+];
+function loadArpPreset(idx,btn){
+  document.querySelectorAll('.arp-preset-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  const p=ARP_PRESETS[idx]; if(!p) return;
+  ['Gate','Vol','Wave','Oct','Detune','Sub','Cut','Res','FEnv','Atk','Dcy','Sus','Rel','FAtk','FDcy','LRate','LDpth','Pattern','Octaves','Rev','Dly'].forEach(k=>{
+    const el=document.getElementById('ARP-'+k); if(el){ el.value=p[k]; el.dispatchEvent(new Event('input')); }
+  });
+}
+
 function arpChordIdx(){ return Math.min(ARP_CHORDS.length-1,Math.floor(r('ARP-Chord')/(100/ARP_CHORDS.length))); }
 function arpFreq(){
   const base=ARP_CHORDS[currentChordIdx].notes;
@@ -2663,6 +2706,7 @@ function playB(t){
 function playD(t){
   const vol=n('D-Vol'); if(vol<0.01||muted.D) return;
   triggerEnergy(vol*0.5);
+  flashCircle('D');
   const tune=n('D-Tune'), dec=n('D-Decay'), thump=n('D-Thump'), snap=n('D-Snap');
   const pan=ctx.createStereoPanner(); pan.pan.value=n('D-Pan')*2-1;
   // Lower frequencies for hand drum / djembe / taiko feel
