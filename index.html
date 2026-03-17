@@ -1133,11 +1133,27 @@ function init(){
 
   wireSliders();
   loop();
+  startAudioKeepAlive();
 
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ ctx.resume(); acquireWakeLock(); } });
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ ctx.resume(); startAudioKeepAlive(); acquireWakeLock(); } });
   document.addEventListener('touchstart',()=>{ if(ctx.state!=='running') ctx.resume(); },{passive:true});
   setInterval(()=>{ if(ctx&&ctx.state!=='running') ctx.resume(); },8000);
   acquireWakeLock();
+}
+
+// ═══ AUDIO KEEP-ALIVE — prevents iOS Safari from suspending AudioContext ════
+// A silent 1-sample buffer looping continuously keeps the audio graph active.
+// iOS suspends the context when it thinks nothing is playing; this tricks it.
+let _keepAliveNode=null;
+function startAudioKeepAlive(){
+  if(!ctx) return;
+  if(_keepAliveNode){ try{ _keepAliveNode.stop(); }catch(e){} _keepAliveNode=null; }
+  const buf=ctx.createBuffer(1,1,ctx.sampleRate); // 1 channel, 1 sample, silent
+  const src=ctx.createBufferSource();
+  src.buffer=buf; src.loop=true;
+  src.connect(ctx.destination); // connect directly — bypasses master gain (truly silent)
+  src.start(0);
+  _keepAliveNode=src;
 }
 
 // ═══ WAKE LOCK — keep iPad screen on ════════════════
