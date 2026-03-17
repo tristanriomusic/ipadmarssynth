@@ -314,6 +314,61 @@
       </div>
     </div>
 
+    <!-- GUITAR LOOPER -->
+    <div class="drawer open" id="drGLOOP">
+      <div class="drawer-hdr" onclick="toggleD('drGLOOP')" style="color:#ff9944">
+        <span>GUITAR LOOP</span><span class="arr">▼</span>
+      </div>
+      <div class="drawer-body">
+
+        <!-- I/O device selectors -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">INPUT</label>
+            <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
+          </div>
+          <div>
+            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">OUTPUT</label>
+            <select class="gloop-select" id="gloop-outdevice" onchange="gloopSetOutput(this.value)"></select>
+          </div>
+        </div>
+
+        <!-- In Level + Decay -->
+        <div class="pg2">
+          <div class="ctrl">
+            <label>In Level</label>
+            <input type="range" id="gloop-inlvl" min="0" max="100" value="80" oninput="document.getElementById('gloop-inlvl-v').textContent=this.value; if(micInputGain) micInputGain.gain.value=this.value/100;">
+            <div class="dv" id="gloop-inlvl-v">80</div>
+          </div>
+          <div class="ctrl">
+            <label>Decay</label>
+            <input type="range" id="gloop-decay" min="0" max="100" value="100" oninput="document.getElementById('gloop-decay-v').textContent=this.value">
+            <div class="dv" id="gloop-decay-v">100</div>
+          </div>
+        </div>
+
+        <!-- Bars — synced to main clock -->
+        <div class="loop-bars" style="margin-bottom:8px">
+          <button class="loop-bar-btn on" data-gbars="1" onclick="setGloopBars(1,this)">1 BAR</button>
+          <button class="loop-bar-btn"    data-gbars="2" onclick="setGloopBars(2,this)">2 BAR</button>
+          <button class="loop-bar-btn"    data-gbars="4" onclick="setGloopBars(4,this)">4 BAR</button>
+          <button class="loop-bar-btn"    data-gbars="8" onclick="setGloopBars(8,this)">8 BAR</button>
+        </div>
+
+        <!-- VU meter -->
+        <div class="gloop-vu-wrap"><canvas id="gloop-vu"></canvas></div>
+
+        <!-- Transport -->
+        <div class="looper-btns" style="margin-top:8px">
+          <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
+          <button class="loop-btn play" id="gloop-play"  onclick="gloopToggle()"  disabled>▶ LOOP</button>
+          <button class="loop-btn"      id="gloop-clear" onclick="gloopClear()"   disabled>✕ CLEAR</button>
+        </div>
+        <div class="loop-status" id="gloop-status">NO INPUT</div>
+
+      </div>
+    </div>
+
     <!-- EFFECTS RACK -->
     <div class="drawer" id="drFX">
       <div class="drawer-hdr" onclick="toggleD('drFX')" style="color:var(--fx)">
@@ -654,45 +709,6 @@
       </div>
     </div>
 
-    <!-- GUITAR LOOPER -->
-    <div class="drawer open" id="drGLOOP">
-      <div class="drawer-hdr" onclick="toggleD('drGLOOP')" style="color:#ff9944">
-        <span>GUITAR LOOP</span><span class="arr">▼</span>
-      </div>
-      <div class="drawer-body">
-
-        <!-- Input device -->
-        <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:5px">AUDIO INPUT</label>
-        <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
-
-        <!-- Level + Decay sliders -->
-        <div class="pg2">
-          <div class="ctrl">
-            <label>In Level</label>
-            <input type="range" id="gloop-inlvl" min="0" max="100" value="80" oninput="document.getElementById('gloop-inlvl-v').textContent=this.value; if(micInputGain) micInputGain.gain.value=this.value/100;">
-            <div class="dv" id="gloop-inlvl-v">80</div>
-          </div>
-          <div class="ctrl">
-            <label>Decay</label>
-            <input type="range" id="gloop-decay" min="0" max="100" value="100" oninput="document.getElementById('gloop-decay-v').textContent=this.value">
-            <div class="dv" id="gloop-decay-v">100</div>
-          </div>
-        </div>
-
-        <!-- VU meter -->
-        <div class="gloop-vu-wrap"><canvas id="gloop-vu"></canvas></div>
-
-        <!-- Transport -->
-        <div class="looper-btns" style="margin-top:8px">
-          <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
-          <button class="loop-btn play" id="gloop-play"  onclick="gloopToggle()"  disabled>▶ LOOP</button>
-          <button class="loop-btn"      id="gloop-clear" onclick="gloopClear()"   disabled>✕ CLEAR</button>
-        </div>
-        <div class="loop-status" id="gloop-status">NO INPUT</div>
-
-      </div>
-    </div>
-
   </div><!-- .main -->
 </div><!-- #ui -->
 
@@ -920,22 +936,32 @@ function tickLooper(){
 }
 
 // ═══ GUITAR LOOPER ════════════════════════════════════════════════════════════
-// Real PCM audio looper. Records live input into a Float32Array, plays it back
-// via ScriptProcessorNode so overdub mixing happens in-place on the buffer.
-let gloopBuffer=null;   // Float32Array — the loop in memory
-let gloopLen=0;         // loop length in samples
-let gloopPos=0;         // current playhead (sample index)
+// Real PCM audio looper synced to the main sequencer clock.
+// ScriptProcessorNode mixes live input directly into the Float32Array loop buffer
+// so overdub works in-place without allocation.
+let gloopBuffer=null;     // Float32Array — the live loop
+let gloopLen=0;           // loop length in samples
+let gloopPos=0;           // playhead (sample index)
 let gloopRec=false;
 let gloopPlay=false;
 let gloopOverdub=false;
-let gloopSamples=[];    // accumulates raw samples during first-pass recording
-let gloopNode=null;     // ScriptProcessorNode
-let gloopOutGain=null;  // output GainNode → masterEQ
-let gloopAnalyser=null; // AnalyserNode for VU meter
+let gloopFinalizing=false;// guards auto-finalize from firing twice
+let gloopSamples=[];      // grows during first-pass recording
+let gloopTargetLen=0;     // samples to record (bars × 4 beats × sr)
+let gloopRecStart=0;      // ctx.currentTime when recording should begin
+let gloopBars=1;
+let gloopNode=null;
+let gloopOutGain=null;
+let gloopAnalyser=null;
 let gloopAnalyserBuf=null;
 let micStream=null;
 let micSource=null;
-let micInputGain=null;  // GainNode controlled by In Level slider
+let micInputGain=null;
+
+function setGloopBars(bars,btn){
+  gloopBars=bars;
+  document.querySelectorAll('[data-gbars]').forEach(b=>b.classList.toggle('on',+b.dataset.gbars===bars));
+}
 
 function initGloop(){
   gloopOutGain=ctx.createGain(); gloopOutGain.gain.value=0.9;
@@ -946,67 +972,84 @@ function initGloop(){
 }
 
 async function gloopEnumDevices(){
-  // Request permission first so device labels become available
   try{
     const tmp=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     tmp.getTracks().forEach(t=>t.stop());
   }catch(e){
-    document.getElementById('gloop-status').textContent='MIC PERMISSION DENIED';
-    return;
+    document.getElementById('gloop-status').textContent='MIC PERMISSION DENIED'; return;
   }
   const all=await navigator.mediaDevices.enumerateDevices();
   const inputs=all.filter(d=>d.kind==='audioinput');
+  const outputs=all.filter(d=>d.kind==='audiooutput');
+
+  // ── Input dropdown ──
   const sel=document.getElementById('gloop-device');
   sel.innerHTML='';
-  let bestId='default';
+  let bestIn='default';
   inputs.forEach((d,i)=>{
     const opt=document.createElement('option');
-    opt.value=d.deviceId;
-    opt.textContent=d.label||`Input ${i+1}`;
-    // Prefer external/interface over built-in mic
-    if(d.deviceId!=='default' && !/built.?in|internal/i.test(d.label) && /focusrite|scarlett|roland|motu|interface|steinberg|apollo|volt|gen(12|24)|audio/i.test(d.label)){
-      bestId=d.deviceId;
-    }
+    opt.value=d.deviceId; opt.textContent=d.label||`Input ${i+1}`;
+    if(d.deviceId!=='default' && !/built.?in|internal/i.test(d.label) &&
+       /focusrite|scarlett|roland|motu|steinberg|apollo|volt|ur\d|id\d|interface|audio/i.test(d.label))
+      bestIn=d.deviceId;
     sel.appendChild(opt);
   });
-  // If no interface found by name, pick first non-default non-built-in entry
-  if(bestId==='default'){
-    const ext=inputs.find(d=>d.deviceId!=='default' && !/built.?in|internal/i.test(d.label));
-    if(ext) bestId=ext.deviceId;
+  if(bestIn==='default'){
+    const ext=inputs.find(d=>d.deviceId!=='default'&&!/built.?in|internal/i.test(d.label));
+    if(ext) bestIn=ext.deviceId;
   }
-  sel.value=bestId;
-  await gloopConnectDevice(bestId);
+  sel.value=bestIn;
+
+  // ── Output dropdown ──
+  const outSel=document.getElementById('gloop-outdevice');
+  outSel.innerHTML='';
+  if(outputs.length && ctx.setSinkId){
+    let bestOut='default';
+    outputs.forEach((d,i)=>{
+      const opt=document.createElement('option');
+      opt.value=d.deviceId; opt.textContent=d.label||`Output ${i+1}`;
+      if(d.deviceId!=='default' && !/built.?in|internal/i.test(d.label) &&
+         /focusrite|scarlett|roland|motu|steinberg|apollo|volt|ur\d|id\d|interface|audio/i.test(d.label))
+        bestOut=d.deviceId;
+      outSel.appendChild(opt);
+    });
+    outSel.value=bestOut;
+    await gloopSetOutput(bestOut);
+  } else {
+    const opt=document.createElement('option');
+    opt.textContent='System Default'; opt.value='default';
+    outSel.appendChild(opt); outSel.disabled=true;
+  }
+
+  await gloopConnectDevice(bestIn);
+}
+
+async function gloopSetOutput(deviceId){
+  if(!ctx.setSinkId||!deviceId) return;
+  try{ await ctx.setSinkId(deviceId); }catch(e){}
 }
 
 async function gloopConnectDevice(deviceId){
-  // Tear down existing nodes
   if(gloopNode){ try{gloopNode.disconnect();}catch(e){} gloopNode=null; }
   if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
   if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
   if(micStream) micStream.getTracks().forEach(t=>t.stop());
-
   try{
     micStream=await navigator.mediaDevices.getUserMedia({audio:{
-      deviceId: deviceId?{exact:deviceId}:undefined,
+      deviceId:deviceId?{exact:deviceId}:undefined,
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
     }});
     micSource=ctx.createMediaStreamSource(micStream);
-    micInputGain=ctx.createGain();
-    micInputGain.gain.value=r('gloop-inlvl')/100;
-
-    // Analyser taps pre-gain signal so VU reflects actual input level
+    micInputGain=ctx.createGain(); micInputGain.gain.value=r('gloop-inlvl')/100;
     micSource.connect(gloopAnalyser);
     micSource.connect(micInputGain);
-
-    // ScriptProcessorNode: 2048 samples, mono in → mono out
     gloopNode=ctx.createScriptProcessor(2048,1,1);
     gloopNode.onaudioprocess=gloopProcess;
     micInputGain.connect(gloopNode);
     gloopNode.connect(gloopOutGain);
-
     document.getElementById('gloop-status').textContent='READY';
   }catch(err){
-    document.getElementById('gloop-status').textContent='INPUT ERR: '+err.message;
+    document.getElementById('gloop-status').textContent='ERR: '+err.message;
   }
 }
 
@@ -1017,66 +1060,61 @@ function gloopProcess(e){
   const inLvl=r('gloop-inlvl')/100;
 
   if(gloopRec && !gloopPlay){
-    // ── First pass: record into growing array, monitor input live ──
+    // ── First pass ──
+    if(ctx.currentTime < gloopRecStart){
+      // Pre-roll: waiting for bar boundary — monitor but don't record
+      for(let i=0;i<count;i++) out[i]=inp[i];
+      return;
+    }
     for(let i=0;i<count;i++){
+      if(gloopTargetLen>0 && gloopSamples.length>=gloopTargetLen){
+        if(!gloopFinalizing){ gloopFinalizing=true; setTimeout(gloopFinalize,0); }
+        out[i]=inp[i]; continue;
+      }
       gloopSamples.push(inp[i]);
       out[i]=inp[i]; // live monitoring
     }
   } else if(gloopPlay){
     // ── Playback / overdub ──
-    const decayVal=r('gloop-decay')/100;
-    const retain=0.1+decayVal*0.9; // 0.1 (max decay) … 1.0 (no decay)
+    const retain=0.1+(r('gloop-decay')/100)*0.9;
     for(let i=0;i<count;i++){
-      if(gloopOverdub && gloopRec){
-        // Mix new input into buffer with decay
+      if(gloopOverdub && gloopRec)
         gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain + inp[i]*inLvl;
-      }
-      // Output: loop + live monitoring when overdubbing
-      out[i]=gloopBuffer[gloopPos] + (gloopOverdub && gloopRec ? inp[i] : 0);
+      out[i]=gloopBuffer[gloopPos] + (gloopOverdub&&gloopRec ? inp[i] : 0);
       gloopPos=(gloopPos+1)%gloopLen;
     }
   } else {
-    // Idle — pass input through for monitoring
-    for(let i=0;i<count;i++) out[i]=inp[i];
+    for(let i=0;i<count;i++) out[i]=inp[i]; // passthrough when idle
   }
 }
 
+function gloopFinalize(){
+  gloopFinalizing=false; gloopRec=false;
+  gloopLen=gloopSamples.length;
+  if(gloopLen>0){ gloopBuffer=new Float32Array(gloopSamples); gloopPos=0; gloopPlay=true; }
+  gloopSamples=[];
+  updateGloopUI();
+}
+
 function gloopRecord(){
-  if(gloopRec && !gloopOverdub){
-    // ── End first-pass recording → finalise loop ──
-    gloopRec=false;
-    gloopLen=gloopSamples.length;
-    if(gloopLen>0){
-      gloopBuffer=new Float32Array(gloopSamples);
-      gloopPos=0; gloopPlay=true;
-    }
-    gloopSamples=[];
-    updateGloopUI(); return;
-  }
-  if(gloopOverdub){
-    // ── End overdub ──
-    gloopRec=false; gloopOverdub=false;
-    updateGloopUI(); return;
-  }
-  if(gloopPlay && gloopLen>0){
-    // ── Start overdub ──
-    gloopOverdub=true; gloopRec=true;
-    updateGloopUI(); return;
-  }
-  // ── Fresh record ──
+  if(gloopRec && !gloopOverdub){ gloopFinalize(); return; }
+  if(gloopOverdub){ gloopRec=false; gloopOverdub=false; updateGloopUI(); return; }
+  if(gloopPlay && gloopLen>0){ gloopOverdub=true; gloopRec=true; updateGloopUI(); return; }
   if(!micSource){ document.getElementById('gloop-status').textContent='NO INPUT'; return; }
+  // Fresh record — snap start to next bar boundary when sequencer is running
   gloopSamples=[]; gloopBuffer=null; gloopLen=0; gloopPos=0;
-  gloopPlay=false; gloopOverdub=false; gloopRec=true;
+  gloopPlay=false; gloopOverdub=false; gloopFinalizing=false; gloopRec=true;
+  gloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
+  gloopTargetLen=Math.round(gloopBars*4*(60/bpm)*ctx.sampleRate);
   updateGloopUI();
 }
 function gloopToggle(){
   if(!gloopLen) return;
-  gloopPlay=!gloopPlay;
-  if(gloopPlay) gloopPos=0;
+  gloopPlay=!gloopPlay; if(gloopPlay) gloopPos=0;
   updateGloopUI();
 }
 function gloopClear(){
-  gloopBuffer=null; gloopLen=0; gloopPos=0;
+  gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false;
   gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
   updateGloopUI();
 }
@@ -1086,9 +1124,12 @@ function updateGloopUI(){
   document.getElementById('gloop-play').classList.toggle('active',gloopPlay);
   document.getElementById('gloop-play').disabled=!has;
   document.getElementById('gloop-clear').disabled=!has&&!gloopRec;
+  const waiting=gloopRec&&!gloopPlay&&ctx&&ctx.currentTime<gloopRecStart;
   const sec=has?(gloopLen/ctx.sampleRate).toFixed(2)+'s':'';
   document.getElementById('gloop-status').textContent=
-    gloopOverdub?'◉ OVERDUB':gloopRec?'● RECORDING...':
+    gloopOverdub?'◉ OVERDUB':
+    waiting?'⏳ WAITING FOR BAR...':
+    gloopRec?'● RECORDING...':
     (gloopPlay?`▶ LOOP ${sec}`:(has?`READY ${sec}`:'READY'));
 }
 function drawGloopVU(){
@@ -1097,11 +1138,8 @@ function drawGloopVU(){
   const gc=canvas.getContext('2d'); if(!gc) return;
   gloopAnalyser.getByteTimeDomainData(gloopAnalyserBuf);
   let peak=0;
-  for(let i=0;i<gloopAnalyserBuf.length;i++){
-    const s=Math.abs(gloopAnalyserBuf[i]-128)/128; if(s>peak) peak=s;
-  }
+  for(let i=0;i<gloopAnalyserBuf.length;i++){ const s=Math.abs(gloopAnalyserBuf[i]-128)/128; if(s>peak) peak=s; }
   const w=canvas.width, h=canvas.height;
-  gc.clearRect(0,0,w,h);
   gc.fillStyle='rgba(0,0,0,0.3)'; gc.fillRect(0,0,w,h);
   const grad=gc.createLinearGradient(0,0,w,0);
   grad.addColorStop(0,'#00ff88'); grad.addColorStop(0.65,'#ffcc00'); grad.addColorStop(1,'#ff2200');
