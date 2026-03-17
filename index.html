@@ -342,6 +342,14 @@
             </div>
           </div>
 
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+            <button class="cmr" style="border-color:rgba(255,100,60,0.5);color:rgba(255,100,60,0.8)" onclick="gloopDisconnect()">✕ DISCONNECT MIC</button>
+          </div>
+          <!-- iOS compensation note -->
+          <div style="font-size:8px;color:rgba(255,153,68,0.5);letter-spacing:1px;margin-bottom:8px;line-height:1.5">
+            iOS reduces synth volume when mic is active. Use <b style="color:rgba(255,153,68,0.8)">Synth Boost</b> to compensate. Keep <b style="color:rgba(255,153,68,0.8)">Monitor at 0</b> until you're ready — raising it adds your guitar to the output.
+          </div>
+
           <!-- 4 level controls -->
           <div class="pg4" style="margin-bottom:8px">
             <div class="ctrl">
@@ -351,8 +359,8 @@
             </div>
             <div class="ctrl">
               <label>Monitor</label>
-              <input type="range" id="gloop-monvol" min="0" max="100" value="80" oninput="document.getElementById('gloop-monvol-v').textContent=this.value; if(micMonitorGain) micMonitorGain.gain.value=this.value/100;">
-              <div class="dv" id="gloop-monvol-v">80</div>
+              <input type="range" id="gloop-monvol" min="0" max="100" value="0" oninput="document.getElementById('gloop-monvol-v').textContent=this.value; if(micMonitorGain) micMonitorGain.gain.value=this.value/100;">
+              <div class="dv" id="gloop-monvol-v">0</div>
             </div>
             <div class="ctrl">
               <label>Loop Vol</label>
@@ -364,6 +372,11 @@
               <input type="range" id="gloop-decay" min="0" max="100" value="100" oninput="document.getElementById('gloop-decay-v').textContent=this.value">
               <div class="dv" id="gloop-decay-v">100</div>
             </div>
+          </div>
+          <div class="ctrl" style="border-color:rgba(255,153,68,0.4)">
+            <label style="color:rgba(255,153,68,0.9)">Synth Boost</label>
+            <input type="range" id="gloop-boost" min="0" max="100" value="50" oninput="document.getElementById('gloop-boost-v').textContent=this.value; if(master){ const b=1+(this.value/100)*1.5; master.gain.setTargetAtTime(Math.min(b,2.5),ctx.currentTime,0.05); }">
+            <div class="dv" id="gloop-boost-v">50</div>
           </div>
 
           <!-- Bars — synced to main clock -->
@@ -1082,24 +1095,29 @@ async function gloopConnectDevice(deviceId){
     // VU taps raw mic signal
     micSource.connect(gloopAnalyser);
 
-    // ── Monitor path: direct low-latency pass-through ──────────────────────
-    // mic → micMonitorGain → masterEQ
-    // Completely separate from the loop — zero ScriptProcessor latency
+    // ── Monitor path ────────────────────────────────────────────────────────
+    // Starts at gain 0 (slider default) so no mic noise enters master chain
+    // until the user explicitly raises the Monitor knob.
     micMonitorGain=ctx.createGain();
-    micMonitorGain.gain.value=r('gloop-monvol')/100||0.8;
+    micMonitorGain.gain.value=r('gloop-monvol')/100; // 0 by default
     micSource.connect(micMonitorGain);
     micMonitorGain.connect(masterEQ);
 
-    // ── Recording path: mic → micInputGain → ScriptProcessor ───────────────
-    // ScriptProcessor only outputs loop playback (never the raw mic signal)
-    // so it cannot bleed into the master chain or affect other instruments
+    // ── Recording path ──────────────────────────────────────────────────────
     micInputGain=ctx.createGain();
     micInputGain.gain.value=r('gloop-inlvl')/100||0.8;
     micSource.connect(micInputGain);
     gloopNode=ctx.createScriptProcessor(2048,1,1);
     gloopNode.onaudioprocess=gloopProcess;
     micInputGain.connect(gloopNode);
-    gloopNode.connect(gloopOutGain); // loop playback → masterEQ
+    gloopNode.connect(gloopOutGain);
+
+    // ── iOS PlayAndRecord compensation ─────────────────────────────────────
+    // iOS switches audio session to PlayAndRecord when getUserMedia activates,
+    // which reduces output volume by ~6 dB. Compensate by boosting master gain.
+    // The 'Synth Boost' slider (gloop-boost) lets the user fine-tune this.
+    const boost=1+(r('gloop-boost')/100)*1.5; // 1.0 … 2.5
+    master.gain.setTargetAtTime(Math.min(master.gain.value*boost,2.5), ctx.currentTime, 0.1);
 
     document.getElementById('gloop-status').textContent='READY';
   }catch(err){
@@ -1178,6 +1196,20 @@ function gloopClear(){
   gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
   if(gloopOutGain) gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   updateGloopUI();
+}
+function gloopDisconnect(){
+  // Tear down mic, restore original master gain
+  if(gloopNode){ try{gloopNode.disconnect();}catch(e){} gloopNode=null; }
+  if(micMonitorGain){ try{micMonitorGain.disconnect();}catch(e){} micMonitorGain=null; }
+  if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
+  if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
+  if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
+  if(master) master.gain.setTargetAtTime(0.75, ctx.currentTime, 0.1); // restore default
+  // Show connect prompt again
+  const cr=document.getElementById('gloop-connect-row'), gc=document.getElementById('gloop-controls');
+  if(cr){ cr.style.display='flex'; cr.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT'; }
+  if(gc) gc.style.display='none';
+  gloopClear();
 }
 function updateGloopUI(){
   const has=gloopLen>0;
