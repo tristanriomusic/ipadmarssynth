@@ -187,6 +187,10 @@
     .chd-ctrl-lbl{ font-size:8px; font-weight:900; letter-spacing:2px; color:rgba(255,136,200,0.6); white-space:nowrap; }
     .chd-btn{ padding:7px 10px; border-radius:6px; border:1px solid rgba(255,136,200,0.25); background:rgba(255,136,200,0.07); color:rgba(255,136,200,0.6); font-size:8px; font-weight:900; cursor:pointer; }
     .chd-btn.on{ background:rgba(255,136,200,0.3); color:#fff; border-color:rgba(255,136,200,0.6); }
+    .chd-key{ padding:5px 7px; border-radius:5px; border:1px solid rgba(255,136,200,0.2); background:rgba(255,136,200,0.05); color:rgba(255,136,200,0.5); font-size:8px; font-weight:900; cursor:pointer; }
+    .chd-key.on{ background:rgba(255,136,200,0.28); color:#fff; border-color:rgba(255,136,200,0.55); }
+    .chd-mode{ padding:5px 8px; border-radius:5px; border:1px solid rgba(255,136,200,0.2); background:rgba(255,136,200,0.05); color:rgba(255,136,200,0.5); font-size:7.5px; font-weight:900; cursor:pointer; letter-spacing:0.5px; }
+    .chd-mode.on{ background:rgba(255,136,200,0.28); color:#fff; border-color:rgba(255,136,200,0.55); }
   </style>
 </head>
 <body>
@@ -393,10 +397,25 @@
           <!-- VU meter -->
           <div class="gloop-vu-wrap"><canvas id="gloop-vu"></canvas></div>
 
+          <!-- FX sends -->
+          <div class="pg2" style="margin-bottom:8px">
+            <div class="ctrl fx-ctrl">
+              <label>→ Rev</label>
+              <input type="range" id="gloop-rev-send" min="0" max="100" value="0" oninput="document.getElementById('gloop-rev-send-v').textContent=this.value; if(gloopRevSend) gloopRevSend.gain.value=this.value/100;">
+              <div class="dv" id="gloop-rev-send-v">0</div>
+            </div>
+            <div class="ctrl fx-ctrl">
+              <label>→ Dly</label>
+              <input type="range" id="gloop-dly-send" min="0" max="100" value="0" oninput="document.getElementById('gloop-dly-send-v').textContent=this.value; if(gloopDlySend) gloopDlySend.gain.value=this.value/100;">
+              <div class="dv" id="gloop-dly-send-v">0</div>
+            </div>
+          </div>
+
           <!-- Transport -->
           <div class="looper-btns" style="margin-top:8px">
             <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
             <button class="loop-btn play" id="gloop-play"  onclick="gloopToggle()"  disabled>▶ LOOP</button>
+            <button class="loop-btn"      id="gloop-rev"   onclick="gloopRevToggle()">◀ REV</button>
             <button class="loop-btn"      id="gloop-clear" onclick="gloopClear()"   disabled>✕ CLEAR</button>
           </div>
           <div class="loop-status" id="gloop-status">READY</div>
@@ -659,6 +678,41 @@
           <button class="chd-btn"    onclick="setChordBars(2,this)">2</button>
           <button class="chd-btn"    onclick="setChordBars(4,this)">4</button>
         </div>
+        <!-- Key / Mode selector (hidden until SCALE mode activated) -->
+        <div class="chd-ctrl-row" style="margin-top:2px">
+          <span class="chd-ctrl-lbl">SOURCE</span>
+          <button class="chd-btn on" id="chd-mode-custom" onclick="setChordGenMode('custom',this)">CUSTOM</button>
+          <button class="chd-btn"    id="chd-mode-scale"  onclick="setChordGenMode('scale',this)">SCALE</button>
+        </div>
+        <div id="chd-scale-controls" style="display:none;margin-bottom:6px">
+          <div class="chd-ctrl-row" style="margin-top:6px;flex-wrap:wrap;gap:4px">
+            <span class="chd-ctrl-lbl" style="width:100%;margin-bottom:2px">KEY</span>
+            <button class="chd-key" data-key="C"  onclick="setChordKey('C',this)">C</button>
+            <button class="chd-key" data-key="C#" onclick="setChordKey('C#',this)">C#</button>
+            <button class="chd-key" data-key="D"  onclick="setChordKey('D',this)">D</button>
+            <button class="chd-key" data-key="D#" onclick="setChordKey('D#',this)">D#</button>
+            <button class="chd-key" data-key="E"  onclick="setChordKey('E',this)">E</button>
+            <button class="chd-key" data-key="F"  onclick="setChordKey('F',this)">F</button>
+            <button class="chd-key" data-key="F#" onclick="setChordKey('F#',this)">F#</button>
+            <button class="chd-key" data-key="G"  onclick="setChordKey('G',this)">G</button>
+            <button class="chd-key" data-key="G#" onclick="setChordKey('G#',this)">G#</button>
+            <button class="chd-key" data-key="A"  onclick="setChordKey('A',this)">A</button>
+            <button class="chd-key" data-key="A#" onclick="setChordKey('A#',this)">A#</button>
+            <button class="chd-key" data-key="B"  onclick="setChordKey('B',this)">B</button>
+          </div>
+          <div class="chd-ctrl-row" style="margin-top:6px;flex-wrap:wrap;gap:4px">
+            <span class="chd-ctrl-lbl" style="width:100%;margin-bottom:2px">SCALE</span>
+            <button class="chd-mode" data-smode="Ionian"   onclick="setChordScaleMode('Ionian',this)">Ionian</button>
+            <button class="chd-mode" data-smode="Dorian"   onclick="setChordScaleMode('Dorian',this)">Dorian</button>
+            <button class="chd-mode" data-smode="Phrygian" onclick="setChordScaleMode('Phrygian',this)">Phrygian</button>
+            <button class="chd-mode" data-smode="Lydian"   onclick="setChordScaleMode('Lydian',this)">Lydian</button>
+            <button class="chd-mode" data-smode="Mixolyd." onclick="setChordScaleMode('Mixolyd.',this)">Mixolyd.</button>
+            <button class="chd-mode on" data-smode="Aeolian" onclick="setChordScaleMode('Aeolian',this)">Aeolian</button>
+            <button class="chd-mode" data-smode="Locrian"  onclick="setChordScaleMode('Locrian',this)">Locrian</button>
+            <button class="chd-mode" data-smode="Harm Min" onclick="setChordScaleMode('Harm Min',this)">Harm Min</button>
+            <button class="chd-mode" data-smode="Mel Min"  onclick="setChordScaleMode('Mel Min',this)">Mel Min</button>
+          </div>
+        </div>
         <div class="chd-row" id="chdRow"></div>
         <div style="font-size:7px;color:rgba(255,136,200,0.4);letter-spacing:1px;text-align:center;margin-top:2px">TAP STEP TO CYCLE CHORD  ·  GLOWING = PLAYING</div>
       </div>
@@ -791,6 +845,76 @@ let chordSeqLen=4, chordBarsPerStep=1;
 let swingAmount=0;      // 0=no swing, 1=heavy swing (~33% of step length)
 let chaosMutateRate=0;  // 0=stable, 1=mutate a random pattern every bar
 const CHORD_SEQ_DATA=[0,2,3,4, 0,2,5,1]; // Em9 Cmaj7 Asus2 Dmaj9 Em9 Cmaj7 Amin Fmaj
+const CHORD_SEQ_CUSTOM=[0,2,3,4, 0,2,5,1]; // original sequence — restored on CUSTOM mode
+
+// ── SCALE-BASED CHORD GENERATION ──────────────────
+let chordGenMode='custom', chordKey='C', chordScaleMode='Aeolian';
+const SCALE_MODES={
+  'Ionian':   [0,2,4,5,7,9,11],
+  'Dorian':   [0,2,3,5,7,9,10],
+  'Phrygian': [0,1,3,5,7,8,10],
+  'Lydian':   [0,2,4,6,7,9,11],
+  'Mixolyd.': [0,2,4,5,7,9,10],
+  'Aeolian':  [0,2,3,5,7,8,10],
+  'Locrian':  [0,1,3,5,6,8,10],
+  'Harm Min': [0,2,3,5,7,8,11],
+  'Mel Min':  [0,2,3,5,7,9,11],
+};
+const NOTE_NAMES_CHD=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_SEMIS_CHD={'C':0,'C#':1,'D':2,'D#':3,'E':4,'F':5,'F#':6,'G':7,'G#':8,'A':9,'A#':10,'B':11};
+
+function buildScaleChords(key, mode){
+  const C2=65.406;
+  const rootSemi=NOTE_SEMIS_CHD[key]||0;
+  const ints=SCALE_MODES[mode]; if(!ints) return;
+  const newChords=[];
+  for(let d=0;d<7;d++){
+    const degSemi=rootSemi+ints[d];
+    const rootF=C2*Math.pow(2,degSemi/12);
+    // Intervals within the scale from this degree (always positive, wraps octave)
+    const si=(a,b)=>{ let v=ints[(a+b)%7]-ints[a]; return v<=0?v+12:v; };
+    const i3=si(d,2), i5=si(d,4), i7=si(d,6);
+    const f3=rootF*Math.pow(2,i3/12);
+    const f5=rootF*Math.pow(2,i5/12);
+    const f7=rootF*Math.pow(2,i7/12);
+    const qual=i3===3?(i5===6?'°':'m'):'';
+    newChords.push({name:NOTE_NAMES_CHD[(rootSemi+ints[d])%12]+qual, notes:[rootF,f3,f5,f7]});
+  }
+  ARP_CHORDS.splice(0,ARP_CHORDS.length,...newChords);
+  for(let i=0;i<8;i++) CHORD_SEQ_DATA[i]=i%7;
+  currentChordIdx=CHORD_SEQ_DATA[chordSeqStep]||0;
+  const row=document.getElementById('chdRow');
+  if(row){ row.innerHTML=''; buildChordSeq(); }
+}
+
+function setChordGenMode(mode,btn){
+  chordGenMode=mode;
+  document.querySelectorAll('#chd-mode-custom,#chd-mode-scale').forEach(b=>b.classList.toggle('on',b===btn));
+  const sc=document.getElementById('chd-scale-controls');
+  if(sc) sc.style.display=mode==='scale'?'block':'none';
+  if(mode==='custom'){
+    // Restore original 6 custom chords
+    ARP_CHORDS.splice(0,ARP_CHORDS.length,...CHORD_CUSTOM.map(c=>({name:c.name,notes:[...c.notes]})));
+    for(let i=0;i<8;i++) CHORD_SEQ_DATA[i]=CHORD_SEQ_CUSTOM[i];
+    currentChordIdx=CHORD_SEQ_DATA[chordSeqStep]||0;
+    const row=document.getElementById('chdRow');
+    if(row){ row.innerHTML=''; buildChordSeq(); }
+  } else {
+    buildScaleChords(chordKey, chordScaleMode);
+  }
+}
+
+function setChordKey(key,btn){
+  chordKey=key;
+  document.querySelectorAll('.chd-key').forEach(b=>b.classList.toggle('on',b===btn));
+  if(chordGenMode==='scale') buildScaleChords(chordKey, chordScaleMode);
+}
+
+function setChordScaleMode(m,btn){
+  chordScaleMode=m;
+  document.querySelectorAll('.chd-mode').forEach(b=>b.classList.toggle('on',b===btn));
+  if(chordGenMode==='scale') buildScaleChords(chordKey, chordScaleMode);
+}
 
 // ── PER-INSTRUMENT 3-BAND EQ ───────────────────────
 // ── PERSISTENT PER-INSTRUMENT EQ CHAINS ───────────────────────────────
@@ -983,12 +1107,15 @@ let gloopRec=false;
 let gloopPlay=false;
 let gloopOverdub=false;
 let gloopFinalizing=false;
+let gloopReverse=false;   // reverse playback direction
 let gloopSamples=[];      // array of Float32Array chunks during first-pass recording
 let gloopTargetLen=0;     // samples to record (bars × 4 beats × sr)
 let gloopRecStart=0;      // ctx.currentTime when recording should begin
 let gloopBars=1;
 let gloopNode=null;
 let gloopOutGain=null;    // loop playback volume → masterEQ
+let gloopRevSend=null;    // send to reverb bus
+let gloopDlySend=null;    // send to delay bus
 let gloopAnalyser=null;
 let gloopAnalyserBuf=null;
 let micStream=null;
@@ -1008,6 +1135,9 @@ function initGloop(){
   // This keeps iOS in Playback audio session mode (higher quality/volume).
   gloopOutGain=ctx.createGain(); gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   gloopOutGain.connect(masterEQ);
+  // Rev/Dly sends — connect from loop output to global fx buses
+  gloopRevSend=ctx.createGain(); gloopRevSend.gain.value=0; gloopOutGain.connect(gloopRevSend); gloopRevSend.connect(revPre);
+  gloopDlySend=ctx.createGain(); gloopDlySend.gain.value=0; gloopOutGain.connect(gloopDlySend); gloopDlySend.connect(delNode);
   gloopAnalyser=ctx.createAnalyser(); gloopAnalyser.fftSize=256;
   gloopAnalyserBuf=new Uint8Array(gloopAnalyser.frequencyBinCount);
   // Do NOT call gloopEnumDevices() here
@@ -1172,7 +1302,7 @@ function gloopProcess(e){
       if(gloopOverdub && gloopRec)
         gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain + inp[i]*inLvl;
       out[i]=gloopBuffer[gloopPos];
-      gloopPos=(gloopPos+1)%gloopLen;
+      gloopPos=gloopReverse?(gloopPos-1+gloopLen)%gloopLen:(gloopPos+1)%gloopLen;
     }
   } else {
     out.fill(0); // idle — silence out (monitor is separate direct path)
@@ -1214,6 +1344,10 @@ function gloopClear(){
   gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
   if(gloopOutGain) gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   updateGloopUI();
+}
+function gloopRevToggle(){
+  gloopReverse=!gloopReverse;
+  document.getElementById('gloop-rev').classList.toggle('active',gloopReverse);
 }
 function gloopDisconnect(){
   // Tear down mic, restore original master gain
@@ -2145,6 +2279,8 @@ const ARP_CHORDS=[
   {name:'Dmaj9', notes:[73.42,  92.50,110.00,164.81]},
   {name:'Amin',  notes:[110.00,130.81,164.81,220.00]},
 ];
+// Snapshot of the original custom chords — restored when user switches back from SCALE mode
+const CHORD_CUSTOM=ARP_CHORDS.map(c=>({name:c.name,notes:[...c.notes]}));
 const ARP_PATS=['UP','DOWN','↑↓','RAND'];
 function arpChordIdx(){ return Math.min(ARP_CHORDS.length-1,Math.floor(r('ARP-Chord')/(100/ARP_CHORDS.length))); }
 function arpFreq(){
