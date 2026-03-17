@@ -399,6 +399,27 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <canvas id="padCanvas"></canvas>
   </div>
 
+  <!-- PAD LOOPER — always visible, records from XS Nebula, Samplerizer and Hologram -->
+  <div class="looper" style="margin:8px 3vw 4px">
+    <div class="looper-btns">
+      <button class="loop-btn rec"  id="loop-rec"  onclick="loopRecord()">● REC</button>
+      <button class="loop-btn play" id="loop-play" onclick="loopToggle()" disabled>▶ LOOP</button>
+      <button class="loop-btn"      id="loop-clear" onclick="loopClear()">✕ CLEAR</button>
+    </div>
+    <div class="loop-bars">
+      <button class="loop-bar-btn on" data-bars="1" onclick="setLoopBars(1,this)">1 BAR</button>
+      <button class="loop-bar-btn"    data-bars="2" onclick="setLoopBars(2,this)">2 BAR</button>
+      <button class="loop-bar-btn"    data-bars="4" onclick="setLoopBars(4,this)">4 BAR</button>
+      <button class="loop-bar-btn"    data-bars="8" onclick="setLoopBars(8,this)">8 BAR</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:7px">
+      <label style="font-size:8px;color:#aaa;font-weight:900;letter-spacing:1.5px;white-space:nowrap">DECAY</label>
+      <input type="range" id="loop-decay" min="0" max="100" value="72" style="flex:1" oninput="document.getElementById('loop-decay-v').textContent=this.value">
+      <div style="font-size:9px;color:#aaa;min-width:22px;text-align:right" id="loop-decay-v">72</div>
+    </div>
+    <div class="loop-status" id="loop-status">EMPTY</div>
+  </div>
+
   <!-- POPUP BACKDROP -->
   <div id="popup-bg" onclick="closeCirclePopup()"></div>
 
@@ -578,27 +599,6 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         </div>
       </div>
       <div class="drawer-body">
-        <!-- LOOPER (always visible) -->
-        <div class="looper">
-          <div class="looper-btns">
-            <button class="loop-btn rec"  id="loop-rec"  onclick="loopRecord()">● REC</button>
-            <button class="loop-btn play" id="loop-play" onclick="loopToggle()" disabled>▶ LOOP</button>
-            <button class="loop-btn"      id="loop-clear" onclick="loopClear()">✕ CLEAR</button>
-          </div>
-          <div class="loop-bars">
-            <button class="loop-bar-btn on" data-bars="1" onclick="setLoopBars(1,this)">1 BAR</button>
-            <button class="loop-bar-btn"    data-bars="2" onclick="setLoopBars(2,this)">2 BAR</button>
-            <button class="loop-bar-btn"    data-bars="4" onclick="setLoopBars(4,this)">4 BAR</button>
-            <button class="loop-bar-btn"    data-bars="8" onclick="setLoopBars(8,this)">8 BAR</button>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:7px">
-            <label style="font-size:8px;color:#aaa;font-weight:900;letter-spacing:1.5px;white-space:nowrap">DECAY</label>
-            <input type="range" id="loop-decay" min="0" max="100" value="100" style="flex:1" oninput="document.getElementById('loop-decay-v').textContent=this.value">
-            <div style="font-size:9px;color:#aaa;min-width:22px;text-align:right" id="loop-decay-v">100</div>
-          </div>
-          <div class="loop-status" id="loop-status">EMPTY</div>
-        </div>
-
         <!-- PRESET MODE (always visible) -->
         <div id="X-preset-section">
           <div class="pg3">
