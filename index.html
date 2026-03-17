@@ -1034,6 +1034,7 @@ function updateChordUI(){
   }
   const cl=document.getElementById('arpChordLbl');
   if(cl) cl.textContent=ARP_CHORDS[currentChordIdx].name;
+  updatePadVoiceForChord(); // glide sustained pad note to new chord
 }
 function setChordLen(n,btn){
   chordSeqLen=n;
@@ -1250,6 +1251,67 @@ function wireSliders(){
   document.getElementById('bpmSlider').addEventListener('input',e=>setBpm(+e.target.value));
 }
 
+// ═══ CHORD-QUANTIZED PAD PITCH ════════════════════
+// Map X position (0–1) to a note in the current chord across 3 octaves
+function chordFreqFromX(px){
+  const base=ARP_CHORDS[currentChordIdx].notes;
+  const full=[];
+  for(let o=0;o<3;o++) base.forEach(f=>full.push(f*Math.pow(2,o)));
+  full.sort((a,b)=>a-b);
+  const idx=Math.round(px*(full.length-1));
+  return full[Math.max(0,Math.min(full.length-1,idx))];
+}
+
+// ═══ SUSTAINED PAD VOICE ══════════════════════════
+// One persistent oscillator per touch — glides between chord notes, rings through chord changes
+let padVoice=null;
+
+function startPadVoice(px,py){
+  stopPadVoice(true);
+  if(!ctx||muted.X) return;
+  const vol=n('X-Vol')*(0.25+(1-py)*0.75); if(vol<0.01) return;
+  const freq=chordFreqFromX(px);
+  const o1=ctx.createOscillator(), o2=ctx.createOscillator();
+  const g2=ctx.createGain(), filt=ctx.createBiquadFilter(), env=ctx.createGain();
+  o1.type='sine'; o1.frequency.value=freq;
+  o2.type='sine'; o2.frequency.value=freq*2; g2.gain.value=0.28; // soft octave above
+  filt.type='lowpass'; filt.frequency.value=500+n('X-Shim')*3500;
+  env.gain.value=0;
+  env.gain.linearRampToValueAtTime(vol*0.44, ctx.currentTime+0.09); // smooth attack
+  o1.connect(filt); o2.connect(g2); g2.connect(filt); filt.connect(env);
+  send(env, Math.min(1,n('X-Rev')*1.2), n('X-Dly')*0.5);
+  o1.start(); o2.start();
+  padVoice={o1,o2,g2,filt,env,px};
+}
+function updatePadVoice(px,py){
+  if(!padVoice||!ctx) return;
+  const freq=chordFreqFromX(px);
+  const vol=n('X-Vol')*(0.25+(1-py)*0.75);
+  padVoice.o1.frequency.setTargetAtTime(freq,    ctx.currentTime,0.05);
+  padVoice.o2.frequency.setTargetAtTime(freq*2,  ctx.currentTime,0.05);
+  padVoice.env.gain.setTargetAtTime(vol*0.44,    ctx.currentTime,0.05);
+  padVoice.px=px;
+}
+function stopPadVoice(instant){
+  if(!padVoice||!ctx) return;
+  const v=padVoice; padVoice=null;
+  if(instant){
+    v.env.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+    v.o1.stop(ctx.currentTime+0.1); v.o2.stop(ctx.currentTime+0.1);
+  } else {
+    const rel=0.5+n('X-Rel')*1.8;
+    v.env.gain.setTargetAtTime(0, ctx.currentTime, rel*0.28);
+    v.o1.stop(ctx.currentTime+rel*1.5); v.o2.stop(ctx.currentTime+rel*1.5);
+  }
+}
+// Called when chord changes — glides the sustained note to the new chord's equivalent
+function updatePadVoiceForChord(){
+  if(!padVoice||!ctx) return;
+  const freq=chordFreqFromX(padVoice.px);
+  padVoice.o1.frequency.setTargetAtTime(freq,   ctx.currentTime,0.08);
+  padVoice.o2.frequency.setTargetAtTime(freq*2, ctx.currentTime,0.08);
+}
+
 // ═══ GRAIN SPAWNER ════════════════════════════════
 // Spawn a single musical oscillator voice
 function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly){
@@ -1268,12 +1330,12 @@ function spawnGrainAt(px, py, schedT){
   const vol=n('X-Vol'); if(vol<0.01||muted.X) return;
   const jitter  = n('X-Jitter')*800;
   const grain   = n('X-Grain');
-  const harm    = 1+n('X-Harm')*2.5;
+  const harm    = n('X-Harm');          // 0–1, used within grain modes for harmonic layering
   const shim    = n('X-Shim');
   const spread  = n('X-Width');
   const chorus  = n('X-Chorus');
   const smear   = n('X-Smear')*1.2;
-  const baseFreq= quantizeNebulaFreq(px)*harm;
+  const baseFreq= chordFreqFromX(px);   // always in tune with current chord
   const amp     = vol*(0.25+(1-py)*0.75);
   const toRev   = n('X-Rev');
   const toDly   = n('X-Dly');
@@ -1934,11 +1996,11 @@ function instMute(key,btn){
   } else {
     muted[key]=!muted[key];
     btn.classList.toggle('muted',muted[key]);
-    // Sync master DRMS button
     if(['K','SN','D','H'].includes(key)){
       const allMuted=muted.K&&muted.SN&&muted.D&&muted.H;
       const mb=document.getElementById('muteDRMS'); if(mb) mb.classList.toggle('muted',allMuted);
     }
+    if(key==='X' && muted.X) stopPadVoice(true);
   }
 }
 
@@ -1970,12 +2032,20 @@ function drawCanvas(){
   ctx2.clearRect(0,0,padW,padH);
 
   // ── Nebula zone bands ──────────────────────────
+  // Zone bands (decorative colours) + live chord note names as labels
+  const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
   NEBULA_ZONES.forEach((z,i)=>{
     const x0=i/NEBULA_ZONES.length*padW, x1=(i+1)/NEBULA_ZONES.length*padW;
     ctx2.fillStyle=z.col; ctx2.fillRect(x0,0,x1-x0,padH);
     if(i>0){ ctx2.strokeStyle='rgba(255,255,255,0.1)'; ctx2.lineWidth=0.5; ctx2.beginPath(); ctx2.moveTo(x0,0); ctx2.lineTo(x0,padH); ctx2.stroke(); }
-    ctx2.fillStyle=ZONE_LABEL_COLS[i]; ctx2.font='bold 7px Inter,sans-serif'; ctx2.textAlign='center';
-    ctx2.fillText(z.name,(x0+x1)/2,padH-6);
+    // Show chord note at this X position
+    if(typeof chordFreqFromX==='function'){
+      const freq=chordFreqFromX((i+0.5)/NEBULA_ZONES.length);
+      const midi=Math.round(12*Math.log2(freq/440)+69);
+      const lbl=NOTE_NAMES[((midi%12)+12)%12]+(Math.floor(midi/12)-1);
+      ctx2.fillStyle=ZONE_LABEL_COLS[i]; ctx2.font='bold 7px Inter,sans-serif'; ctx2.textAlign='center';
+      ctx2.fillText(lbl,(x0+x1)/2,padH-6);
+    }
   });
 
   const COLS={shimmer:'rgba(0,242,255,0.22)',abyss:'rgba(100,0,220,0.28)',crystal:'rgba(200,100,255,0.22)',cloud:'rgba(80,160,255,0.18)',pulse:'rgba(255,220,0,0.22)'};
@@ -2233,12 +2303,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildPresets('D');  buildPresets('H');
 
   const pad=document.getElementById('xPad');
-  pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); },{passive:false});
-  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); },{passive:false});
-  pad.addEventListener('touchend',  ()=>{ padActive=false; });
-  pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); });
-  pad.addEventListener('mousemove', e=>{ if(padActive) padPos(e); });
-  pad.addEventListener('mouseup',   ()=>{ padActive=false; });
+  pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); startPadVoice(padX,padY); },{passive:false});
+  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); updatePadVoice(padX,padY); },{passive:false});
+  pad.addEventListener('touchend',  ()=>{ padActive=false; stopPadVoice(false); });
+  pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); startPadVoice(padX,padY); });
+  pad.addEventListener('mousemove', e=>{ if(padActive){ padPos(e); updatePadVoice(padX,padY); } });
+  pad.addEventListener('mouseup',   ()=>{ padActive=false; stopPadVoice(false); });
   window.addEventListener('resize',()=>{
     if(canvas){ const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; }
     if(omniCanvas2){ omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight; placeOmniOrbs(); }
