@@ -1387,53 +1387,41 @@ function updateSessionRecUI(){
 }
 
 // ═══ SEQ TAP RECORDER ═════════════════════════════
-let seqRecActive=false, seqRecEvents=[], seqRecLoopLen=32; // 32 = 2 bars of 16ths
-let seqRecPlayback=false;
+let seqRecActive=false;
 
 function seqRecToggle(){
-  if(!seqRecActive && !seqRecPlayback){
-    // Start recording
-    seqRecEvents=[]; seqRecActive=true; seqRecPlayback=false;
-    document.getElementById('seqrec-btn').classList.add('active');
-    document.getElementById('seqrec-btn').textContent='⊙ RECORDING...';
-  } else if(seqRecActive){
-    // Stop recording, start playback
-    seqRecActive=false; seqRecPlayback=seqRecEvents.length>0;
-    const btn=document.getElementById('seqrec-btn');
-    btn.classList.toggle('active',seqRecPlayback);
-    btn.textContent=seqRecPlayback?'⊙ PLAYING':'⊙ SEQ REC';
-  } else {
-    // Stop playback
-    seqRecPlayback=false;
-    const btn=document.getElementById('seqrec-btn');
-    btn.classList.remove('active');
-    btn.textContent='⊙ SEQ REC';
-    seqRecEvents=[];
-  }
+  seqRecActive=!seqRecActive;
+  const btn=document.getElementById('seqrec-btn');
+  btn.classList.toggle('active',seqRecActive);
+  btn.textContent=seqRecActive?'⊙ RECORDING...':'⊙ SEQ REC';
 }
 
 function seqRecTapAndPlay(inst){
-  if(ctx) fireSeqRecInst(inst, ctx.currentTime+0.01);
+  // Play immediately for feedback
+  if(ctx){
+    const t=ctx.currentTime+0.01;
+    switch(inst){
+      case 'K':   playKick(t); break;
+      case 'SN':  playSnare(t); break;
+      case 'H':   playH(t); break;
+      case 'D':   playD(t); break;
+      case 'B':   playBassArpNote(t, bassArpFreq(), (60/bpm)*0.25); break;
+      case 'ARP': playArpNote(t, arpFreq(), (60/bpm)*arpDiv); break;
+    }
+  }
+  // Write into the real sequencer grid
   seqRecTap(inst);
 }
 
 function seqRecTap(inst){
   if(!seqRecActive) return;
   const step=isPlaying?seqStep:0;
-  if(!seqRecEvents.some(e=>e.inst===inst&&e.step===step))
-    seqRecEvents.push({inst,step});
-}
-
-function fireSeqRecInst(inst,t){
-  switch(inst){
-    case 'K':   playKick(t); break;
-    case 'SN':  playSnare(t); break;
-    case 'H':   playH(t); break;
-    case 'DR':  playDR(t); break;
-    case 'D':   playD(t); break;
-    case 'B':   playBassArpNote(t, bassArpFreq(), (60/bpm)*0.25); break;
-    case 'ARP': playArpNote(t, arpFreq(), (60/bpm)*arpDiv); break;
-  }
+  const grids=INST_CFG[inst]; if(!grids) return;
+  grids.forEach(({s,cls,gid})=>{
+    s[step]=1;
+    const grid=document.getElementById(gid); if(!grid) return;
+    const el=grid.querySelector('.s-'+step); if(el) el.classList.add(cls);
+  });
 }
 
 // ═══ INSTRUMENT CIRCLES ═══════════════════════════
@@ -3003,10 +2991,6 @@ function loop(){
       if(snS[seqStep]) playSnare(nextT+swOff);
       if(dS[seqStep])  playD(nextT+swOff);
       if(hS[seqStep])  playH(nextT+swOff);
-      // Seq rec playback
-      if(seqRecPlayback && seqRecEvents.length){
-        seqRecEvents.filter(e=>e.step===seqStep).forEach(e=>fireSeqRecInst(e.inst,nextT+swOff));
-      }
       nextT+=sl;
       const wasLast=(seqStep===15);
       seqStep=(seqStep+1)%16;
