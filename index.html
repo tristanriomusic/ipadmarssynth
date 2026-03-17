@@ -1032,42 +1032,47 @@ async function gloopEnumDevices(){
   const outputs=all.filter(d=>d.kind==='audiooutput');
 
   // ── Input dropdown ──
+  // Show every available input; auto-select the first non-built-in device.
+  // No name regex — GP5 / other interfaces show as "External Microphone" on iOS.
   const sel=document.getElementById('gloop-device');
   sel.innerHTML='';
-  let bestIn='default';
+  let bestIn=null;
   inputs.forEach((d,i)=>{
     const opt=document.createElement('option');
-    opt.value=d.deviceId; opt.textContent=d.label||`Input ${i+1}`;
-    if(d.deviceId!=='default' && !/built.?in|internal/i.test(d.label) &&
-       /focusrite|scarlett|roland|motu|steinberg|apollo|volt|ur\d|id\d|interface|audio/i.test(d.label))
-      bestIn=d.deviceId;
+    opt.value=d.deviceId;
+    opt.textContent=d.label||(d.deviceId==='default'?'Default Input':`Input ${i+1}`);
     sel.appendChild(opt);
+    // Prefer first non-default, non-built-in entry (likely the interface)
+    if(!bestIn && d.deviceId!=='default' && !/built.?in|internal/i.test(d.label))
+      bestIn=d.deviceId;
   });
-  if(bestIn==='default'){
-    const ext=inputs.find(d=>d.deviceId!=='default'&&!/built.?in|internal/i.test(d.label));
-    if(ext) bestIn=ext.deviceId;
-  }
-  sel.value=bestIn;
+  // Fall back to first input if nothing external found
+  if(!bestIn && inputs.length) bestIn=inputs[0].deviceId;
+  if(bestIn) sel.value=bestIn;
 
   // ── Output dropdown ──
+  // ctx.setSinkId is Chrome/Edge only — not available on iOS Safari.
+  // On iOS, output routing is controlled by the system (connect interface → iOS routes there).
   const outSel=document.getElementById('gloop-outdevice');
   outSel.innerHTML='';
-  if(outputs.length && ctx.setSinkId){
+  if(ctx.setSinkId && outputs.length){
     let bestOut='default';
     outputs.forEach((d,i)=>{
       const opt=document.createElement('option');
-      opt.value=d.deviceId; opt.textContent=d.label||`Output ${i+1}`;
-      if(d.deviceId!=='default' && !/built.?in|internal/i.test(d.label) &&
-         /focusrite|scarlett|roland|motu|steinberg|apollo|volt|ur\d|id\d|interface|audio/i.test(d.label))
+      opt.value=d.deviceId;
+      opt.textContent=d.label||(d.deviceId==='default'?'Default Output':`Output ${i+1}`);
+      if(!bestOut||( d.deviceId!=='default'&&!/built.?in|internal/i.test(d.label)))
         bestOut=d.deviceId;
       outSel.appendChild(opt);
     });
     outSel.value=bestOut;
     await gloopSetOutput(bestOut);
   } else {
+    // iOS — output follows system audio routing (interface auto-selected by iOS)
     const opt=document.createElement('option');
-    opt.textContent='System Default'; opt.value='default';
-    outSel.appendChild(opt); outSel.disabled=true;
+    opt.textContent='System routing (iOS)'; opt.value='';
+    outSel.appendChild(opt);
+    outSel.disabled=true; outSel.style.opacity='0.35';
   }
 
   await gloopConnectDevice(bestIn);
@@ -1086,8 +1091,10 @@ async function gloopConnectDevice(deviceId){
   if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
   if(micStream) micStream.getTracks().forEach(t=>t.stop());
   try{
+    // Use {ideal} not {exact} — exact throws a hard error if the ID has changed
+    // (iOS reassigns deviceIds between sessions). ideal tries the device but falls back.
     micStream=await navigator.mediaDevices.getUserMedia({audio:{
-      deviceId:deviceId?{exact:deviceId}:undefined,
+      deviceId:deviceId?{ideal:deviceId}:undefined,
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
     }});
     micSource=ctx.createMediaStreamSource(micStream);
