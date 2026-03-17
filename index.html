@@ -1188,6 +1188,7 @@ let padAssign='xs'; // 'xs' | 'sampler'
 let samplerBuf=null, samplerSrc=null, samplerFilter=null, samplerMicRec=null, samplerMicChunks=[], samplerMicActive=false;
 const smpS=new Array(16).fill(0);
 let smpPadMode=false, smpSeqSrc=null, smpSeqGain=null, smpSeqFilter=null;
+let smpPadLockX=null, smpPadLockY=null; // last touched pad position — persists between steps
 let smpBeatCount=0;
 let lastHoloGrain=0, holoPresetIdx=0;
 
@@ -2494,6 +2495,7 @@ function _smpFilterFreq(py){ return 150*Math.pow(120, 1-py); }
 function samplerStart(px,py){
   if(!samplerBuf||!ctx) return;
   samplerStop();
+  smpPadLockX=px; smpPadLockY=py; // lock this position for future sequencer steps
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
     if(t<=getLoopLen()+0.05) loopEvents.push({x:px,y:py,t,gen:0,mode:'sampler'});
@@ -2577,6 +2579,7 @@ function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur, fil
 }
 function samplerUpdate(px,py){
   if(!ctx) return;
+  smpPadLockX=px; smpPadLockY=py; // keep lock current while dragging
   if(samplerFilter) samplerFilter.frequency.setTargetAtTime(_smpFilterFreq(py),ctx.currentTime,0.03);
 }
 function samplerStop(){
@@ -2703,9 +2706,10 @@ function buildSmpGrid(cid,state,cls){
 // ─── SAMPLER SEQUENCER ────────────────────────────
 function playSamplerStep(t){
   if(!samplerBuf||!ctx||muted.SMP) return;
-  // If pad ctrl is active, X/Y override start position and pitch
-  const startPct = smpPadMode&&padActive ? padX : r('SMP-Start')/100;
-  const pitch     = smpPadMode&&padActive ? (0.5-padY)*2.0 : (r('SMP-Pitch')-50)/50;  // ±1 oct
+  // Use locked pad position if set (persists after lifting finger), else fall back to drawer sliders
+  const useLock = smpPadMode && smpPadLockX!=null;
+  const startPct = useLock ? smpPadLockX : r('SMP-Start')/100;
+  const pitch     = (r('SMP-Pitch')-50)/50; // pitch always from drawer slider
   const rate = Math.pow(2, pitch);
   const start = Math.min(startPct * samplerBuf.duration, samplerBuf.duration-0.001);
   const endPct = r('SMP-End')/100;
@@ -2731,7 +2735,7 @@ function playSamplerStep(t){
   // Filter: PAD CTRL Y controls cutoff live, otherwise fully open
   const seqFilt=ctx.createBiquadFilter();
   seqFilt.type='lowpass';
-  seqFilt.frequency.value=(smpPadMode&&padActive)?_smpFilterFreq(padY):18000;
+  seqFilt.frequency.value=(useLock)?_smpFilterFreq(smpPadLockY):18000;
   seqFilt.Q.value=1.2;
 
   const g=ctx.createGain(); g.gain.value=vol;
