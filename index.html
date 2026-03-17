@@ -1142,7 +1142,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <button class="smp-pad-mode-btn" id="smpPadModeBtn" onclick="toggleSmpPadMode()">◈ PAD CTRL OFF</button>
         </div>
         <div id="smpPadModeInfo" style="font-size:8px;color:rgba(168,85,247,0.5);letter-spacing:.8px;margin-bottom:10px;display:none">
-          PAD ACTIVE — X: POSITION · Y: PITCH · modulates sequenced sample in real-time
+          PAD ACTIVE — X: POSITION · Y: FILTER CUTOFF · modulates sequenced sample in real-time
         </div>
 
         <div class="sec">SAMPLE</div>
@@ -1150,23 +1150,17 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span id="smpDrawerName" style="font-size:8px;color:rgba(168,85,247,0.65);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">— no sample —</span>
         </div>
 
-        <div class="pg2" style="margin-bottom:10px">
+        <div class="sec">PLAYBACK</div>
+        <div class="pg4">
           <div class="ctrl"><label>Vol</label>  <input type="range" id="SMP-Vol"   min="0" max="100" value="75" oninput="applyFX('SMP-Vol',this.value)"><div class="dv" id="SMP-Vol-v">75</div></div>
           <div class="ctrl"><label>Pitch</label><input type="range" id="SMP-Pitch" min="0" max="100" value="50"><div class="dv" id="SMP-Pitch-v" style="font-size:8px">0st</div></div>
+          <div class="ctrl"><label>Start</label><input type="range" id="SMP-Start" min="0" max="100" value="0"   oninput="document.getElementById('SMP-Start-v').textContent=this.value+'%'"><div class="dv" id="SMP-Start-v">0%</div></div>
+          <div class="ctrl"><label>End</label>  <input type="range" id="SMP-End"   min="0" max="100" value="100" oninput="document.getElementById('SMP-End-v').textContent=this.value+'%'"><div class="dv" id="SMP-End-v">100%</div></div>
         </div>
 
-        <div class="pg2" style="margin-bottom:10px">
-          <div class="ctrl"><label>Start %</label><input type="range" id="SMP-Start" min="0" max="100" value="0" oninput="document.getElementById('SMP-Start-v').textContent=this.value+'%'"><div class="dv" id="SMP-Start-v">0%</div></div>
-          <div class="ctrl"><label>End %</label>  <input type="range" id="SMP-End"   min="0" max="100" value="100" oninput="document.getElementById('SMP-End-v').textContent=this.value+'%'"><div class="dv" id="SMP-End-v">100%</div></div>
-        </div>
-
-        <div class="pg2" style="margin-bottom:10px">
-          <div class="ctrl"><label>Decay</label><input type="range" id="SMP-Dcy" min="0" max="100" value="80" oninput="document.getElementById('SMP-Dcy-v').textContent=Math.round(this.value*0.04*10)/10+'s'"><div class="dv" id="SMP-Dcy-v">3.2s</div></div>
-          <div class="ctrl"><label>Gate</label> <input type="range" id="SMP-Gate" min="0" max="100" value="90" oninput="document.getElementById('SMP-Gate-v').textContent=this.value+'%'"><div class="dv" id="SMP-Gate-v">90%</div></div>
-        </div>
-
-        <div class="sec">FX SEND</div>
-        <div class="pg2">
+        <div class="pg4">
+          <div class="ctrl"><label>Decay</label> <input type="range" id="SMP-Dcy"  min="0" max="100" value="80" oninput="document.getElementById('SMP-Dcy-v').textContent=Math.round(this.value*0.04*10)/10+'s'"><div class="dv" id="SMP-Dcy-v">3.2s</div></div>
+          <div class="ctrl"><label>Gate</label>  <input type="range" id="SMP-Gate" min="0" max="100" value="90" oninput="document.getElementById('SMP-Gate-v').textContent=this.value+'%'"><div class="dv" id="SMP-Gate-v">90%</div></div>
           <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="SMP-Rev" min="0" max="100" value="35" oninput="document.getElementById('SMP-Rev-v').textContent=this.value"><div class="dv" id="SMP-Rev-v">35</div></div>
           <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="SMP-Dly" min="0" max="100" value="18" oninput="document.getElementById('SMP-Dly-v').textContent=this.value"><div class="dv" id="SMP-Dly-v">18</div></div>
         </div>
@@ -1191,9 +1185,9 @@ let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
 let padAssign='xs'; // 'xs' | 'sampler'
-let samplerBuf=null, samplerSrc=null, samplerMicRec=null, samplerMicChunks=[], samplerMicActive=false;
+let samplerBuf=null, samplerSrc=null, samplerFilter=null, samplerMicRec=null, samplerMicChunks=[], samplerMicActive=false;
 const smpS=new Array(16).fill(0);
-let smpPadMode=false, smpSeqSrc=null, smpSeqGain=null;
+let smpPadMode=false, smpSeqSrc=null, smpSeqGain=null, smpSeqFilter=null;
 let smpBeatCount=0;
 let lastHoloGrain=0, holoPresetIdx=0;
 
@@ -2494,56 +2488,62 @@ async function samplerToggleMicRec(){
     samplerMicActive=true; btn.classList.add('rec'); btn.textContent='■ STOP';
   }catch(e){ console.warn('Mic err:',e); }
 }
+// Y → lowpass cutoff: top(0)=open(18kHz), bottom(1)=dark(150Hz)
+function _smpFilterFreq(py){ return 150*Math.pow(120, 1-py); }
+
 function samplerStart(px,py){
   if(!samplerBuf||!ctx) return;
   samplerStop();
-  // Record into XS Loop looper
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
     if(t<=getLoopLen()+0.05) loopEvents.push({x:px,y:py,t,gen:0,mode:'sampler'});
   }
-  // Main continuous voice (tracked for samplerUpdate pitch control)
-  const pitchRate=Math.pow(2,(0.5-py)*2.5);
+  const pitchRate=Math.pow(2,(r('SMP-Pitch')-50)/50); // pitch from drawer slider
   const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
   const src=ctx.createBufferSource();
   src.buffer=samplerBuf;
   src.playbackRate.value=pitchRate;
+  // Lowpass filter — Y controls cutoff
+  const filt=ctx.createBiquadFilter();
+  filt.type='lowpass'; filt.frequency.value=_smpFilterFreq(py); filt.Q.value=1.2;
   const mg=ctx.createGain(); mg.gain.value=0.72;
-  src.connect(mg); mg.connect(masterEQ);
+  src.connect(filt); filt.connect(mg); mg.connect(masterEQ);
   const rv0=ctx.createGain(); rv0.gain.value=0.55; mg.connect(rv0); rv0.connect(revPre);
   const dl0=ctx.createGain(); dl0.gain.value=0.32; mg.connect(dl0); dl0.connect(delNode);
   src.start(0, offset);
-  samplerSrc=src;
-  // Psychedelic harmonic layers with shimmer LFOs
-  _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85);
+  samplerSrc=src; samplerFilter=filt;
+  _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85, null, py);
   triggerEnergy(0.5);
 }
 
-// Scheduled sampler trigger for looper playback — includes psychedelic layers
+// Scheduled sampler trigger for looper playback
 function samplerSpawnAt(px,py,schedT,volMult){
   if(!samplerBuf||!ctx) return;
-  const pitchRate=Math.pow(2,(0.5-py)*2.5);
+  const pitchRate=Math.pow(2,(r('SMP-Pitch')-50)/50);
   const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
-  const capDur=Math.min(samplerBuf.duration-offset, 3.0); // cap so old gens decay cleanly
+  const capDur=Math.min(samplerBuf.duration-offset, 3.0);
   const src=ctx.createBufferSource();
   src.buffer=samplerBuf;
   src.playbackRate.value=pitchRate;
+  const filt=ctx.createBiquadFilter();
+  filt.type='lowpass'; filt.frequency.value=_smpFilterFreq(py); filt.Q.value=1.2;
   const mg=ctx.createGain();
   mg.gain.setValueAtTime(0.72*volMult, schedT);
   mg.gain.exponentialRampToValueAtTime(0.0001, schedT+capDur*0.90);
-  src.connect(mg); mg.connect(masterEQ);
+  src.connect(filt); filt.connect(mg); mg.connect(masterEQ);
   const rv0=ctx.createGain(); rv0.gain.value=0.55*volMult; mg.connect(rv0); rv0.connect(revPre);
   const dl0=ctx.createGain(); dl0.gain.value=0.32*volMult; mg.connect(dl0); dl0.connect(delNode);
   src.start(schedT, offset, capDur);
-  _spawnPsychoLayers(samplerBuf, pitchRate, offset, schedT, 0.85*volMult, capDur);
+  _spawnPsychoLayers(samplerBuf, pitchRate, offset, schedT, 0.85*volMult, capDur, py);
   triggerEnergy(0.3*volMult);
 }
 
 // Psychedelic rainbow layers: perfect 5th, octave, sub-octave — each with shimmer LFO.
 // capDur limits playback so successive loop iterations don't accumulate in the reverb.
 // vol already incorporates the generation-based volMult, so decay carries through naturally.
-function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur){
+function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur, filterY){
   if(!buf||!ctx) return;
+  const cutoff=filterY!=null?_smpFilterFreq(filterY):18000;
   const dur=capDur||Math.min(buf.duration-offset, 3.0); // 3s default cap
   // [semitones, relVol, revAmount, dlyAmount, lfoHz, lfoCents, fadeInSec]
   const layers=[
@@ -2565,7 +2565,9 @@ function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur){
     g.gain.setValueAtTime(0,schedT);
     g.gain.linearRampToValueAtTime(vol*rv, peakT);
     g.gain.exponentialRampToValueAtTime(0.0001, schedT+dur*0.88); // fade out before cap
-    s.connect(g); g.connect(masterEQ);
+    // Filter each layer with the same cutoff as the main voice
+    const lf=ctx.createBiquadFilter(); lf.type='lowpass'; lf.frequency.value=Math.min(cutoff*(0.7+st/60),18000); lf.Q.value=0.8;
+    s.connect(lf); lf.connect(g); g.connect(masterEQ);
     // Scale rev/dly by vol so generation decay also reduces the reverb feed
     const rv2=ctx.createGain(); rv2.gain.value=revAmt*Math.min(1,vol*1.4); g.connect(rv2); rv2.connect(revPre);
     const dl2=ctx.createGain(); dl2.gain.value=dlyAmt*Math.min(1,vol*1.4); g.connect(dl2); dl2.connect(delNode);
@@ -2574,13 +2576,13 @@ function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur){
   });
 }
 function samplerUpdate(px,py){
-  if(!samplerSrc||!ctx) return;
-  samplerSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-py)*2.5),ctx.currentTime,0.04);
+  if(!ctx) return;
+  if(samplerFilter) samplerFilter.frequency.setTargetAtTime(_smpFilterFreq(py),ctx.currentTime,0.03);
 }
 function samplerStop(){
   if(!samplerSrc) return;
   try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
-  samplerSrc=null;
+  samplerSrc=null; samplerFilter=null;
 }
 // ─── HOLOGRAM GRANULAR ────────────────────────────
 const HOLO_PRESETS=[
@@ -2726,24 +2728,28 @@ function playSamplerStep(t){
   src.buffer=samplerBuf;
   src.playbackRate.value=rate;
 
+  // Filter: PAD CTRL Y controls cutoff live, otherwise fully open
+  const seqFilt=ctx.createBiquadFilter();
+  seqFilt.type='lowpass';
+  seqFilt.frequency.value=(smpPadMode&&padActive)?_smpFilterFreq(padY):18000;
+  seqFilt.Q.value=1.2;
+
   const g=ctx.createGain(); g.gain.value=vol;
-  // Soft release at end
   g.gain.setValueAtTime(vol, t);
   g.gain.setTargetAtTime(0, t+Math.max(0.01, dur-0.05), 0.04);
 
   const revAmt=r('SMP-Rev')/100;
   const dlyAmt=r('SMP-Dly')/100;
 
-  src.connect(g);
+  src.connect(seqFilt); seqFilt.connect(g);
   g.connect(masterEQ);
   if(revAmt>0.005){ const rv=ctx.createGain(); rv.gain.value=revAmt*0.9; g.connect(rv); rv.connect(revPre); }
   if(dlyAmt>0.005){ const dl=ctx.createGain(); dl.gain.value=dlyAmt*0.9; g.connect(dl); dl.connect(delNode); }
 
   src.start(t, start, Math.max(0.01, dur));
-  smpSeqSrc=src; smpSeqGain=g;
+  smpSeqSrc=src; smpSeqGain=g; smpSeqFilter=seqFilt;
   flashCircle('SMP');
-  // Keep a reference to apply live pad modulation
-  src.onended=()=>{ if(smpSeqSrc===src){ smpSeqSrc=null; smpSeqGain=null; } };
+  src.onended=()=>{ if(smpSeqSrc===src){ smpSeqSrc=null; smpSeqGain=null; smpSeqFilter=null; } };
 }
 
 function toggleSmpPadMode(){
@@ -4022,7 +4028,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const pad=document.getElementById('xPad');
   function padStart(e){ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else if(padAssign==='hologram'){ if(!ctx) init(); } else startPadVoice(padX,padY); }
-  function padMove(e){ padPos(e); if(smpPadMode&&smpSeqSrc){ smpSeqSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-padY)*2.0),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else if(padAssign!=='hologram') updatePadVoice(padX,padY); }
+  function padMove(e){ padPos(e); if(smpPadMode&&smpSeqFilter){ smpSeqFilter.frequency.setTargetAtTime(_smpFilterFreq(padY),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else if(padAssign!=='hologram') updatePadVoice(padX,padY); }
   function padEnd(){ padActive=false; if(padAssign==='xs') stopPadVoice(false); }
   pad.addEventListener('touchstart',e=>{ e.preventDefault(); padStart(e); },{passive:false});
   pad.addEventListener('touchmove', e=>{ e.preventDefault(); padMove(e); },{passive:false});
