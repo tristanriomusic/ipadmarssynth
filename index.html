@@ -212,7 +212,7 @@
 .drawer.popup-mode .drawer-body{ display:block!important; }
 #circles-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:10px 3vw 8px; justify-items:center; }
 .inst-circle{ display:flex; flex-direction:column; align-items:center; gap:5px; }
-.circ-body{ position:relative; width:82px; height:82px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); transition:transform .1s,filter .1s; }
+.circ-body{ position:relative; width:82px; height:82px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); transition:transform .1s,filter .1s; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .circ-body:active{ transform:scale(0.91); }
 .circ-ring{ position:absolute; inset:-6px; border-radius:50%; border:2px solid transparent; pointer-events:none; opacity:0; }
 .circ-name{ font-size:8.5px; font-weight:900; letter-spacing:0.8px; color:rgba(255,255,255,0.92); text-align:center; pointer-events:none; text-shadow:0 1px 4px rgba(0,0,0,0.7); }
@@ -592,11 +592,11 @@
           <div class="ctrl fx-ctrl"><label>Size</label>     <input type="range" id="FX-RevSize"  min="0" max="100" value="72"><div class="dv" id="FX-RevSize-v">72</div></div>
           <div class="ctrl fx-ctrl"><label>Decay</label>    <input type="range" id="FX-RevDecay" min="0" max="100" value="68"><div class="dv" id="FX-RevDecay-v">68</div></div>
           <div class="ctrl fx-ctrl"><label>Pre-Delay</label><input type="range" id="FX-RevPre"  min="0" max="100" value="12"><div class="dv" id="FX-RevPre-v">12</div></div>
-          <div class="ctrl fx-ctrl"><label>Shimmer</label>  <input type="range" id="FX-Shimmer" min="0" max="100" value="18"><div class="dv" id="FX-Shimmer-v">18</div></div>
+          <div class="ctrl fx-ctrl"><label>Shimmer</label>  <input type="range" id="FX-Shimmer" min="0" max="100" value="8"><div class="dv" id="FX-Shimmer-v">8</div></div>
         </div>
         <div class="pg2">
           <div class="ctrl fx-ctrl"><label>HP Cut</label>   <input type="range" id="FX-RevHP" min="0" max="100" value="8"><div class="dv" id="FX-RevHP-v">8</div></div>
-          <div class="ctrl fx-ctrl"><label>LP Cut</label>   <input type="range" id="FX-RevLP" min="0" max="100" value="65"><div class="dv" id="FX-RevLP-v">65</div></div>
+          <div class="ctrl fx-ctrl"><label>LP Cut</label>   <input type="range" id="FX-RevLP" min="0" max="100" value="45"><div class="dv" id="FX-RevLP-v">45</div></div>
         </div>
 
         <div class="sec">DELAY</div>
@@ -1003,7 +1003,7 @@
 <script>
 // ═══ STATE ═══════════════════════════════════════
 let ctx, master, masterEQ, revNode, revPre, revWet, revHP, revLP, shimGain,
-    delNode, delFb, delDamp, delWet, waveshaper, driveMix;
+    delNode, delFb, delDamp, delHP, delSat, delWet, waveshaper, driveMix;
 let delSyncDiv=null; // null=free, 0.25=1/16, 0.5=1/8, 1.0=1/4, 2.0=1/2
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
@@ -1426,9 +1426,14 @@ function seqRecTap(inst){
 
 // ═══ INSTRUMENT CIRCLES ═══════════════════════════
 let activeCircleDrawer=null;
+let _circTapGuard=0;
 
 function openCirclePopup(drawerId, evt, instId){
-  if(evt) evt.stopPropagation();
+  if(evt){ evt.stopPropagation(); evt.preventDefault(); }
+  // Debounce: block ghost clicks / double-fire from iOS touch events
+  const now=Date.now();
+  if(now-_circTapGuard<220) return;
+  _circTapGuard=now;
   if(seqRecActive){
     if(instId) seqRecTapAndPlay(instId);
     return;
@@ -1901,12 +1906,14 @@ function init(){
   revNode.connect(shimGain); shimGain.connect(masterEQ);
   revNode.buffer=buildReverbIR(3.5, 0.55, 'hall'); // initial HALL IR
 
-  // Delay
+  // Delay — analog-style feedback path: LP damp → HP (stops bass buildup) → tanh sat → gain → loop
   delNode=ctx.createDelay(5.0); delNode.delayTime.value=60/bpm/2;
   delFb=ctx.createGain(); delFb.gain.value=0.5;
-  delDamp=ctx.createBiquadFilter(); delDamp.type='lowpass'; delDamp.frequency.value=4000;
+  delDamp=ctx.createBiquadFilter(); delDamp.type='lowpass';  delDamp.frequency.value=3200; // warm default
+  delHP=ctx.createBiquadFilter();   delHP.type='highpass';   delHP.frequency.value=90;    // prevent bass mud
+  delSat=ctx.createWaveShaper();    delSat.curve=makeDelSatCurve(); delSat.oversample='2x'; // analog warmth
   delWet=ctx.createGain(); delWet.gain.value=0.28;
-  delNode.connect(delDamp); delDamp.connect(delFb); delFb.connect(delNode);
+  delNode.connect(delDamp); delDamp.connect(delHP); delHP.connect(delSat); delSat.connect(delFb); delFb.connect(delNode);
   delNode.connect(delWet); delWet.connect(masterEQ);
 
   // Waveshaper
@@ -1985,31 +1992,63 @@ async function acquireWakeLock(){
 }
 
 function buildReverbIR(size, decay, shape){
-  const len=Math.floor(ctx.sampleRate*Math.max(0.1,size));
-  const buf=ctx.createBuffer(2,len,ctx.sampleRate);
+  const sr=ctx.sampleRate;
+  const len=Math.floor(sr*Math.max(0.2,size));
+  const buf=ctx.createBuffer(2,len,sr);
+  // LF and HF decay multipliers — HF dies much faster (air absorption in real rooms)
+  const lfD=decay*2.6, hfD=decay*7.5;
   for(let ch=0;ch<2;ch++){
     const d=buf.getChannelData(ch);
+    // Two cascaded 1-pole LP filters on the noise — removes harsh HF content
+    // giving a smooth, dense tail instead of white-noise hiss
+    let lp1=0, lp2=0;
+    // Sparse high-frequency component (velvet-noise style: 1 in every N samples)
+    // Much less hiss than dense white noise
+    const velvetSpacing=7+(ch*5);
     for(let i=0;i<len;i++){
       const t=i/len;
+      const noise=Math.random()*2-1;
+      // 2nd-order LP (~1.5kHz at 44.1kHz) — warm, dense diffusion
+      lp1=lp1*0.80+noise*0.20;
+      lp2=lp2*0.80+lp1*0.20;
+      // Shape-specific envelope
       let env;
       switch(shape){
         case 'room':
-          env=Math.pow(Math.max(0,1-t),decay*4)*(1+0.4*Math.exp(-t*22)*Math.sin(t*180+ch*1.1));
+          // Short, snappy with early reflection character
+          env=Math.pow(Math.max(0,1-t),lfD*1.4)*(1+0.3*Math.exp(-t*22)*Math.cos(t*130+ch*1.3));
           break;
         case 'plate':
-          env=(t<0.015?1.0:Math.pow(Math.max(0,1-t),decay*2.8))*(1-0.45*t*t);
+          // Dense from the start, smooth rolloff — characteristic plate sound
+          env=(t<0.008?1.0:Math.pow(Math.max(0,1-t),lfD*1.1))*(1-0.3*t);
           break;
         case 'cave':
-          env=Math.min(1,t*5)*Math.pow(Math.max(0,1-t),decay*2.2);
+          // Builds then slowly decays — diffuse, cavernous
+          env=Math.min(1,t*4)*Math.pow(Math.max(0,1-t),lfD*0.85);
           break;
         case 'cathedral':
-          env=(1-Math.exp(-t*18))*Math.pow(Math.max(0,1-t),decay*1.8);
+          // Very slow bloom, extremely long smooth tail
+          env=(1-Math.exp(-t*14))*Math.pow(Math.max(0,1-t),lfD*0.6);
           break;
         default: // hall
-          env=Math.pow(Math.max(0,1-t),decay*3);
+          // Classic smooth exponential hall tail
+          env=Math.pow(Math.max(0,1-t),lfD);
       }
-      d[i]=(Math.random()*2-1)*Math.max(0,env);
+      // LF body (dominant, smooth)
+      d[i]=lp2*Math.max(0,env)*0.88;
+      // Sparse HF sparkle with fast decay (velvet — much less hiss than white noise)
+      if(i%velvetSpacing===0){
+        const hfEnv=Math.pow(Math.max(0,1-t),hfD);
+        d[i]+=(Math.random()*2-1)*hfEnv*0.10;
+      }
     }
+    // Final gentle LP pass to smooth any remaining roughness
+    let lp3=0;
+    for(let i=0;i<len;i++){ lp3=lp3*0.65+d[i]*0.35; d[i]=lp3; }
+    // Normalize to consistent loudness
+    let pk=0;
+    for(let i=0;i<len;i++) pk=Math.max(pk,Math.abs(d[i]));
+    if(pk>0.001) for(let i=0;i<len;i++) d[i]/=pk*2.0;
   }
   return buf;
 }
@@ -2020,6 +2059,12 @@ function buildReverb(size,decay){
 function makeDistCurve(amount){
   const s=512,c=new Float32Array(s),k=amount*300;
   for(let i=0;i<s;i++){ const x=(i*2)/s-1; c[i]=k<0.01?x:((Math.PI+k)*x)/(Math.PI+k*Math.abs(x)); }
+  return c;
+}
+// Gentle tanh saturation for analog delay warmth — soft knee, no harsh clipping
+function makeDelSatCurve(){
+  const s=512,c=new Float32Array(s);
+  for(let i=0;i<s;i++){ const x=(i*2)/s-1; c[i]=Math.tanh(x*1.6)/Math.tanh(1.6); }
   return c;
 }
 function triggerEnergy(amt){ energy=Math.min(1,energy+amt); beatFlash=Math.min(1,beatFlash+amt*1.5); }
