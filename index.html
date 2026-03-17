@@ -118,6 +118,19 @@
     .step.smp-on{ background:#a855f7;      box-shadow:0 0 10px #a855f7; }
     .smp-pad-mode-btn{ font-size:8px; font-weight:900; padding:5px 10px; border-radius:6px; border:1px solid rgba(168,85,247,0.4); background:rgba(168,85,247,0.12); color:rgba(168,85,247,0.7); cursor:pointer; letter-spacing:1px; transition:all .2s; }
     .smp-pad-mode-btn.active{ background:rgba(168,85,247,0.4); color:#d4aaff; border-color:rgba(168,85,247,0.8); box-shadow:0 0 10px rgba(168,85,247,0.4); }
+    /* SAMPLERIZER PAD PRESET MODES */
+    .smp-pad-preset-row{ display:none; gap:5px; padding:0 3vw 6px; }
+    .smp-pad-preset-row.active{ display:flex; }
+    .spp{ flex:1; font-size:8px; font-weight:900; padding:7px 4px; border-radius:8px; border:1px solid rgba(168,85,247,0.3); background:rgba(168,85,247,0.1); color:rgba(168,85,247,0.7); cursor:pointer; text-align:center; letter-spacing:.8px; touch-action:manipulation; -webkit-tap-highlight-color:transparent; transition:all .15s; }
+    .spp.on{ background:rgba(168,85,247,0.42); color:#e0b4ff; border-color:rgba(168,85,247,0.85); box-shadow:0 0 10px rgba(168,85,247,0.42); }
+    /* HOLOGRAM CONTROLS (reverb + delay sync) */
+    .holo-ctrl-row{ display:none; align-items:center; gap:7px; padding:0 3vw 8px; }
+    .holo-ctrl-row.active{ display:flex; }
+    .holo-ctrl-card{ display:flex; flex-direction:column; align-items:center; gap:4px; background:rgba(255,80,220,0.1); border:1px solid rgba(255,80,220,0.25); border-radius:8px; padding:7px 8px; }
+    .holo-ctrl-card label{ font-size:7px; font-weight:900; letter-spacing:1px; color:rgba(255,80,220,0.7); }
+    .holo-ctrl-card .dv{ font-size:9px; color:rgba(255,80,220,0.9); font-weight:700; }
+    .hsync{ font-size:7px; font-weight:900; padding:5px 7px; border-radius:5px; border:1px solid rgba(255,80,220,0.25); background:rgba(255,80,220,0.08); color:rgba(255,80,220,0.6); cursor:pointer; text-align:center; letter-spacing:.5px; touch-action:manipulation; -webkit-tap-highlight-color:transparent; transition:all .12s; }
+    .hsync.on{ background:rgba(255,80,220,0.35); color:#ffaaee; border-color:rgba(255,80,220,0.75); box-shadow:0 0 6px rgba(255,80,220,0.3); }
     /* SMPLR 4-bar grid */
     .smp-bar-grid{ display:flex; gap:5px; margin-bottom:12px; }
     .smp-bar-group{ display:flex; flex-direction:column; gap:3px; flex:1; background:rgba(168,85,247,0.06); border-radius:7px; padding:5px 4px 4px; border:1px solid rgba(168,85,247,0.15); }
@@ -344,6 +357,13 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   </div>
   <input type="file" id="samplerFileInput" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.flac,audio/mp4,audio/m4a,audio/x-m4a,audio/aac" style="display:none" onchange="samplerOnFile(this)">
 
+  <!-- SAMPLERIZER PAD PRESETS -->
+  <div class="smp-pad-preset-row" id="smpPadPresetRow">
+    <button class="spp on" onclick="setSmpPadPreset('speed',this)">⚡ SPEED+EQ</button>
+    <button class="spp"    onclick="setSmpPadPreset('echo',this)">◎ ECHO</button>
+    <button class="spp"    onclick="setSmpPadPreset('pitch',this)">♦ PITCH+REV</button>
+  </div>
+
   <!-- HOLOGRAM PRESETS -->
   <div class="holo-preset-row" id="holoPresetRow">
     <button class="holo-btn on" onclick="setHoloPreset(0,this)">NEBULA</button>
@@ -352,6 +372,24 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <button class="holo-btn"    onclick="setHoloPreset(3,this)">VAPOR</button>
     <button class="holo-btn"    onclick="setHoloPreset(4,this)">PULSE</button>
     <button class="holo-btn"    onclick="setHoloPreset(5,this)">ATOM</button>
+  </div>
+
+  <!-- HOLOGRAM CONTROLS: reverb + delay sync -->
+  <div class="holo-ctrl-row" id="holoCtrlRow">
+    <div class="holo-ctrl-card" style="flex:1">
+      <label>REVERB</label>
+      <input type="range" id="holoRevSlider" min="0" max="100" value="72" style="width:100%" oninput="holoRevWet=this.value/100;document.getElementById('holoRevV').textContent=this.value">
+      <div class="dv" id="holoRevV">72</div>
+    </div>
+    <div class="holo-ctrl-card" style="flex:1.5">
+      <label>DELAY SYNC</label>
+      <div style="display:flex;gap:3px;width:100%">
+        <button class="hsync"    onclick="setHoloDelayDiv(0.25,this)">1/16</button>
+        <button class="hsync on" onclick="setHoloDelayDiv(0.5,this)">1/8</button>
+        <button class="hsync"    onclick="setHoloDelayDiv(1.0,this)">1/4</button>
+        <button class="hsync"    onclick="setHoloDelayDiv(2.0,this)">1/2</button>
+      </div>
+    </div>
   </div>
 
   <div id="xPad">
@@ -1191,6 +1229,10 @@ let smpPadMode=false, smpSeqSrc=null, smpSeqGain=null, smpSeqFilter=null;
 let smpPadLockX=null, smpPadLockY=null; // last touched pad position — persists between steps
 let smpBeatCount=0;
 let lastHoloGrain=0, holoPresetIdx=0;
+let smpPadPreset='speed'; // 'speed' | 'echo' | 'pitch'
+let samplerEchoDelay=null, samplerEchoFbGain=null, samplerRevSend=null;
+let holoRevWet=0.72, holoDelayDiv=0.5;
+let holoDelNode=null, holoDelFb=null, holoDelWet=null;
 
 // ── MUTE STATE ────────────────────────────────────
 const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:false,SMP:false};
@@ -1934,6 +1976,7 @@ function setBpm(val){
   document.querySelectorAll('.bpm-pre').forEach(b=>b.classList.toggle('on',+b.textContent===val));
   if(delNode) delNode.delayTime.setTargetAtTime(60/bpm/2, ctx.currentTime, 0.05);
   if(delSyncDiv!==null && delNode) delNode.delayTime.setTargetAtTime((60/bpm)*delSyncDiv, ctx.currentTime, 0.05);
+  if(holoDelNode) holoDelNode.delayTime.setTargetAtTime((60/bpm)*holoDelayDiv, ctx.currentTime, 0.05);
 }
 function setPadMode(mode,btn){
   padMode=mode;
@@ -2096,6 +2139,13 @@ function init(){
   delWet=ctx.createGain(); delWet.gain.value=0.28;
   delNode.connect(delDamp); delDamp.connect(delHP); delHP.connect(delSat); delSat.connect(delFb); delFb.connect(delNode);
   delNode.connect(delWet); delWet.connect(masterEQ);
+
+  // Hologram private BPM-synced delay (not shared with other instruments)
+  holoDelNode=ctx.createDelay(2.0); holoDelNode.delayTime.value=(60/bpm)*holoDelayDiv;
+  holoDelFb=ctx.createGain(); holoDelFb.gain.value=0.38;
+  holoDelWet=ctx.createGain(); holoDelWet.gain.value=0.30;
+  holoDelNode.connect(holoDelFb); holoDelFb.connect(holoDelNode);
+  holoDelNode.connect(holoDelWet); holoDelWet.connect(masterEQ);
 
   // Waveshaper
   waveshaper=ctx.createWaveShaper(); waveshaper.oversample='4x';
@@ -2424,7 +2474,12 @@ function setPadAssign(mode,btn){
   document.querySelectorAll('.pad-assign-btn').forEach(b=>b.classList.toggle('on',b===btn));
   const isXS=mode==='xs', isSmp=mode==='sampler', isHolo=mode==='hologram';
   document.getElementById('samplerCtrlRow').classList.toggle('active',isSmp);
+  const smpPresetRow=document.getElementById('smpPadPresetRow');
+  if(smpPresetRow) smpPresetRow.classList.toggle('active',isSmp);
   document.getElementById('holoPresetRow').classList.toggle('active',isHolo);
+  const holoCtrlRowEl=document.getElementById('holoCtrlRow');
+  if(holoCtrlRowEl) holoCtrlRowEl.classList.toggle('active',isHolo);
+  if(isSmp){ const lbMap={speed:'X=SPEED · Y=EQ',echo:'X=DELAY · Y=FEEDBACK',pitch:'X=PITCH · Y=REVERB'}; const el=document.getElementById('samplerLabel'); if(el) el.textContent='SAMPLERIZER — '+(lbMap[smpPadPreset]||''); }
   document.querySelector('.pad-mode-row').style.display=(isSmp||isHolo)?'none':'';
   document.getElementById('xsLabel').style.display=isXS?'':'none';
   document.getElementById('samplerLabel').style.display=isSmp?'':'none';
@@ -2492,32 +2547,83 @@ async function samplerToggleMicRec(){
     samplerMicActive=true; btn.classList.add('rec'); btn.textContent='■ STOP';
   }catch(e){ console.warn('Mic err:',e); }
 }
+// ─── SAMPLER PAD PRESETS ──────────────────────────
+function setSmpPadPreset(preset, btn){
+  smpPadPreset=preset;
+  document.querySelectorAll('.spp').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  const lbMap={speed:'X=SPEED · Y=EQ', echo:'X=DELAY · Y=FEEDBACK', pitch:'X=PITCH · Y=REVERB'};
+  const el=document.getElementById('samplerLabel');
+  if(el) el.textContent='SAMPLERIZER — '+(lbMap[preset]||'');
+}
+function _smpSpeedRate(px){ return Math.pow(4, px*0.9-0.45); } // ~0.35x→2.3x
+function _smpEchoTimeVal(px){ return (60/bpm)*[0.25,0.5,1.0,2.0][Math.min(3,Math.floor(px*4))]; }
+function _smpEchoFbVal(py){ return Math.min(0.88, py*0.9); }
+const _SMP_PITCH_SNAPS=[-12,-5,0,5,7,12,19,24];
+function _smpSnapPitchRate(px){
+  const i=Math.round(px*(_SMP_PITCH_SNAPS.length-1));
+  return Math.pow(2, _SMP_PITCH_SNAPS[Math.max(0,Math.min(_SMP_PITCH_SNAPS.length-1,i))]/12);
+}
+// ─── HOLOGRAM DELAY SYNC ──────────────────────────
+function setHoloDelayDiv(div, btn){
+  holoDelayDiv=div;
+  document.querySelectorAll('.hsync').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  if(holoDelNode&&ctx) holoDelNode.delayTime.setTargetAtTime((60/bpm)*holoDelayDiv, ctx.currentTime, 0.05);
+}
 // Y → lowpass cutoff: top(0)=open(18kHz), bottom(1)=dark(150Hz)
 function _smpFilterFreq(py){ return 150*Math.pow(120, 1-py); }
 
 function samplerStart(px,py){
   if(!samplerBuf||!ctx) return;
   samplerStop();
-  smpPadLockX=px; smpPadLockY=py; // lock this position for future sequencer steps
+  smpPadLockX=px; smpPadLockY=py;
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
     if(t<=getLoopLen()+0.05) loopEvents.push({x:px,y:py,t,gen:0,mode:'sampler'});
   }
-  const pitchRate=Math.pow(2,(r('SMP-Pitch')-50)/50); // pitch from drawer slider
-  const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
+  // Rate + offset depend on preset
+  let pitchRate, offset;
+  if(smpPadPreset==='speed'){
+    pitchRate=_smpSpeedRate(px);
+    offset=Math.min(r('SMP-Start')/100*samplerBuf.duration, samplerBuf.duration-0.001);
+  } else if(smpPadPreset==='echo'){
+    pitchRate=Math.pow(2,(r('SMP-Pitch')-50)/50);
+    offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
+  } else { // pitch
+    pitchRate=_smpSnapPitchRate(px);
+    offset=Math.min(r('SMP-Start')/100*samplerBuf.duration, samplerBuf.duration-0.001);
+  }
   const src=ctx.createBufferSource();
-  src.buffer=samplerBuf;
-  src.playbackRate.value=pitchRate;
-  // Lowpass filter — Y controls cutoff
-  const filt=ctx.createBiquadFilter();
-  filt.type='lowpass'; filt.frequency.value=_smpFilterFreq(py); filt.Q.value=1.2;
+  src.buffer=samplerBuf; src.playbackRate.value=pitchRate;
   const mg=ctx.createGain(); mg.gain.value=0.72;
-  src.connect(filt); filt.connect(mg); mg.connect(masterEQ);
-  const rv0=ctx.createGain(); rv0.gain.value=0.55; mg.connect(rv0); rv0.connect(revPre);
-  const dl0=ctx.createGain(); dl0.gain.value=0.32; mg.connect(dl0); dl0.connect(delNode);
+  // Mode-specific X/Y routing
+  if(smpPadPreset==='speed'){
+    const filt=ctx.createBiquadFilter();
+    filt.type='lowpass'; filt.frequency.value=_smpFilterFreq(py); filt.Q.value=1.2;
+    src.connect(filt); filt.connect(mg);
+    samplerFilter=filt;
+  } else if(smpPadPreset==='echo'){
+    src.connect(mg);
+    // Local feedback delay: X=time, Y=feedback
+    const eD=ctx.createDelay(2.0); eD.delayTime.value=_smpEchoTimeVal(px);
+    const eFb=ctx.createGain(); eFb.gain.value=_smpEchoFbVal(py);
+    const eOut=ctx.createGain(); eOut.gain.value=0.65;
+    eD.connect(eFb); eFb.connect(eD); eD.connect(eOut); eOut.connect(masterEQ);
+    const eRv=ctx.createGain(); eRv.gain.value=0.40; eOut.connect(eRv); eRv.connect(revPre);
+    mg.connect(eD);
+    samplerEchoDelay=eD; samplerEchoFbGain=eFb;
+  } else { // pitch — Y = extra reverb send
+    src.connect(mg);
+    const rvS=ctx.createGain(); rvS.gain.value=py*0.90; mg.connect(rvS); rvS.connect(revPre);
+    samplerRevSend=rvS;
+  }
+  mg.connect(masterEQ);
+  const rv0=ctx.createGain(); rv0.gain.value=(smpPadPreset==='pitch')?0.22:0.48; mg.connect(rv0); rv0.connect(revPre);
+  if(smpPadPreset!=='echo'){ const dl0=ctx.createGain(); dl0.gain.value=0.28; mg.connect(dl0); dl0.connect(delNode); }
   src.start(0, offset);
-  samplerSrc=src; samplerFilter=filt;
-  _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85, null, py);
+  samplerSrc=src;
+  _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85, null, smpPadPreset==='speed'?py:null);
   triggerEnergy(0.5);
 }
 
@@ -2582,13 +2688,22 @@ function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur, fil
 }
 function samplerUpdate(px,py){
   if(!ctx) return;
-  smpPadLockX=px; smpPadLockY=py; // keep lock current while dragging
-  if(samplerFilter) samplerFilter.frequency.setTargetAtTime(_smpFilterFreq(py),ctx.currentTime,0.03);
+  smpPadLockX=px; smpPadLockY=py;
+  if(smpPadPreset==='speed'){
+    if(samplerSrc) samplerSrc.playbackRate.setTargetAtTime(_smpSpeedRate(px),ctx.currentTime,0.04);
+    if(samplerFilter) samplerFilter.frequency.setTargetAtTime(_smpFilterFreq(py),ctx.currentTime,0.03);
+  } else if(smpPadPreset==='echo'){
+    if(samplerEchoDelay) samplerEchoDelay.delayTime.setTargetAtTime(_smpEchoTimeVal(px),ctx.currentTime,0.04);
+    if(samplerEchoFbGain) samplerEchoFbGain.gain.setTargetAtTime(_smpEchoFbVal(py),ctx.currentTime,0.04);
+  } else { // pitch
+    if(samplerSrc) samplerSrc.playbackRate.setTargetAtTime(_smpSnapPitchRate(px),ctx.currentTime,0.04);
+    if(samplerRevSend) samplerRevSend.gain.setTargetAtTime(py*0.90,ctx.currentTime,0.04);
+  }
 }
 function samplerStop(){
   if(!samplerSrc) return;
   try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
-  samplerSrc=null; samplerFilter=null;
+  samplerSrc=null; samplerFilter=null; samplerEchoDelay=null; samplerEchoFbGain=null; samplerRevSend=null;
 }
 // ─── HOLOGRAM GRANULAR ────────────────────────────
 const HOLO_PRESETS=[
@@ -2671,8 +2786,8 @@ function _holoSpawnCore(p, px, py, schedT, vol){
     env.gain.linearRampToValueAtTime(vol*volMult,t+atkT);
     env.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(atkT+0.002,playDur*(p.atk+p.rel)));
     src.connect(env); env.connect(masterEQ);
-    if(p.revAmt>0.01){const rv=ctx.createGain();rv.gain.value=p.revAmt;env.connect(rv);rv.connect(revPre);}
-    if(p.dlyAmt>0.01){const dl=ctx.createGain();dl.gain.value=p.dlyAmt;env.connect(dl);dl.connect(delNode);}
+    if(p.revAmt>0.01){const rv=ctx.createGain();rv.gain.value=p.revAmt*holoRevWet;env.connect(rv);rv.connect(revPre);}
+    if(p.dlyAmt>0.01&&holoDelNode){const dl=ctx.createGain();dl.gain.value=p.dlyAmt;env.connect(dl);dl.connect(holoDelNode);}
     src.start(t,offset,Math.max(0.001,playDur));
     triggerEnergy(vol*volMult*0.1);
   };
@@ -4035,7 +4150,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const pad=document.getElementById('xPad');
   function padStart(e){ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else if(padAssign==='hologram'){ if(!ctx) init(); } else startPadVoice(padX,padY); }
-  function padMove(e){ padPos(e); if(smpPadMode&&smpSeqFilter){ smpSeqFilter.frequency.setTargetAtTime(_smpFilterFreq(padY),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else if(padAssign!=='hologram') updatePadVoice(padX,padY); }
+  function padMove(e){ padPos(e); if(smpPadMode&&smpSeqFilter&&smpPadPreset==='speed'){ smpSeqFilter.frequency.setTargetAtTime(_smpFilterFreq(padY),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else if(padAssign!=='hologram') updatePadVoice(padX,padY); }
   function padEnd(){ padActive=false; if(padAssign==='xs') stopPadVoice(false); }
   pad.addEventListener('touchstart',e=>{ e.preventDefault(); padStart(e); },{passive:false});
   pad.addEventListener('touchmove', e=>{ e.preventDefault(); padMove(e); },{passive:false});
