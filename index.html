@@ -325,7 +325,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <span id="samplerName">— no sample —</span>
     <span style="flex-shrink:0;font-size:7px;color:rgba(160,80,255,0.35);letter-spacing:1px">Y=PITCH · X=POS</span>
   </div>
-  <input type="file" id="samplerFileInput" accept="audio/*" style="display:none" onchange="samplerOnFile(this)">
+  <input type="file" id="samplerFileInput" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.flac,audio/mp4,audio/m4a,audio/x-m4a,audio/aac" style="display:none" onchange="samplerOnFile(this)">
 
   <div id="xPad">
     <span class="pad-label" id="xsLabel">XS NEBULA — <span id="modeLabel">SHIMMER</span> <span id="zoneLabel" style="color:rgba(255,220,80,0.9);font-size:9px;letter-spacing:2px;"></span></span>
@@ -2336,15 +2336,26 @@ function samplerLoadFile(){
   document.getElementById('samplerFileInput').click();
 }
 function samplerOnFile(input){
-  const file=input.files[0]; if(!file||!ctx) return;
-  document.getElementById('samplerName').textContent=file.name;
+  const file=input.files[0]; if(!file) return;
+  if(!ctx) initAudio();
+  const nameEl=document.getElementById('samplerName');
+  nameEl.textContent='loading…';
   const reader=new FileReader();
   reader.onload=e=>{
-    ctx.decodeAudioData(e.target.result.slice(0), buf=>{
-      samplerBuf=buf;
-      drawSamplerWaveform();
-    }, err=>{ console.warn('Decode:',err); document.getElementById('samplerName').textContent='⚠ decode error'; });
+    const ab=e.target.result.slice(0);
+    const resume=ctx.state==='suspended'?ctx.resume():Promise.resolve();
+    resume.then(()=>{
+      ctx.decodeAudioData(ab, buf=>{
+        samplerBuf=buf;
+        nameEl.textContent=file.name;
+        drawSamplerWaveform();
+      }, err=>{
+        console.warn('Decode error:',err);
+        nameEl.textContent='⚠ '+file.type+' unsupported';
+      });
+    });
   };
+  reader.onerror=()=>{ nameEl.textContent='⚠ file read error'; };
   reader.readAsArrayBuffer(file);
   input.value='';
 }
