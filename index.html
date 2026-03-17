@@ -1470,13 +1470,16 @@ function playBassArpNote(t, freq, stepLen){
   const subLvl=n('BA-Sub')*0.60;   // heavier sub than synth arp
   const gate=0.08+n('BA-Gate')*0.92;
   const noteDur=stepLen*gate;
-  // Amp ADSR — slightly snappier range than synth arp
+  // Amp ADSR — decay clipped to release-start so no instantaneous jump ever occurs
   const atk=0.003+n('BA-Atk')*0.18;
   const dcy=0.01 +n('BA-Dcy')*0.6;
   const sus=Math.max(0.001,n('BA-Sus'));
   const rel=0.015+n('BA-Rel')*0.9;
-  const holdEnd=Math.max(t+atk+0.002, t+noteDur-rel);
-  const noteEnd=holdEnd+rel;
+  const atkEnd  =t+atk;
+  const relStart=Math.max(atkEnd+0.001, t+noteDur-rel);
+  const dcyEnd  =Math.min(atkEnd+dcy, relStart);
+  const susLvl  =vol*sus*0.68;
+  const noteEnd =relStart+rel;
   // Filter — lower range for bass (80–3600 Hz)
   const baseCut=80+n('BA-Cut')*3500;
   const fEnvAmt=n('BA-FEnv')*4200;
@@ -1496,13 +1499,13 @@ function playBassArpNote(t, freq, stepLen){
     lfo.start(t); lfo.stop(noteEnd+0.1);
   }
   const env=ctx.createGain();
-  env.gain.value=0;  // prevent pop if t is slightly in past
+  env.gain.value=0;
   env.gain.setValueAtTime(0,t);
-  env.gain.linearRampToValueAtTime(vol*0.68,t+atk);
-  env.gain.linearRampToValueAtTime(vol*sus*0.68,t+atk+dcy);
-  env.gain.setValueAtTime(vol*sus*0.68,holdEnd);
-  env.gain.exponentialRampToValueAtTime(0.0001,noteEnd);
-  env.gain.linearRampToValueAtTime(0,noteEnd+0.004); // de-click
+  env.gain.linearRampToValueAtTime(vol*0.68, atkEnd);            // attack
+  env.gain.linearRampToValueAtTime(susLvl,   dcyEnd);            // decay (clipped — no jump)
+  if(relStart>dcyEnd+0.001) env.gain.setValueAtTime(susLvl, relStart); // hold if room
+  env.gain.exponentialRampToValueAtTime(0.0001, noteEnd);         // release
+  env.gain.linearRampToValueAtTime(0, noteEnd+0.004);             // de-click
   // Very centered pan for bass
   const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.08;
   // Primary + detuned osc
@@ -1644,13 +1647,16 @@ function playArpNote(t,freq,stepLen){
   // Gate & timing
   const gate=0.08+n('ARP-Gate')*0.92;
   const noteDur=stepLen*gate;
-  // Amp ADSR
-  const atk=0.005+n('ARP-Atk')*0.25;          // 5ms–255ms (min 5ms avoids click)
-  const dcy=0.01 +n('ARP-Dcy')*0.5;           // 10ms–510ms
+  // Amp ADSR — decay clipped to release-start so no instantaneous jump ever occurs
+  const atk=0.005+n('ARP-Atk')*0.25;
+  const dcy=0.01 +n('ARP-Dcy')*0.5;
   const sus=Math.max(0.001,n('ARP-Sus'));
-  const rel=0.015+n('ARP-Rel')*0.6;           // 15ms–615ms
-  const holdEnd=Math.max(t+atk+0.002, t+noteDur-rel);
-  const noteEnd=holdEnd+rel;
+  const rel=0.015+n('ARP-Rel')*0.6;
+  const atkEnd  =t+atk;
+  const relStart=Math.max(atkEnd+0.001, t+noteDur-rel); // release must start after attack
+  const dcyEnd  =Math.min(atkEnd+dcy, relStart);        // decay clipped — never overshoots
+  const susLvl  =vol*sus*0.58;
+  const noteEnd =relStart+rel;
   // Filter
   const baseCut=180+n('ARP-Cut')*7800;
   const fEnvAmt=n('ARP-FEnv')*7000;
@@ -1672,13 +1678,13 @@ function playArpNote(t,freq,stepLen){
     lfo.start(t); lfo.stop(noteEnd+0.1);
   }
   const env=ctx.createGain();
-  env.gain.value=0;  // init to 0 prevents pop if t is slightly in past
+  env.gain.value=0;
   env.gain.setValueAtTime(0,t);
-  env.gain.linearRampToValueAtTime(vol*0.58,t+atk);
-  env.gain.linearRampToValueAtTime(vol*sus*0.58,t+atk+dcy);
-  env.gain.setValueAtTime(vol*sus*0.58,holdEnd);
-  env.gain.exponentialRampToValueAtTime(0.0001,noteEnd);
-  env.gain.linearRampToValueAtTime(0,noteEnd+0.004); // de-click ramp
+  env.gain.linearRampToValueAtTime(vol*0.58, atkEnd);           // attack
+  env.gain.linearRampToValueAtTime(susLvl,   dcyEnd);           // decay (clipped — no jump)
+  if(relStart>dcyEnd+0.001) env.gain.setValueAtTime(susLvl, relStart); // hold if room
+  env.gain.exponentialRampToValueAtTime(0.0001, noteEnd);        // release
+  env.gain.linearRampToValueAtTime(0, noteEnd+0.004);            // de-click
   const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.22;
   // Primary osc
   const o1=ctx.createOscillator(),og1=ctx.createGain();
