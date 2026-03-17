@@ -1465,7 +1465,14 @@ function loopRecord(){
   setTimeout(()=>{
     if(loopRec && !loopOverdub){
       loopRec=false;
-      if(loopEvents.length){ loopPlay=true; loopPhaseOrigin=loopRecStart; loopPlayStart=loopRecStart; loopScheduled=loopRecStart; }
+      if(loopEvents.length){
+        loopPlay=true; loopPhaseOrigin=loopRecStart; loopPlayStart=loopRecStart;
+        // Don't use loopRecStart — it's already loopLen seconds in the past.
+        // Snap to the start of the current iteration so tickLooper picks up immediately.
+        const _now=ctx.currentTime, _len=getLoopLen();
+        const _iter=Math.floor((_now-loopRecStart)/_len);
+        loopScheduled=loopRecStart+_iter*_len;
+      }
       updateLoopUI();
     }
   }, waitMs);
@@ -1505,11 +1512,13 @@ function tickLooper(){
     const next=loopEvents.find(e=>e.t>posInIter);
     if(next){
       const schedAt=iterStart+next.t;
-      if(schedAt>now-0.01){
+      // Allow events up to 500ms late; fire them immediately rather than dropping them
+      if(schedAt>now-0.5){
+        const fireAt=Math.max(schedAt, now+0.008);
         const v=getEventVol(next);
-        if(next.mode==='holo') holoSpawnGrainAt(next.x,next.y,schedAt,v);
-        else if(next.mode==='sampler') samplerSpawnAt(next.x,next.y,schedAt,v);
-        else spawnGrainAt(next.x,next.y,schedAt,v);
+        if(next.mode==='holo') holoSpawnGrainAt(next.x,next.y,fireAt,v);
+        else if(next.mode==='sampler') samplerSpawnAt(next.x,next.y,fireAt,v);
+        else spawnGrainAt(next.x,next.y,fireAt,v);
       }
       loopScheduled=schedAt+0.0008;
     } else {
@@ -2779,7 +2788,7 @@ function _holoSpawnCore(p, px, py, schedT, vol){
     src.playbackRate.value=Math.pow(2,pitchSt2/12);
     src.detune.value=detuneC;
     const env=ctx.createGain();
-    const t=ctx.currentTime;
+    const t=schedT; // use scheduled time, not ctx.currentTime
     const atkT=Math.max(0.003,playDur*p.atk);
     const relT=Math.max(0.005,playDur*p.rel);
     env.gain.setValueAtTime(0,t);
