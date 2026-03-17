@@ -191,6 +191,44 @@
     .chd-key.on{ background:rgba(255,136,200,0.28); color:#fff; border-color:rgba(255,136,200,0.55); }
     .chd-mode{ padding:5px 8px; border-radius:5px; border:1px solid rgba(255,136,200,0.2); background:rgba(255,136,200,0.05); color:rgba(255,136,200,0.5); font-size:7.5px; font-weight:900; cursor:pointer; letter-spacing:0.5px; }
     .chd-mode.on{ background:rgba(255,136,200,0.28); color:#fff; border-color:rgba(255,136,200,0.55); }
+
+/* SESSION REC */
+#session-rec-row{ display:flex; align-items:center; gap:8px; padding:4px 3vw 0; }
+#session-rec-btn{ flex:1; padding:11px 10px; border-radius:10px; border:2px solid rgba(255,50,50,0.45); background:rgba(50,0,0,0.5); color:#ff5555; font-weight:900; font-size:10px; letter-spacing:2px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; gap:6px; }
+#session-rec-btn.recording{ border-color:#ff2222; background:rgba(80,0,0,0.65); animation:recPulse 1.2s ease-in-out infinite; }
+.rec-dot{ width:8px; height:8px; border-radius:50%; background:#ff5555; flex-shrink:0; }
+#session-rec-btn.recording .rec-dot{ background:#ff2222; animation:dotPulse 1.2s ease-in-out infinite; }
+#session-rec-timer{ font-size:13px; font-weight:900; color:#ff6666; letter-spacing:3px; min-width:48px; text-align:right; }
+@keyframes recPulse{ 0%,100%{box-shadow:0 0 6px rgba(255,34,34,0.25)} 50%{box-shadow:0 0 18px rgba(255,34,34,0.65)} }
+@keyframes dotPulse{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.2;transform:scale(0.7)} }
+/* SEQ REC */
+#seqrec-btn{ padding:11px 10px; border-radius:10px; border:2px solid rgba(255,136,0,0.4); background:rgba(40,15,0,0.5); color:#ffaa44; font-weight:900; font-size:10px; letter-spacing:2px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+#seqrec-btn.active{ border-color:#ff8800; background:rgba(80,30,0,0.65); color:#ffcc66; animation:recPulse 1.2s ease-in-out infinite; }
+
+/* INSTRUMENT CIRCLES */
+#popup-bg{ display:none; position:fixed; inset:0; z-index:499; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); touch-action:none; }
+#popup-bg.active{ display:block; }
+.drawer.popup-mode{ position:fixed!important; top:50%!important; left:50%!important; transform:translate(-50%,-50%)!important; z-index:500!important; max-height:88vh!important; overflow-y:auto!important; width:96vw!important; display:block!important; -webkit-overflow-scrolling:touch; }
+.drawer.popup-mode .drawer-body{ display:block!important; }
+#circles-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:8px 3vw 6px; }
+.inst-circle{ display:flex; flex-direction:column; align-items:center; gap:3px; }
+.circ-body{ position:relative; width:62px; height:62px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:2px solid rgba(255,255,255,0.12); background:rgba(0,0,10,0.6); cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .1s,box-shadow .1s; }
+.circ-body:active{ transform:scale(0.94); }
+.circ-ring{ position:absolute; inset:-5px; border-radius:50%; border:2px solid transparent; pointer-events:none; opacity:0; }
+.circ-name{ font-size:7px; font-weight:900; letter-spacing:0.8px; color:rgba(255,255,255,0.75); text-align:center; pointer-events:none; }
+.circ-mute-btn{ font-size:6px; font-weight:900; padding:2px 4px; border-radius:3px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.45); cursor:pointer; line-height:1; }
+.circ-mute-btn.muted{ background:rgba(255,60,60,0.3); color:#ff8888; border-color:rgba(255,60,60,0.45); }
+.circ-vol{ width:58px; -webkit-appearance:none; appearance:none; height:3px; background:rgba(255,255,255,0.18); border-radius:2px; outline:none; cursor:pointer; }
+.circ-vol::-webkit-slider-thumb{ -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:#fff; cursor:pointer; }
+@keyframes circBeat{ 0%{transform:scale(1)} 40%{transform:scale(1.13)} 100%{transform:scale(1)} }
+@keyframes ringBeat{ 0%{opacity:0;transform:scale(1)} 30%{opacity:0.9} 100%{opacity:0;transform:scale(1.25)} }
+.circ-body.beat{ animation:circBeat 0.35s ease-out forwards; }
+.circ-ring.beat{ animation:ringBeat 0.35s ease-out forwards; }
+/* DELAY SYNC */
+.dly-sync-row{ display:flex; gap:4px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+.dly-sync-lbl{ font-size:8px; font-weight:900; letter-spacing:2px; color:rgba(255,68,136,0.6); margin-right:2px; }
+.dly-sync-btn{ padding:5px 8px; border-radius:5px; border:1px solid rgba(255,68,136,0.25); background:rgba(255,68,136,0.07); color:rgba(255,68,136,0.6); font-size:8px; font-weight:900; cursor:pointer; }
+.dly-sync-btn.on{ background:rgba(255,68,136,0.28); color:#fff; border-color:rgba(255,68,136,0.55); }
   </style>
 </head>
 <body>
@@ -209,6 +247,11 @@
 <div id="ui">
 
   <button id="playBtn" onclick="togglePlay()">▶  PLAY</button>
+  <div id="session-rec-row">
+    <button id="session-rec-btn" onclick="sessionRecToggle()"><span class="rec-dot"></span>⏺ REC SESSION</button>
+    <span id="session-rec-timer" style="display:none">0:00</span>
+    <button id="seqrec-btn" onclick="seqRecToggle()">⊙ SEQ REC</button>
+  </div>
   <div class="top-bar">
     <button id="kill"    class="m-btn" onclick="location.reload()">HARD RESET</button>
     <button id="silence" class="m-btn" onclick="clearSeq()">CLEAR STEPS</button>
@@ -240,10 +283,101 @@
     <canvas id="padCanvas"></canvas>
   </div>
 
+  <!-- POPUP BACKDROP -->
+  <div id="popup-bg" onclick="closeCirclePopup()"></div>
+
+  <!-- INSTRUMENT CIRCLES -->
+  <div id="circles-grid">
+    <!-- KICK -->
+    <div class="inst-circle" id="circ-K">
+      <div class="circ-body" style="border-color:rgba(255,34,0,0.5);box-shadow:0 0 10px rgba(255,34,0,0.15)" onclick="openCirclePopup('drDRMS',event)">
+        <div class="circ-ring" id="cring-K" style="border-color:#ff2200"></div>
+        <div class="circ-name">KICK</div>
+        <button class="circ-mute-btn" id="cmute-K" onclick="instMute('K',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="75" style="accent-color:#ff2200" oninput="syncCircVol('K-Vol',this.value)">
+    </div>
+    <!-- SNARE -->
+    <div class="inst-circle" id="circ-SN">
+      <div class="circ-body" style="border-color:rgba(255,170,68,0.5);box-shadow:0 0 10px rgba(255,170,68,0.15)" onclick="openCirclePopup('drDRMS',event)">
+        <div class="circ-ring" id="cring-SN" style="border-color:#ffaa44"></div>
+        <div class="circ-name">SNARE</div>
+        <button class="circ-mute-btn" id="cmute-SN" onclick="instMute('SN',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="65" style="accent-color:#ffaa44" oninput="syncCircVol('SN-Vol',this.value)">
+    </div>
+    <!-- HIHAT -->
+    <div class="inst-circle" id="circ-H">
+      <div class="circ-body" style="border-color:rgba(0,255,136,0.5);box-shadow:0 0 10px rgba(0,255,136,0.15)" onclick="openCirclePopup('drDRMS',event)">
+        <div class="circ-ring" id="cring-H" style="border-color:#00ff88"></div>
+        <div class="circ-name">H-HAT</div>
+        <button class="circ-mute-btn" id="cmute-H" onclick="instMute('H',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="35" style="accent-color:#00ff88" oninput="syncCircVol('H-Vol',this.value)">
+    </div>
+    <!-- BASS -->
+    <div class="inst-circle" id="circ-B">
+      <div class="circ-body" style="border-color:rgba(255,204,0,0.5);box-shadow:0 0 10px rgba(255,204,0,0.15)" onclick="openCirclePopup('drB',event)">
+        <div class="circ-ring" id="cring-B" style="border-color:#ffcc00"></div>
+        <div class="circ-name">BASS</div>
+        <button class="circ-mute-btn" id="cmute-B" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="65" style="accent-color:#ffcc00" oninput="syncCircVol('BA-Vol',this.value)">
+    </div>
+    <!-- DRONE -->
+    <div class="inst-circle" id="circ-DR">
+      <div class="circ-body" style="border-color:rgba(170,0,255,0.5);box-shadow:0 0 10px rgba(170,0,255,0.15)" onclick="openCirclePopup('drDR',event)">
+        <div class="circ-ring" id="cring-DR" style="border-color:#aa00ff"></div>
+        <div class="circ-name">DRONE</div>
+        <button class="circ-mute-btn" id="cmute-DR" onclick="instMute('DR',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="40" style="accent-color:#aa00ff" oninput="syncCircVol('DR-Vol',this.value)">
+    </div>
+    <!-- NEBULA -->
+    <div class="inst-circle" id="circ-X">
+      <div class="circ-body" style="border-color:rgba(0,242,255,0.5);box-shadow:0 0 10px rgba(0,242,255,0.15)" onclick="openCirclePopup('drX',event)">
+        <div class="circ-ring" id="cring-X" style="border-color:#00f2ff"></div>
+        <div class="circ-name">NEBULA</div>
+        <button class="circ-mute-btn" id="cmute-X" onclick="instMute('X',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="62" style="accent-color:#00f2ff" oninput="syncCircVol('X-Vol',this.value)">
+    </div>
+    <!-- ARP -->
+    <div class="inst-circle" id="circ-ARP">
+      <div class="circ-body" style="border-color:rgba(255,0,110,0.5);box-shadow:0 0 10px rgba(255,0,110,0.15)" onclick="openCirclePopup('drARP',event)">
+        <div class="circ-ring" id="cring-ARP" style="border-color:#ff006e"></div>
+        <div class="circ-name">ARP</div>
+        <button class="circ-mute-btn" id="cmute-ARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="58" style="accent-color:#ff006e" oninput="syncCircVol('ARP-Vol',this.value)">
+    </div>
+    <!-- CHORDS -->
+    <div class="inst-circle" id="circ-CHD">
+      <div class="circ-body" style="border-color:rgba(255,136,200,0.5);box-shadow:0 0 10px rgba(255,136,200,0.15)" onclick="openCirclePopup('drCHD',event)">
+        <div class="circ-ring" id="cring-CHD" style="border-color:#ff88cc"></div>
+        <div class="circ-name">CHORDS</div>
+      </div>
+    </div>
+    <!-- FX -->
+    <div class="inst-circle" id="circ-FX">
+      <div class="circ-body" style="border-color:rgba(255,68,136,0.5);box-shadow:0 0 10px rgba(255,68,136,0.15)" onclick="openCirclePopup('drFX',event)">
+        <div class="circ-ring" id="cring-FX" style="border-color:#ff4488"></div>
+        <div class="circ-name">FX RACK</div>
+      </div>
+    </div>
+    <!-- LOOP -->
+    <div class="inst-circle" id="circ-GL">
+      <div class="circ-body" style="border-color:rgba(255,153,68,0.5);box-shadow:0 0 10px rgba(255,153,68,0.15)" onclick="openCirclePopup('drGLOOP',event)">
+        <div class="circ-ring" id="cring-GL" style="border-color:#ff9944"></div>
+        <div class="circ-name">GTR LOOP</div>
+      </div>
+    </div>
+  </div>
+
   <div class="main">
 
     <!-- XS NEBULA -->
-    <div class="drawer open" id="drX">
+    <div class="drawer" id="drX">
       <div class="drawer-hdr" onclick="toggleD('drX')" style="color:var(--xs)">
         <span>XS NEBULA ENGINE</span>
         <div style="display:flex;align-items:center;gap:6px">
@@ -319,7 +453,7 @@
     </div>
 
     <!-- GUITAR LOOPER -->
-    <div class="drawer open" id="drGLOOP">
+    <div class="drawer" id="drGLOOP">
       <div class="drawer-hdr" onclick="toggleD('drGLOOP')" style="color:#ff9944">
         <span>GUITAR LOOP</span><span class="arr">▼</span>
       </div>
@@ -327,35 +461,12 @@
 
         <!-- CONNECT prompt — shown until user activates mic input -->
         <div id="gloop-connect-row" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 0 12px">
-          <button class="loop-btn" style="max-width:220px;padding:13px 10px;font-size:10px;letter-spacing:2px" onclick="gloopEnumDevices()">⚡ CONNECT AUDIO INPUT</button>
-          <div style="font-size:8px;color:rgba(255,153,68,0.45);letter-spacing:1px;text-align:center">Activates mic — keep off to preserve synth audio quality</div>
+          <button class="loop-btn" style="max-width:220px;padding:13px 10px;font-size:10px;letter-spacing:2px" onclick="gloopEnumDevices()">⚡ TAP TO USE MIC</button>
+          <div style="font-size:8px;color:rgba(255,153,68,0.45);letter-spacing:1px;text-align:center">Tap to activate mic input for looping</div>
         </div>
 
         <!-- Full controls — hidden until connected -->
         <div id="gloop-controls" style="display:none">
-
-          <!-- I/O device selectors -->
-          <div style="margin-bottom:10px">
-            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">INPUT</label>
-            <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
-          </div>
-          <div style="margin-bottom:10px">
-            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">OUTPUT</label>
-            <!-- Desktop/Chrome: real selector. iOS: output follows system audio route. -->
-            <select class="gloop-select" id="gloop-outdevice" onchange="gloopSetOutput(this.value)" style="display:none"></select>
-            <div id="gloop-out-info" style="display:none;background:rgba(0,0,20,0.5);border:1px solid rgba(255,153,68,0.25);border-radius:7px;padding:8px 10px">
-              <div id="gloop-out-label" style="font-size:10px;font-weight:700;color:#fff;margin-bottom:3px">—</div>
-              <div style="font-size:8px;color:rgba(255,153,68,0.5);line-height:1.5">iOS routes output to your connected interface automatically.<br>To change: swipe down → long-press the volume icon in Control Center.</div>
-            </div>
-          </div>
-
-          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-            <button class="cmr" style="border-color:rgba(255,100,60,0.5);color:rgba(255,100,60,0.8)" onclick="gloopDisconnect()">✕ DISCONNECT MIC</button>
-          </div>
-          <!-- iOS compensation note -->
-          <div style="font-size:8px;color:rgba(255,153,68,0.5);letter-spacing:1px;margin-bottom:8px;line-height:1.5">
-            iOS reduces synth volume when mic is active. Use <b style="color:rgba(255,153,68,0.8)">Synth Boost</b> to compensate. Keep <b style="color:rgba(255,153,68,0.8)">Monitor at 0</b> until you're ready — raising it adds your guitar to the output.
-          </div>
 
           <!-- 4 level controls -->
           <div class="pg4" style="margin-bottom:8px">
@@ -443,7 +554,19 @@
           <div class="ctrl fx-ctrl"><label>Pre-Delay</label><input type="range" id="FX-RevPre"  min="0" max="100" value="12"><div class="dv" id="FX-RevPre-v">12</div></div>
           <div class="ctrl fx-ctrl"><label>Shimmer</label>  <input type="range" id="FX-Shimmer" min="0" max="100" value="18"><div class="dv" id="FX-Shimmer-v">18</div></div>
         </div>
+        <div class="pg2">
+          <div class="ctrl fx-ctrl"><label>HP Cut</label>   <input type="range" id="FX-RevHP" min="0" max="100" value="8"><div class="dv" id="FX-RevHP-v">8</div></div>
+          <div class="ctrl fx-ctrl"><label>LP Cut</label>   <input type="range" id="FX-RevLP" min="0" max="100" value="65"><div class="dv" id="FX-RevLP-v">65</div></div>
+        </div>
         <div class="sec">DELAY</div>
+        <div class="dly-sync-row">
+          <span class="dly-sync-lbl">SYNC</span>
+          <button class="dly-sync-btn on" onclick="setDelaySync(null,this)">FREE</button>
+          <button class="dly-sync-btn"    onclick="setDelaySync(0.25,this)">1/16</button>
+          <button class="dly-sync-btn"    onclick="setDelaySync(0.5,this)">1/8</button>
+          <button class="dly-sync-btn"    onclick="setDelaySync(1.0,this)">1/4</button>
+          <button class="dly-sync-btn"    onclick="setDelaySync(2.0,this)">1/2</button>
+        </div>
         <div class="pg4">
           <div class="ctrl fx-ctrl"><label>Time</label>    <input type="range" id="FX-DlyTime" min="0" max="100" value="40"><div class="dv" id="FX-DlyTime-v">40</div></div>
           <div class="ctrl fx-ctrl"><label>Feedback</label><input type="range" id="FX-DlyFb"   min="0" max="96"  value="50"><div class="dv" id="FX-DlyFb-v">50</div></div>
@@ -454,7 +577,7 @@
     </div>
 
     <!-- DRONE -->
-    <div class="drawer open" id="drDR">
+    <div class="drawer" id="drDR">
       <div class="drawer-hdr" onclick="toggleD('drDR')" style="color:var(--drone)">
         <span>DRONE — STRING FIELD</span>
         <div style="display:flex;align-items:center;gap:6px">
@@ -663,7 +786,7 @@
     </div>
 
     <!-- CHORD SEQUENCE -->
-    <div class="drawer open" id="drCHD">
+    <div class="drawer" id="drCHD">
       <div class="drawer-hdr" onclick="toggleD('drCHD')" style="color:#ff88cc">
         <span>CHORD SEQUENCE</span><span class="arr">▼</span>
       </div>
@@ -811,8 +934,9 @@
 
 <script>
 // ═══ STATE ═══════════════════════════════════════
-let ctx, master, masterEQ, revNode, revPre, revWet, shimGain,
+let ctx, master, masterEQ, revNode, revPre, revWet, revHP, revLP, shimGain,
     delNode, delFb, delDamp, delWet, waveshaper, driveMix;
+let delSyncDiv=null; // null=free, 0.25=1/16, 0.5=1/8, 1.0=1/4, 2.0=1/2
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
@@ -956,6 +1080,7 @@ function routeEQ(pan, inst, toRev, toDly){
 function playDR(t){
   const vol=n('DR-Vol'); if(vol<0.01||muted.DR) return;
   triggerEnergy(vol*0.25);
+  flashCircle('DR');
   const detHz=n('DR-Detune')*5;
   const atk=0.05+n('DR-Atk')*0.35;   // 0.05–0.40s
   const rel=0.8+n('DR-Rel')*1.5;     // 0.8–2.3s — overlaps ~6-18 steps, sounds sustained
@@ -1142,74 +1267,155 @@ function initGloop(){
   // Do NOT call gloopEnumDevices() here
 }
 
+// ═══ SESSION RECORDER ═════════════════════════════
+let sessionRecActive=false, sessionMediaRec=null, sessionChunks=[], sessionRecStart=0, sessionRecTick=null;
+let sessionDest=null;
+
+function initSessionRec(){
+  if(!ctx) return;
+  sessionDest=ctx.createMediaStreamDestination();
+  master.connect(sessionDest);
+}
+
+function sessionRecToggle(){
+  if(sessionRecActive){ sessionRecStop(); return; }
+  if(!sessionDest){ initSessionRec(); }
+  sessionChunks=[];
+  const mimeType=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';
+  sessionMediaRec=new MediaRecorder(sessionDest.stream,{mimeType});
+  sessionMediaRec.ondataavailable=e=>{ if(e.data&&e.data.size>0) sessionChunks.push(e.data); };
+  sessionMediaRec.onstop=()=>{
+    const blob=new Blob(sessionChunks,{type:'audio/webm'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url;
+    a.download='omniverse_'+(new Date().toISOString().slice(0,19).replace(/[T:]/g,'-'))+'.webm';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+  };
+  sessionMediaRec.start(500);
+  sessionRecActive=true; sessionRecStart=Date.now();
+  sessionRecTick=setInterval(updateSessionRecUI,1000);
+  updateSessionRecUI();
+}
+
+function sessionRecStop(){
+  if(!sessionRecActive) return;
+  sessionMediaRec.stop(); sessionRecActive=false;
+  clearInterval(sessionRecTick); sessionRecTick=null;
+  updateSessionRecUI();
+}
+
+function updateSessionRecUI(){
+  const btn=document.getElementById('session-rec-btn');
+  const timer=document.getElementById('session-rec-timer');
+  if(btn) btn.classList.toggle('recording',sessionRecActive);
+  if(timer){
+    if(sessionRecActive){
+      const s=Math.floor((Date.now()-sessionRecStart)/1000);
+      timer.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+      timer.style.display='block';
+    } else { timer.style.display='none'; }
+  }
+}
+
+// ═══ SEQ TAP RECORDER ═════════════════════════════
+let seqRecActive=false, seqRecEvents=[], seqRecLoopLen=32; // 32 = 2 bars of 16ths
+let seqRecPlayback=false, seqRecAbsStep=0;
+
+function seqRecToggle(){
+  if(!seqRecActive && !seqRecPlayback){
+    // Start recording
+    seqRecEvents=[]; seqRecActive=true; seqRecPlayback=false;
+    document.getElementById('seqrec-btn').classList.add('active');
+    document.getElementById('seqrec-btn').textContent='⊙ RECORDING...';
+  } else if(seqRecActive){
+    // Stop recording, start playback
+    seqRecActive=false; seqRecPlayback=seqRecEvents.length>0;
+    seqRecAbsStep=0;
+    const btn=document.getElementById('seqrec-btn');
+    btn.classList.toggle('active',seqRecPlayback);
+    btn.textContent=seqRecPlayback?'⊙ PLAYING':'⊙ SEQ REC';
+  } else {
+    // Stop playback
+    seqRecPlayback=false;
+    const btn=document.getElementById('seqrec-btn');
+    btn.classList.remove('active');
+    btn.textContent='⊙ SEQ REC';
+    seqRecEvents=[];
+  }
+}
+
+function seqRecTap(inst){
+  if(!seqRecActive||!isPlaying) return;
+  const stepLen=(60/bpm)*0.25;
+  const elapsed=ctx.currentTime-(nextT-(seqStep*stepLen));
+  const step=Math.round(elapsed/stepLen)%seqRecLoopLen;
+  // avoid duplicates at same step
+  if(!seqRecEvents.some(e=>e.inst===inst&&e.step===step))
+    seqRecEvents.push({inst,step});
+}
+
+function fireSeqRecInst(inst,t){
+  switch(inst){
+    case 'K':  playKick(t); break;
+    case 'SN': playSnare(t); break;
+    case 'H':  playH(t); break;
+    case 'DR': playDR(t); break;
+    case 'B':  playBassArpNote(t, bassArpFreq(), (60/bpm)*0.25); break;
+  }
+}
+
+// ═══ INSTRUMENT CIRCLES ═══════════════════════════
+let activeCircleDrawer=null;
+
+function openCirclePopup(drawerId, evt){
+  if(evt) evt.stopPropagation();
+  if(activeCircleDrawer===drawerId){ closeCirclePopup(); return; }
+  closeCirclePopup();
+  const d=document.getElementById(drawerId); if(!d) return;
+  d.classList.add('popup-mode');
+  document.getElementById('popup-bg').classList.add('active');
+  activeCircleDrawer=drawerId;
+}
+
+function closeCirclePopup(){
+  if(activeCircleDrawer){
+    const d=document.getElementById(activeCircleDrawer);
+    if(d) d.classList.remove('popup-mode');
+  }
+  document.getElementById('popup-bg').classList.remove('active');
+  activeCircleDrawer=null;
+}
+
+function syncCircVol(volId, val){
+  const el=document.getElementById(volId); if(!el) return;
+  el.value=val;
+  el.dispatchEvent(new Event('input'));
+}
+
+function flashCircle(id){
+  const body=document.querySelector('#circ-'+id+' .circ-body');
+  const ring=document.getElementById('cring-'+id);
+  if(body){ body.classList.remove('beat'); void body.offsetWidth; body.classList.add('beat'); setTimeout(()=>body.classList.remove('beat'),350); }
+  if(ring){ ring.classList.remove('beat'); void ring.offsetWidth; ring.classList.add('beat'); setTimeout(()=>ring.classList.remove('beat'),350); }
+}
+
 async function gloopEnumDevices(){
-  // Show connecting state on the button
   const connectRow=document.getElementById('gloop-connect-row');
   if(connectRow) connectRow.querySelector('button').textContent='⏳ CONNECTING...';
   try{
     const tmp=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     tmp.getTracks().forEach(t=>t.stop());
   }catch(e){
-    if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
+    if(connectRow) connectRow.querySelector('button').textContent='⚡ TAP TO USE MIC';
     const st=document.getElementById('gloop-status');
     if(st){ st.textContent='MIC PERMISSION DENIED'; st.style.display='block'; }
     return;
   }
-  // Permission granted — reveal full controls, hide connect prompt
   if(connectRow) connectRow.style.display='none';
   const controls=document.getElementById('gloop-controls');
   if(controls) controls.style.display='block';
-  const all=await navigator.mediaDevices.enumerateDevices();
-  const inputs=all.filter(d=>d.kind==='audioinput');
-  const outputs=all.filter(d=>d.kind==='audiooutput');
-
-  // ── Input dropdown ──
-  // Show every available input; auto-select the first non-built-in device.
-  // No name regex — GP5 / other interfaces show as "External Microphone" on iOS.
-  const sel=document.getElementById('gloop-device');
-  sel.innerHTML='';
-  let bestIn=null;
-  inputs.forEach((d,i)=>{
-    const opt=document.createElement('option');
-    opt.value=d.deviceId;
-    opt.textContent=d.label||(d.deviceId==='default'?'Default Input':`Input ${i+1}`);
-    sel.appendChild(opt);
-    // Prefer first non-default, non-built-in entry (likely the interface)
-    if(!bestIn && d.deviceId!=='default' && !/built.?in|internal/i.test(d.label))
-      bestIn=d.deviceId;
-  });
-  // Fall back to first input if nothing external found
-  if(!bestIn && inputs.length) bestIn=inputs[0].deviceId;
-  if(bestIn) sel.value=bestIn;
-
-  // ── Output dropdown ──
-  // ctx.setSinkId is Chrome/Edge only — not available on iOS Safari.
-  // On iOS, output routing is controlled by the system (connect interface → iOS routes there).
-  const outSel=document.getElementById('gloop-outdevice');
-  outSel.innerHTML='';
-  if(ctx.setSinkId && outputs.length){
-    // Desktop/Chrome — real output selection works
-    outSel.style.display='block';
-    document.getElementById('gloop-out-info').style.display='none';
-    let bestOut='default';
-    outputs.forEach((d,i)=>{
-      const opt=document.createElement('option');
-      opt.value=d.deviceId;
-      opt.textContent=d.label||(d.deviceId==='default'?'Default Output':`Output ${i+1}`);
-      if(d.deviceId!=='default' && !/built.?in|internal/i.test(d.label)) bestOut=d.deviceId;
-      outSel.appendChild(opt);
-    });
-    outSel.value=bestOut;
-    await gloopSetOutput(bestOut);
-  } else {
-    // iOS — output is auto-routed by the OS to whatever interface is connected.
-    // Show the connected device name so the user can confirm it's working.
-    outSel.style.display='none';
-    document.getElementById('gloop-out-info').style.display='block';
-    // We'll update the label after gloopConnectDevice reads the active track
-  }
-
-  await gloopConnectDevice(bestIn);
+  await gloopConnectDevice(null);
 }
 
 async function gloopSetOutput(deviceId){
@@ -1358,7 +1564,7 @@ function gloopDisconnect(){
   if(master) master.gain.setTargetAtTime(0.75, ctx.currentTime, 0.1); // restore default
   // Show connect prompt again
   const cr=document.getElementById('gloop-connect-row'), gc=document.getElementById('gloop-controls');
-  if(cr){ cr.style.display='flex'; cr.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT'; }
+  if(cr){ cr.style.display='flex'; cr.querySelector('button').textContent='⚡ TAP TO USE MIC'; }
   if(gc) gc.style.display='none';
   gloopClear();
 }
@@ -1478,6 +1684,7 @@ function setBpm(val){
   document.getElementById('bpmVal').textContent=val;
   document.querySelectorAll('.bpm-pre').forEach(b=>b.classList.toggle('on',+b.textContent===val));
   if(delNode) delNode.delayTime.setTargetAtTime(60/bpm/2, ctx.currentTime, 0.05);
+  if(delSyncDiv!==null && delNode) delNode.delayTime.setTargetAtTime((60/bpm)*delSyncDiv, ctx.currentTime, 0.05);
 }
 function setPadMode(mode,btn){
   padMode=mode;
@@ -1624,7 +1831,9 @@ function init(){
   revNode=ctx.createConvolver();
   revWet=ctx.createGain(); revWet.gain.value=0.4;
   shimGain=ctx.createGain(); shimGain.gain.value=0;
-  revPre.connect(revNode); revNode.connect(revWet); revWet.connect(masterEQ);
+  revHP=ctx.createBiquadFilter(); revHP.type='highpass'; revHP.frequency.value=80;
+  revLP=ctx.createBiquadFilter(); revLP.type='lowpass';  revLP.frequency.value=8000;
+  revPre.connect(revNode); revNode.connect(revHP); revHP.connect(revLP); revLP.connect(revWet); revWet.connect(masterEQ);
   // Shimmer: high-passed reverb return → slight detune
   revNode.connect(shimGain); shimGain.connect(masterEQ);
   buildReverb(4, 0.55);
@@ -1666,9 +1875,8 @@ function init(){
         if(isPlaying){ nextT=ctx.currentTime+0.05; }
         if(arpActive){ arpNextT=ctx.currentTime+0.05; }
         // iOS kills getUserMedia tracks when backgrounded — reconnect only if user had connected
-        const sel=document.getElementById('gloop-device');
-        if(sel && micSource && micStream && micStream.getTracks().some(t=>t.readyState==='ended')){
-          gloopConnectDevice(sel.value);
+        if(micSource && micStream && micStream.getTracks().some(t=>t.readyState==='ended')){
+          gloopConnectDevice(null);
         }
       }).catch(()=>{});
     }
@@ -1826,9 +2034,20 @@ function applyFX(id,val){
     case 'FX-DlyTime':   delNode.delayTime.setTargetAtTime(0.03+nv*1.8,t,0.05); break;
     case 'FX-DlyDamp':   delDamp.frequency.setTargetAtTime(500+nv*15000,t,0.05); break;
     case 'FX-Drive':     waveshaper.curve=makeDistCurve(nv); driveMix.gain.setTargetAtTime(nv*0.6,t,0.05); break;
+    case 'FX-RevHP': if(revHP) revHP.frequency.setTargetAtTime(20+nv*800,t,0.05); break;
+    case 'FX-RevLP': if(revLP) revLP.frequency.setTargetAtTime(1000+nv*15000,t,0.05); break;
     case 'FX-Vol':       master.gain.setTargetAtTime(nv,t,0.05); break;
   }
 }
+
+function setDelaySync(div,btn){
+  delSyncDiv=div;
+  document.querySelectorAll('.dly-sync-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  if(div===null){ return; } // free mode — slider controls
+  const t=ctx.currentTime;
+  delNode.delayTime.setTargetAtTime((60/bpm)*div, t, 0.05);
+}
+
 function wireSliders(){
   document.querySelectorAll('input[type=range]').forEach(el=>{
     if(el.classList.contains('morph-sl')) return;
@@ -2130,6 +2349,7 @@ function playBassArpNote(t, freq, stepLen){
   const vol=n('BA-Vol'); if(vol<0.01||muted.B) return;
   t=Math.max(ctx.currentTime+0.004,t); // never schedule in the past
   triggerEnergy(vol*0.28);
+  flashCircle('B');
   const waves=['sawtooth','square','triangle','sine'];
   const wave=waves[Math.min(3,Math.floor(r('BA-Wave')/25))];
   const octShift=Math.round(r('BA-Oct')/100*4-2);
@@ -2207,6 +2427,7 @@ function setBassNoteLen(steps,btn){
 function playKick(t){
   const vol=n('K-Vol'); if(vol<0.01||muted.K) return;
   triggerEnergy(vol*0.7);
+  flashCircle('K');
   const tune=n('K-Tune'), dec=n('K-Decay'), punch=n('K-Punch');
   const startF=55+tune*110, endF=26+tune*22;
   const sweepT=0.04+dec*0.12, decayT=0.08+dec*0.55;
@@ -2239,6 +2460,7 @@ function playKick(t){
 function playSnare(t){
   const vol=n('SN-Vol'); if(vol<0.01||muted.SN) return;
   triggerEnergy(vol*0.45);
+  flashCircle('SN');
   const snap=n('SN-Snap'), body=n('SN-Body'), dec=n('SN-Decay');
   const decayT=0.07+dec*0.32;
   const pan=ctx.createStereoPanner(); pan.pan.value=0;
@@ -2477,6 +2699,7 @@ function playD(t){
 function playH(t){
   const vol=n('H-Vol'); if(vol<0.01||muted.H) return;
   triggerEnergy(vol*0.15);
+  flashCircle('H');
   const color=n('H-Color'), dec=0.06+n('H-Decay')*0.72, jitt=n('H-Jitter'), shine=n('H-Shine');
   const pan=ctx.createStereoPanner(); pan.pan.value=n('H-Pan')*2-1;
   const dur=Math.max(0.02,dec);
@@ -2521,6 +2744,12 @@ function loop(){
       if(snS[seqStep]) playSnare(nextT+swOff);
       if(dS[seqStep])  playD(nextT+swOff);
       if(hS[seqStep])  playH(nextT+swOff);
+      // Seq rec playback
+      if(seqRecPlayback && seqRecEvents.length){
+        const curAbsStep=seqRecAbsStep%seqRecLoopLen;
+        seqRecEvents.filter(e=>e.step===curAbsStep).forEach(e=>fireSeqRecInst(e.inst,nextT+swOff));
+        seqRecAbsStep++;
+      }
       nextT+=sl;
       const wasLast=(seqStep===15);
       seqStep=(seqStep+1)%16;
