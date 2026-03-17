@@ -1509,7 +1509,7 @@ function tickLooper(){
     const iter=Math.floor(sinceStart/len);
     const iterStart=loopPhaseOrigin+iter*len;
     const posInIter=loopScheduled-iterStart;
-    const next=loopEvents.find(e=>e.t>posInIter);
+    const next=loopEvents.find(e=>e.t>=posInIter);
     if(next){
       const schedAt=iterStart+next.t;
       // Allow events up to 500ms late; fire them immediately rather than dropping them
@@ -2589,7 +2589,7 @@ function samplerStart(px,py){
   smpPadLockX=px; smpPadLockY=py;
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
-    if(t<=getLoopLen()+0.05) loopEvents.push({x:px,y:py,t,gen:0,mode:'sampler'});
+    if(t>=0 && t<=getLoopLen()+0.05) loopEvents.push({x:px,y:py,t,gen:0,mode:'sampler'});
   }
   // Rate + offset depend on preset
   let pitchRate, offset;
@@ -2747,7 +2747,7 @@ function holoSpawnGrain(){
   // Record into XS Loop looper
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
-    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'holo'});
+    if(t>=0 && t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'holo'});
   }
   const p=HOLO_PRESETS[holoPresetIdx];
   const vol=0.28+padY*0.58;
@@ -3160,7 +3160,7 @@ function spawnGrain(){
   triggerEnergy(n('X-Vol')*0.15);
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
-    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'xs'});
+    if(t>=0 && t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'xs'});
   }
   spawnGrainAt(padX, padY, ctx.currentTime);
   const zl=document.getElementById('zoneLabel');
