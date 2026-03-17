@@ -1226,6 +1226,7 @@ let padAssign='xs'; // 'xs' | 'sampler'
 let samplerBuf=null, samplerSrc=null, samplerFilter=null, samplerMicRec=null, samplerMicChunks=[], samplerMicActive=false;
 const smpS=new Array(16).fill(0);
 let smpPadMode=false, smpSeqSrc=null, smpSeqGain=null, smpSeqFilter=null;
+let samplerGain=null; // live gain reference for SMP-Vol circle knob
 let smpPadLockX=null, smpPadLockY=null; // last touched pad position — persists between steps
 let smpBeatCount=0;
 let lastHoloGrain=0, holoPresetIdx=0;
@@ -1433,102 +1434,84 @@ function currentZoneName(px){
 const activePre={DR:0,B:0,D:0,H:0,K:0,SN:0};
 const instDeep={X:false,DR:false,B:false,D:false,H:false};
 
-// ═══ LOOPER ══════════════════════════════════════
-let loopEvents=[], loopBars=1, loopRec=false, loopPlay=false, loopOverdub=false;
-let loopRecStart=0, loopPlayStart=0, loopScheduled=0, loopPhaseOrigin=0;
+// ═══ XS LOOPER (audio capture — records actual audio from XS pad instruments) ══
+let xsBus=null, xsCapProc=null;           // XS instrument bus + capture ScriptProcessor
+let xsBuf=null, xsBufLen=0, xsBufPos=0;   // loop buffer (Float32Array), length in samples, playhead
+let xsRec=false, xsPlay=false, xsOverdub=false, xsFinz=false;
+let xsRecStart=0, xsTargetLen=0, xsChunks=[], xsBars=1;
 let nextBarTime=0; // set by sequencer each time bar rolls over
-function getLoopLen(){ return loopBars*4*(60/bpm); }
-function getEventVol(e){
-  const el=document.getElementById('loop-decay');
-  const retain=el ? 0.15+(parseFloat(el.value)/100)*0.85 : 1.0;
-  return Math.pow(retain, e.gen||0);
-}
 
-function loopRecord(){
-  if(loopRec){
-    // Manual stop (works for both normal rec and overdub)
-    loopRec=false; loopOverdub=false; updateLoopUI(); return;
-  }
-  if(loopPlay && loopEvents.length){
-    // Start overdub: age all existing events by one generation, record fresh ones at gen 0
-    loopOverdub=true; loopRec=true;
-    loopEvents.forEach(e=>e.gen=(e.gen||0)+1);
-    loopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
-    updateLoopUI();
-    return;
-  }
-  // Fresh record — snap start to next bar boundary if sequencer is running
-  loopEvents=[]; loopRec=true; loopPlay=false; loopOverdub=false;
-  loopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
-  updateLoopUI();
-  const waitMs=((isPlaying && nextBarTime>ctx.currentTime)?(nextBarTime-ctx.currentTime)*1000:0)+getLoopLen()*1000+200;
-  setTimeout(()=>{
-    if(loopRec && !loopOverdub){
-      loopRec=false;
-      if(loopEvents.length){
-        loopPlay=true; loopPhaseOrigin=loopRecStart; loopPlayStart=loopRecStart;
-        // Don't use loopRecStart — it's already loopLen seconds in the past.
-        // Snap to the start of the current iteration so tickLooper picks up immediately.
-        const _now=ctx.currentTime, _len=getLoopLen();
-        const _iter=Math.floor((_now-loopRecStart)/_len);
-        loopScheduled=_now;
-      }
-      updateLoopUI();
+function xsLoopProcess(e){
+  if(!ctx) return;
+  const inp=e.inputBuffer.getChannelData(0);
+  const out=e.outputBuffer.getChannelData(0);
+  const count=inp.length;
+  if(xsRec && !xsPlay){
+    // First pass — pass through so user hears live audio, and capture it
+    if(ctx.currentTime < xsRecStart){ out.set(inp); return; }
+    out.set(inp);
+    const chunk=new Float32Array(inp); xsChunks.push(chunk);
+    const total=xsChunks.reduce((s,c)=>s+c.length,0);
+    if(xsTargetLen>0 && total>=xsTargetLen && !xsFinz){ xsFinz=true; setTimeout(xsFinalize,0); }
+  } else if(xsPlay){
+    const el=document.getElementById('loop-decay');
+    const retain=el ? 0.15+(parseFloat(el.value)/100)*0.85 : 1.0;
+    for(let i=0;i<count;i++){
+      if(xsOverdub && xsRec) xsBuf[xsBufPos]=xsBuf[xsBufPos]*retain+inp[i];
+      out[i]=xsBuf[xsBufPos];
+      xsBufPos=(xsBufPos+1)%xsBufLen;
     }
-  }, waitMs);
+  } else {
+    out.set(inp); // idle — pass through
+  }
+}
+function xsFinalize(){
+  xsFinz=false; xsRec=false;
+  const total=xsChunks.reduce((s,c)=>s+c.length,0);
+  if(total>0){
+    xsBuf=new Float32Array(total);
+    let off=0; xsChunks.forEach(c=>{xsBuf.set(c,off);off+=c.length;});
+    xsBufLen=total; xsBufPos=0; xsPlay=true;
+  }
+  xsChunks=[];
+  updateLoopUI();
+}
+function loopRecord(){
+  if(!ctx) init();
+  if(xsRec && !xsOverdub){ xsFinalize(); return; }
+  if(xsOverdub){ xsRec=false; xsOverdub=false; updateLoopUI(); return; }
+  if(xsPlay && xsBufLen>0){ xsOverdub=true; xsRec=true; xsBufPos=0; updateLoopUI(); return; }
+  // Fresh record
+  xsChunks=[]; xsBuf=null; xsBufLen=0; xsBufPos=0;
+  xsPlay=false; xsOverdub=false; xsFinz=false; xsRec=true;
+  xsRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
+  xsTargetLen=Math.round(xsBars*4*(60/bpm)*ctx.sampleRate);
+  updateLoopUI();
 }
 function loopToggle(){
-  if(!loopEvents.length) return;
-  loopPlay=!loopPlay;
-  if(loopPlay){ loopPhaseOrigin=loopPlayStart=ctx.currentTime; loopScheduled=ctx.currentTime; }
+  if(!xsBufLen) return;
+  xsPlay=!xsPlay; if(xsPlay) xsBufPos=0;
   updateLoopUI();
 }
 function loopClear(){
-  loopEvents=[]; loopPlay=false; loopRec=false; loopOverdub=false; updateLoopUI();
+  xsBuf=null; xsBufLen=0; xsBufPos=0;
+  xsRec=false; xsPlay=false; xsOverdub=false; xsChunks=[];
+  updateLoopUI();
 }
 function setLoopBars(bars,btn){
-  loopBars=bars;
+  xsBars=bars;
   document.querySelectorAll('.loop-bar-btn').forEach(b=>b.classList.toggle('on',+b.dataset.bars===bars));
 }
 function updateLoopUI(){
-  document.getElementById('loop-rec').classList.toggle('active',loopRec);
-  document.getElementById('loop-play').classList.toggle('active',loopPlay);
-  document.getElementById('loop-play').disabled=loopEvents.length===0;
-  document.getElementById('loop-clear').disabled=loopEvents.length===0&&!loopRec;
-  const t=loopEvents.length;
+  document.getElementById('loop-rec').classList.toggle('active',xsRec);
+  document.getElementById('loop-play').classList.toggle('active',xsPlay);
+  document.getElementById('loop-play').disabled=xsBufLen===0;
+  document.getElementById('loop-clear').disabled=xsBufLen===0&&!xsRec;
+  const sec=xsBufLen>0&&ctx?(xsBufLen/ctx.sampleRate).toFixed(1)+'s':'';
   document.getElementById('loop-status').textContent=
-    loopOverdub?'◉ OVERDUB':loopRec?'● RECORDING...':(loopPlay?'▶ LOOPING':(t>0?`${t} EVENTS`:'EMPTY'));
+    xsOverdub?'◉ OVERDUB':xsRec?'● RECORDING...':(xsPlay?`▶ LOOPING ${sec}`:(xsBufLen>0?`READY ${sec}`:'EMPTY'));
 }
-
-function tickLooper(){
-  if(!loopPlay||!loopEvents.length) return;
-  const lookahead=0.2, now=ctx.currentTime;
-  while(loopScheduled < now+lookahead){
-    const len=getLoopLen();
-    const sinceStart=Math.max(0, loopScheduled-loopPhaseOrigin);
-    const iter=Math.floor(sinceStart/len);
-    const iterStart=loopPhaseOrigin+iter*len;
-    const posInIter=loopScheduled-iterStart;
-    const next=loopEvents.find(e=>e.t>=posInIter);
-    if(next){
-      const schedAt=iterStart+next.t;
-      // Allow events up to 500ms late; fire them immediately rather than dropping them
-      if(schedAt>now-0.5){
-        const fireAt=Math.max(schedAt, now+0.008);
-        const v=getEventVol(next);
-        if(next.mode==='holo') holoSpawnGrainAt(next.x,next.y,fireAt,v);
-        else if(next.mode==='sampler') samplerSpawnAt(next.x,next.y,fireAt,v);
-        else spawnGrainAt(next.x,next.y,fireAt,v);
-      }
-      loopScheduled=schedAt+0.0008;
-    } else {
-      // Sort by time before next bar so find() works correctly even after overdub
-      // appends new events at the end with earlier t values than existing events
-      loopEvents.sort((a,b)=>a.t-b.t);
-      loopScheduled=iterStart+len+0.0001;
-    }
-  }
-}
+function tickLooper(){ /* replaced by xsLoopProcess ScriptProcessor */ }
 
 // ═══ GUITAR LOOPER ════════════════════════════════════════════════════════════
 // Real PCM audio looper synced to the main sequencer clock.
@@ -2156,6 +2139,12 @@ function init(){
   holoDelNode.connect(holoDelFb); holoDelFb.connect(holoDelNode);
   holoDelNode.connect(holoDelWet); holoDelWet.connect(masterEQ);
 
+  // XS pad bus — all XS Nebula / Samplerizer / Hologram audio routes through here for looper capture
+  xsBus=ctx.createGain(); xsBus.gain.value=1.0;
+  xsCapProc=ctx.createScriptProcessor(4096,1,1);
+  xsBus.connect(xsCapProc); xsCapProc.connect(masterEQ);
+  xsCapProc.onaudioprocess=xsLoopProcess;
+
   // Waveshaper
   waveshaper=ctx.createWaveShaper(); waveshaper.oversample='4x';
   waveshaper.curve=makeDistCurve(0);
@@ -2404,10 +2393,10 @@ function drawBg(){
   bgCtx.fillStyle=vg; bgCtx.fillRect(0,0,bgW,bgH);
 }
 
-function send(src,toRev,toDly){
+function send(src,toRev,toDly,bus){
   if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; src.connect(g); g.connect(revPre); }
   if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; src.connect(g); g.connect(delNode); }
-  src.connect(masterEQ); src.connect(waveshaper);
+  src.connect(bus||masterEQ); src.connect(waveshaper);
 }
 
 // ═══ FX LIVE ══════════════════════════════════════
@@ -2428,6 +2417,8 @@ function applyFX(id,val){
     case 'FX-RevHP': if(revHP) revHP.frequency.setTargetAtTime(20+nv*800,t,0.05); break;
     case 'FX-RevLP': if(revLP) revLP.frequency.setTargetAtTime(1000+nv*15000,t,0.05); break;
     case 'FX-Vol':       master.gain.setTargetAtTime(nv,t,0.05); break;
+    case 'SMP-Vol':      if(samplerGain) samplerGain.gain.setTargetAtTime(nv,t,0.05); break;
+    case 'SMP-Rev':      if(samplerRevSend) samplerRevSend.gain.setTargetAtTime(nv,t,0.05); break;
   }
 }
 
@@ -2587,10 +2578,6 @@ function samplerStart(px,py){
   if(!samplerBuf||!ctx) return;
   samplerStop();
   smpPadLockX=px; smpPadLockY=py;
-  if(loopRec){
-    const t=ctx.currentTime-loopRecStart;
-    if(t>=0 && t<=getLoopLen()+0.05) loopEvents.push({x:px,y:py,t,gen:0,mode:'sampler'});
-  }
   // Rate + offset depend on preset
   let pitchRate, offset;
   if(smpPadPreset==='speed'){
@@ -2606,6 +2593,7 @@ function samplerStart(px,py){
   const src=ctx.createBufferSource();
   src.buffer=samplerBuf; src.playbackRate.value=pitchRate;
   const mg=ctx.createGain(); mg.gain.value=r('SMP-Vol')/100;
+  samplerGain=mg;
   // Mode-specific X/Y routing
   if(smpPadPreset==='speed'){
     const filt=ctx.createBiquadFilter();
@@ -2627,8 +2615,9 @@ function samplerStart(px,py){
     const rvS=ctx.createGain(); rvS.gain.value=py*0.90; mg.connect(rvS); rvS.connect(revPre);
     samplerRevSend=rvS;
   }
-  mg.connect(masterEQ);
+  mg.connect(xsBus||masterEQ);
   const rv0=ctx.createGain(); rv0.gain.value=r('SMP-Rev')/100; mg.connect(rv0); rv0.connect(revPre);
+  samplerRevSend=rv0;
   if(smpPadPreset!=='echo'){ const dl0=ctx.createGain(); dl0.gain.value=r('SMP-Dly')/100; mg.connect(dl0); dl0.connect(delNode); }
   src.start(0, offset);
   samplerSrc=src;
@@ -2687,7 +2676,7 @@ function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur, fil
     g.gain.exponentialRampToValueAtTime(0.0001, schedT+dur*0.88); // fade out before cap
     // Filter each layer with the same cutoff as the main voice
     const lf=ctx.createBiquadFilter(); lf.type='lowpass'; lf.frequency.value=Math.min(cutoff*(0.7+st/60),18000); lf.Q.value=0.8;
-    s.connect(lf); lf.connect(g); g.connect(masterEQ);
+    s.connect(lf); lf.connect(g); g.connect(xsBus||masterEQ);
     // Scale rev/dly by vol so generation decay also reduces the reverb feed
     const rv2=ctx.createGain(); rv2.gain.value=revAmt*Math.min(1,vol*1.4); g.connect(rv2); rv2.connect(revPre);
     const dl2=ctx.createGain(); dl2.gain.value=dlyAmt*Math.min(1,vol*1.4); g.connect(dl2); dl2.connect(delNode);
@@ -2712,7 +2701,7 @@ function samplerUpdate(px,py){
 function samplerStop(){
   if(!samplerSrc) return;
   try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
-  samplerSrc=null; samplerFilter=null; samplerEchoDelay=null; samplerEchoFbGain=null; samplerRevSend=null;
+  samplerSrc=null; samplerFilter=null; samplerGain=null; samplerEchoDelay=null; samplerEchoFbGain=null; samplerRevSend=null;
 }
 // ─── HOLOGRAM GRANULAR ────────────────────────────
 const HOLO_PRESETS=[
@@ -2744,11 +2733,6 @@ function holoSpawnGrainAt(px,py,schedT,volMult){
 
 function holoSpawnGrain(){
   if(!ctx) return;
-  // Record into XS Loop looper
-  if(loopRec){
-    const t=ctx.currentTime-loopRecStart;
-    if(t>=0 && t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'holo'});
-  }
   const p=HOLO_PRESETS[holoPresetIdx];
   const vol=0.28+padY*0.58;
   _holoSpawnCore(p, padX, padY, ctx.currentTime, vol);
@@ -2794,7 +2778,7 @@ function _holoSpawnCore(p, px, py, schedT, vol){
     env.gain.setValueAtTime(0,t);
     env.gain.linearRampToValueAtTime(vol*volMult,t+atkT);
     env.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(atkT+0.002,playDur*(p.atk+p.rel)));
-    src.connect(env); env.connect(masterEQ);
+    src.connect(env); env.connect(xsBus||masterEQ);
     if(p.revAmt>0.01){const rv=ctx.createGain();rv.gain.value=p.revAmt*holoRevWet;env.connect(rv);rv.connect(revPre);}
     if(p.dlyAmt>0.01&&holoDelNode){const dl=ctx.createGain();dl.gain.value=p.dlyAmt;env.connect(dl);dl.connect(holoDelNode);}
     src.start(t,offset,Math.max(0.001,playDur));
@@ -2978,7 +2962,7 @@ function updatePadVoiceForChord(){
 
 // ═══ GRAIN SPAWNER ════════════════════════════════
 // Spawn a single musical oscillator voice
-function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly){
+function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly, bus){
   const osc=ctx.createOscillator(), env=ctx.createGain(), pan=ctx.createStereoPanner();
   osc.type=type; osc.frequency.value=Math.max(20,freq);
   env.gain.setValueAtTime(0,t);
@@ -2986,7 +2970,7 @@ function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly){
   env.gain.exponentialRampToValueAtTime(0.0001,t+atk+Math.max(0.01,rel));
   pan.pan.value=Math.max(-1,Math.min(1,panVal));
   osc.connect(env); env.connect(pan);
-  send(pan, toRev, toDly);
+  send(pan, toRev, toDly, bus);
   osc.start(t); osc.stop(t+atk+rel+0.15);
 }
 
@@ -3036,12 +3020,12 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.22));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.22)+rel);
         vp.pan.value=panV; vo.connect(ve); ve.connect(vp);
-        send(vp,toRev*1.3,toDly*0.2);
+        send(vp,toRev*1.3,toDly*0.2,xsBus);
         const sT=schedT+atk+(v*0.22)+rel+0.4;
         vo.start(schedT); vo.stop(sT); trem.start(schedT); trem.stop(sT);
       }
       // Octave harmonic ghost — very quiet
-      if(shim>0.08) makeVoice(baseFreq*2,'sine',atk+0.4,rel+0.8,amp*shim*0.18,schedT,(Math.random()-0.5)*spread*0.8,toRev*1.6,0);
+      if(shim>0.08) makeVoice(baseFreq*2,'sine',atk+0.4,rel+0.8,amp*shim*0.18,schedT,(Math.random()-0.5)*spread*0.8,toRev*1.6,0,xsBus);
       break;
     }
 
@@ -3059,14 +3043,14 @@ function spawnGrainAt(px, py, schedT, volMult=1){
       wob1.connect(wg1); wg1.connect(vo1.frequency);
       ve1.gain.setValueAtTime(0,schedT); ve1.gain.linearRampToValueAtTime(amp*0.72,schedT+atk);
       ve1.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel);
-      vo1.connect(ve1); send(ve1,toRev*1.5,toDly*0.4);
+      vo1.connect(ve1); send(ve1,toRev*1.5,toDly*0.4,xsBus);
       vo1.start(schedT); wob1.start(schedT); vo1.stop(schedT+atk+rel+0.5); wob1.stop(schedT+atk+rel+0.5);
       // Sub-sub ghost — barely perceptible pressure
       const vo2=ctx.createOscillator(), ve2=ctx.createGain();
       vo2.type='sine'; vo2.frequency.value=Math.max(10,baseFreq*0.25);
       ve2.gain.setValueAtTime(0,schedT); ve2.gain.linearRampToValueAtTime(amp*0.42,schedT+atk+0.5);
       ve2.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel*1.2);
-      vo2.connect(ve2); send(ve2,toRev,0);
+      vo2.connect(ve2); send(ve2,toRev,0,xsBus);
       vo2.start(schedT); vo2.stop(schedT+atk+rel*1.2+0.6);
       // Mid ghost — surface shimmer from deep below
       if(shim>0.05){
@@ -3077,7 +3061,7 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         wob3.connect(wg3); wg3.connect(vo3.frequency);
         ve3.gain.setValueAtTime(0,schedT); ve3.gain.linearRampToValueAtTime(amp*shim*0.22,schedT+atk+1.0);
         ve3.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel+1.2);
-        vo3.connect(ve3); send(ve3,toRev*1.9,0);
+        vo3.connect(ve3); send(ve3,toRev*1.9,0,xsBus);
         vo3.start(schedT); wob3.start(schedT); vo3.stop(schedT+atk+rel+1.4); wob3.stop(schedT+atk+rel+1.4);
       }
       break;
@@ -3107,7 +3091,7 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,onset); ve.gain.linearRampToValueAtTime(aV,onset+atk);
         ve.gain.exponentialRampToValueAtTime(0.0001,onset+atk+rel);
         vp.pan.value=(v-1)*spread*0.9; vo.connect(ve); ve.connect(vp);
-        send(vp,toRev*(1+v*0.25),v===0?toDly:0);
+        send(vp,toRev*(1+v*0.25),v===0?toDly:0,xsBus);
         const sT=onset+atk+rel+0.3;
         vo.start(onset); vo.stop(sT); dL.start(onset); dL.stop(sT); tL.start(onset); tL.stop(sT);
       }
@@ -3133,11 +3117,11 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.12));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.12)+rel);
         vp.pan.value=panV; vo.connect(ve); ve.connect(vp);
-        send(vp,toRev*1.2,v===0?toDly:0);
+        send(vp,toRev*1.2,v===0?toDly:0,xsBus);
         const sT=schedT+atk+(v*0.12)+rel+0.4;
         vo.start(schedT); vo.stop(sT); sw.start(schedT); sw.stop(sT);
       }
-      if(shim>0.08) makeVoice(baseFreq*2+(Math.random()-0.5)*10,'sine',atk+0.5,rel+1,amp*shim*0.18,schedT,0,toRev*1.5,0);
+      if(shim>0.08) makeVoice(baseFreq*2+(Math.random()-0.5)*10,'sine',atk+0.5,rel+1,amp*shim*0.18,schedT,0,toRev*1.5,0,xsBus);
       break;
     }
 
@@ -3147,9 +3131,9 @@ function spawnGrainAt(px, py, schedT, volMult=1){
       const atk = 0.04+n('X-Atk')*dur*0.5;
       const rel = 0.12+n('X-Rel')*dur+smear*0.5;
       const ch  = (Math.random()-0.5)*jitter*0.4;
-      makeVoice(baseFreq+ch,'sine',atk,rel,amp*0.52,schedT,(Math.random()-0.5)*spread,toRev*1.2,toDly*0.8);
-      if(shim>0.08) makeVoice((baseFreq+ch)*2,'sine',atk+0.04,rel+0.1,amp*shim*0.28,schedT,(Math.random()-0.5)*spread*0.6,toRev*1.4,0);
-      if(n('X-Harm')>0.2) makeVoice((baseFreq+ch)*1.5,'sine',atk+0.02,rel*0.7,amp*0.18,schedT,(Math.random()-0.5)*spread,toRev,0);
+      makeVoice(baseFreq+ch,'sine',atk,rel,amp*0.52,schedT,(Math.random()-0.5)*spread,toRev*1.2,toDly*0.8,xsBus);
+      if(shim>0.08) makeVoice((baseFreq+ch)*2,'sine',atk+0.04,rel+0.1,amp*shim*0.28,schedT,(Math.random()-0.5)*spread*0.6,toRev*1.4,0,xsBus);
+      if(n('X-Harm')>0.2) makeVoice((baseFreq+ch)*1.5,'sine',atk+0.02,rel*0.7,amp*0.18,schedT,(Math.random()-0.5)*spread,toRev,0,xsBus);
       break;
     }
   }
@@ -3158,10 +3142,6 @@ function spawnGrainAt(px, py, schedT, volMult=1){
 function spawnGrain(){
   padEnergy=Math.min(1,padEnergy+n('X-Vol')*0.3);
   triggerEnergy(n('X-Vol')*0.15);
-  if(loopRec){
-    const t=ctx.currentTime-loopRecStart;
-    if(t>=0 && t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'xs'});
-  }
   spawnGrainAt(padX, padY, ctx.currentTime);
   const zl=document.getElementById('zoneLabel');
   if(zl) zl.textContent='· '+currentZoneName(padX);
