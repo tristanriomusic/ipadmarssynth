@@ -333,12 +333,22 @@
           </div>
         </div>
 
-        <!-- In Level + Decay -->
-        <div class="pg2">
+        <!-- 4 level controls -->
+        <div class="pg4" style="margin-bottom:8px">
           <div class="ctrl">
             <label>In Level</label>
             <input type="range" id="gloop-inlvl" min="0" max="100" value="80" oninput="document.getElementById('gloop-inlvl-v').textContent=this.value; if(micInputGain) micInputGain.gain.value=this.value/100;">
             <div class="dv" id="gloop-inlvl-v">80</div>
+          </div>
+          <div class="ctrl">
+            <label>Monitor</label>
+            <input type="range" id="gloop-monvol" min="0" max="100" value="80" oninput="document.getElementById('gloop-monvol-v').textContent=this.value; if(micMonitorGain) micMonitorGain.gain.value=this.value/100;">
+            <div class="dv" id="gloop-monvol-v">80</div>
+          </div>
+          <div class="ctrl">
+            <label>Loop Vol</label>
+            <input type="range" id="gloop-loopvol" min="0" max="100" value="80" oninput="document.getElementById('gloop-loopvol-v').textContent=this.value; if(gloopOutGain) gloopOutGain.gain.value=this.value/100;">
+            <div class="dv" id="gloop-loopvol-v">80</div>
           </div>
           <div class="ctrl">
             <label>Decay</label>
@@ -945,18 +955,19 @@ let gloopPos=0;           // playhead (sample index)
 let gloopRec=false;
 let gloopPlay=false;
 let gloopOverdub=false;
-let gloopFinalizing=false;// guards auto-finalize from firing twice
-let gloopSamples=[];      // grows during first-pass recording
+let gloopFinalizing=false;
+let gloopSamples=[];      // array of Float32Array chunks during first-pass recording
 let gloopTargetLen=0;     // samples to record (bars × 4 beats × sr)
 let gloopRecStart=0;      // ctx.currentTime when recording should begin
 let gloopBars=1;
 let gloopNode=null;
-let gloopOutGain=null;
+let gloopOutGain=null;    // loop playback volume → masterEQ
 let gloopAnalyser=null;
 let gloopAnalyserBuf=null;
 let micStream=null;
 let micSource=null;
-let micInputGain=null;
+let micInputGain=null;    // In Level  — how hot the signal going into the loop is
+let micMonitorGain=null;  // Monitor   — how loud you hear yourself live (direct, no latency)
 
 function setGloopBars(bars,btn){
   gloopBars=bars;
@@ -964,7 +975,8 @@ function setGloopBars(bars,btn){
 }
 
 function initGloop(){
-  gloopOutGain=ctx.createGain(); gloopOutGain.gain.value=0.9;
+  // Loop playback output — controlled by Loop Vol slider
+  gloopOutGain=ctx.createGain(); gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   gloopOutGain.connect(masterEQ);
   gloopAnalyser=ctx.createAnalyser(); gloopAnalyser.fftSize=256;
   gloopAnalyserBuf=new Uint8Array(gloopAnalyser.frequencyBinCount);
@@ -1030,7 +1042,9 @@ async function gloopSetOutput(deviceId){
 }
 
 async function gloopConnectDevice(deviceId){
+  // Tear down old nodes cleanly
   if(gloopNode){ try{gloopNode.disconnect();}catch(e){} gloopNode=null; }
+  if(micMonitorGain){ try{micMonitorGain.disconnect();}catch(e){} micMonitorGain=null; }
   if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
   if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
   if(micStream) micStream.getTracks().forEach(t=>t.stop());
@@ -1040,13 +1054,29 @@ async function gloopConnectDevice(deviceId){
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
     }});
     micSource=ctx.createMediaStreamSource(micStream);
-    micInputGain=ctx.createGain(); micInputGain.gain.value=r('gloop-inlvl')/100;
+
+    // VU taps raw mic signal
     micSource.connect(gloopAnalyser);
+
+    // ── Monitor path: direct low-latency pass-through ──────────────────────
+    // mic → micMonitorGain → masterEQ
+    // Completely separate from the loop — zero ScriptProcessor latency
+    micMonitorGain=ctx.createGain();
+    micMonitorGain.gain.value=r('gloop-monvol')/100||0.8;
+    micSource.connect(micMonitorGain);
+    micMonitorGain.connect(masterEQ);
+
+    // ── Recording path: mic → micInputGain → ScriptProcessor ───────────────
+    // ScriptProcessor only outputs loop playback (never the raw mic signal)
+    // so it cannot bleed into the master chain or affect other instruments
+    micInputGain=ctx.createGain();
+    micInputGain.gain.value=r('gloop-inlvl')/100||0.8;
     micSource.connect(micInputGain);
     gloopNode=ctx.createScriptProcessor(2048,1,1);
     gloopNode.onaudioprocess=gloopProcess;
     micInputGain.connect(gloopNode);
-    gloopNode.connect(gloopOutGain);
+    gloopNode.connect(gloopOutGain); // loop playback → masterEQ
+
     document.getElementById('gloop-status').textContent='READY';
   }catch(err){
     document.getElementById('gloop-status').textContent='ERR: '+err.message;
@@ -1062,36 +1092,42 @@ function gloopProcess(e){
   if(gloopRec && !gloopPlay){
     // ── First pass ──
     if(ctx.currentTime < gloopRecStart){
-      // Pre-roll: waiting for bar boundary — monitor but don't record
-      for(let i=0;i<count;i++) out[i]=inp[i];
-      return;
+      // Pre-roll: waiting for bar boundary — output silence (monitor goes direct path)
+      out.fill(0); return;
     }
-    for(let i=0;i<count;i++){
-      if(gloopTargetLen>0 && gloopSamples.length>=gloopTargetLen){
-        if(!gloopFinalizing){ gloopFinalizing=true; setTimeout(gloopFinalize,0); }
-        out[i]=inp[i]; continue;
-      }
-      gloopSamples.push(inp[i]);
-      out[i]=inp[i]; // live monitoring
+    // Accumulate whole buffer chunks — far cheaper than per-sample push
+    const chunk=new Float32Array(count);
+    for(let i=0;i<count;i++) chunk[i]=inp[i]*inLvl;
+    gloopSamples.push(chunk);
+    // Check if we've hit the target length
+    const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
+    if(gloopTargetLen>0 && recorded>=gloopTargetLen && !gloopFinalizing){
+      gloopFinalizing=true; setTimeout(gloopFinalize,0);
     }
+    out.fill(0); // ScriptProcessor outputs only loop — monitor is the direct path
   } else if(gloopPlay){
     // ── Playback / overdub ──
     const retain=0.1+(r('gloop-decay')/100)*0.9;
     for(let i=0;i<count;i++){
       if(gloopOverdub && gloopRec)
         gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain + inp[i]*inLvl;
-      out[i]=gloopBuffer[gloopPos] + (gloopOverdub&&gloopRec ? inp[i] : 0);
+      out[i]=gloopBuffer[gloopPos];
       gloopPos=(gloopPos+1)%gloopLen;
     }
   } else {
-    for(let i=0;i<count;i++) out[i]=inp[i]; // passthrough when idle
+    out.fill(0); // idle — silence out (monitor is separate direct path)
   }
 }
 
 function gloopFinalize(){
   gloopFinalizing=false; gloopRec=false;
-  gloopLen=gloopSamples.length;
-  if(gloopLen>0){ gloopBuffer=new Float32Array(gloopSamples); gloopPos=0; gloopPlay=true; }
+  // Flatten chunk array into a single Float32Array
+  const total=gloopSamples.reduce((s,c)=>s+c.length,0);
+  if(total>0){
+    gloopBuffer=new Float32Array(total);
+    let off=0; gloopSamples.forEach(c=>{ gloopBuffer.set(c,off); off+=c.length; });
+    gloopLen=total; gloopPos=0; gloopPlay=true;
+  }
   gloopSamples=[];
   updateGloopUI();
 }
@@ -1116,6 +1152,7 @@ function gloopToggle(){
 function gloopClear(){
   gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false;
   gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
+  if(gloopOutGain) gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   updateGloopUI();
 }
 function updateGloopUI(){
