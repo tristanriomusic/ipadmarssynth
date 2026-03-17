@@ -321,60 +321,71 @@
       </div>
       <div class="drawer-body">
 
-        <!-- I/O device selectors -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div>
-            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">INPUT</label>
-            <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
-          </div>
-          <div>
-            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">OUTPUT</label>
-            <select class="gloop-select" id="gloop-outdevice" onchange="gloopSetOutput(this.value)"></select>
-          </div>
+        <!-- CONNECT prompt — shown until user activates mic input -->
+        <div id="gloop-connect-row" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 0 12px">
+          <button class="loop-btn" style="max-width:220px;padding:13px 10px;font-size:10px;letter-spacing:2px" onclick="gloopEnumDevices()">⚡ CONNECT AUDIO INPUT</button>
+          <div style="font-size:8px;color:rgba(255,153,68,0.45);letter-spacing:1px;text-align:center">Activates mic — keep off to preserve synth audio quality</div>
         </div>
 
-        <!-- 4 level controls -->
-        <div class="pg4" style="margin-bottom:8px">
-          <div class="ctrl">
-            <label>In Level</label>
-            <input type="range" id="gloop-inlvl" min="0" max="100" value="80" oninput="document.getElementById('gloop-inlvl-v').textContent=this.value; if(micInputGain) micInputGain.gain.value=this.value/100;">
-            <div class="dv" id="gloop-inlvl-v">80</div>
-          </div>
-          <div class="ctrl">
-            <label>Monitor</label>
-            <input type="range" id="gloop-monvol" min="0" max="100" value="80" oninput="document.getElementById('gloop-monvol-v').textContent=this.value; if(micMonitorGain) micMonitorGain.gain.value=this.value/100;">
-            <div class="dv" id="gloop-monvol-v">80</div>
-          </div>
-          <div class="ctrl">
-            <label>Loop Vol</label>
-            <input type="range" id="gloop-loopvol" min="0" max="100" value="80" oninput="document.getElementById('gloop-loopvol-v').textContent=this.value; if(gloopOutGain) gloopOutGain.gain.value=this.value/100;">
-            <div class="dv" id="gloop-loopvol-v">80</div>
-          </div>
-          <div class="ctrl">
-            <label>Decay</label>
-            <input type="range" id="gloop-decay" min="0" max="100" value="100" oninput="document.getElementById('gloop-decay-v').textContent=this.value">
-            <div class="dv" id="gloop-decay-v">100</div>
-          </div>
-        </div>
+        <!-- Full controls — hidden until connected -->
+        <div id="gloop-controls" style="display:none">
 
-        <!-- Bars — synced to main clock -->
-        <div class="loop-bars" style="margin-bottom:8px">
-          <button class="loop-bar-btn on" data-gbars="1" onclick="setGloopBars(1,this)">1 BAR</button>
-          <button class="loop-bar-btn"    data-gbars="2" onclick="setGloopBars(2,this)">2 BAR</button>
-          <button class="loop-bar-btn"    data-gbars="4" onclick="setGloopBars(4,this)">4 BAR</button>
-          <button class="loop-bar-btn"    data-gbars="8" onclick="setGloopBars(8,this)">8 BAR</button>
-        </div>
+          <!-- I/O device selectors -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div>
+              <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">INPUT</label>
+              <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
+            </div>
+            <div>
+              <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">OUTPUT</label>
+              <select class="gloop-select" id="gloop-outdevice" onchange="gloopSetOutput(this.value)"></select>
+            </div>
+          </div>
 
-        <!-- VU meter -->
-        <div class="gloop-vu-wrap"><canvas id="gloop-vu"></canvas></div>
+          <!-- 4 level controls -->
+          <div class="pg4" style="margin-bottom:8px">
+            <div class="ctrl">
+              <label>In Level</label>
+              <input type="range" id="gloop-inlvl" min="0" max="100" value="80" oninput="document.getElementById('gloop-inlvl-v').textContent=this.value; if(micInputGain) micInputGain.gain.value=this.value/100;">
+              <div class="dv" id="gloop-inlvl-v">80</div>
+            </div>
+            <div class="ctrl">
+              <label>Monitor</label>
+              <input type="range" id="gloop-monvol" min="0" max="100" value="80" oninput="document.getElementById('gloop-monvol-v').textContent=this.value; if(micMonitorGain) micMonitorGain.gain.value=this.value/100;">
+              <div class="dv" id="gloop-monvol-v">80</div>
+            </div>
+            <div class="ctrl">
+              <label>Loop Vol</label>
+              <input type="range" id="gloop-loopvol" min="0" max="100" value="80" oninput="document.getElementById('gloop-loopvol-v').textContent=this.value; if(gloopOutGain) gloopOutGain.gain.value=this.value/100;">
+              <div class="dv" id="gloop-loopvol-v">80</div>
+            </div>
+            <div class="ctrl">
+              <label>Decay</label>
+              <input type="range" id="gloop-decay" min="0" max="100" value="100" oninput="document.getElementById('gloop-decay-v').textContent=this.value">
+              <div class="dv" id="gloop-decay-v">100</div>
+            </div>
+          </div>
 
-        <!-- Transport -->
-        <div class="looper-btns" style="margin-top:8px">
-          <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
-          <button class="loop-btn play" id="gloop-play"  onclick="gloopToggle()"  disabled>▶ LOOP</button>
-          <button class="loop-btn"      id="gloop-clear" onclick="gloopClear()"   disabled>✕ CLEAR</button>
-        </div>
-        <div class="loop-status" id="gloop-status">NO INPUT</div>
+          <!-- Bars — synced to main clock -->
+          <div class="loop-bars" style="margin-bottom:8px">
+            <button class="loop-bar-btn on" data-gbars="1" onclick="setGloopBars(1,this)">1 BAR</button>
+            <button class="loop-bar-btn"    data-gbars="2" onclick="setGloopBars(2,this)">2 BAR</button>
+            <button class="loop-bar-btn"    data-gbars="4" onclick="setGloopBars(4,this)">4 BAR</button>
+            <button class="loop-bar-btn"    data-gbars="8" onclick="setGloopBars(8,this)">8 BAR</button>
+          </div>
+
+          <!-- VU meter -->
+          <div class="gloop-vu-wrap"><canvas id="gloop-vu"></canvas></div>
+
+          <!-- Transport -->
+          <div class="looper-btns" style="margin-top:8px">
+            <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
+            <button class="loop-btn play" id="gloop-play"  onclick="gloopToggle()"  disabled>▶ LOOP</button>
+            <button class="loop-btn"      id="gloop-clear" onclick="gloopClear()"   disabled>✕ CLEAR</button>
+          </div>
+          <div class="loop-status" id="gloop-status">READY</div>
+
+        </div><!-- #gloop-controls -->
 
       </div>
     </div>
@@ -975,21 +986,34 @@ function setGloopBars(bars,btn){
 }
 
 function initGloop(){
-  // Loop playback output — controlled by Loop Vol slider
+  // Create output nodes now — they produce silence until mic is connected,
+  // so they have no impact on synth quality or volume.
+  // getUserMedia is NOT called here — only when user taps CONNECT AUDIO INPUT.
+  // This keeps iOS in Playback audio session mode (higher quality/volume).
   gloopOutGain=ctx.createGain(); gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   gloopOutGain.connect(masterEQ);
   gloopAnalyser=ctx.createAnalyser(); gloopAnalyser.fftSize=256;
   gloopAnalyserBuf=new Uint8Array(gloopAnalyser.frequencyBinCount);
-  gloopEnumDevices();
+  // Do NOT call gloopEnumDevices() here
 }
 
 async function gloopEnumDevices(){
+  // Show connecting state on the button
+  const connectRow=document.getElementById('gloop-connect-row');
+  if(connectRow) connectRow.querySelector('button').textContent='⏳ CONNECTING...';
   try{
     const tmp=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     tmp.getTracks().forEach(t=>t.stop());
   }catch(e){
-    document.getElementById('gloop-status').textContent='MIC PERMISSION DENIED'; return;
+    if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
+    const st=document.getElementById('gloop-status');
+    if(st){ st.textContent='MIC PERMISSION DENIED'; st.style.display='block'; }
+    return;
   }
+  // Permission granted — reveal full controls, hide connect prompt
+  if(connectRow) connectRow.style.display='none';
+  const controls=document.getElementById('gloop-controls');
+  if(controls) controls.style.display='block';
   const all=await navigator.mediaDevices.enumerateDevices();
   const inputs=all.filter(d=>d.kind==='audioinput');
   const outputs=all.filter(d=>d.kind==='audiooutput');
@@ -1458,9 +1482,9 @@ function init(){
         // Resync sequencer clock so we don't burst stale notes
         if(isPlaying){ nextT=ctx.currentTime+0.05; }
         if(arpActive){ arpNextT=ctx.currentTime+0.05; }
-        // iOS kills getUserMedia tracks when backgrounded — reconnect mic
+        // iOS kills getUserMedia tracks when backgrounded — reconnect only if user had connected
         const sel=document.getElementById('gloop-device');
-        if(sel && micStream && micStream.getTracks().some(t=>t.readyState==='ended')){
+        if(sel && micSource && micStream && micStream.getTracks().some(t=>t.readyState==='ended')){
           gloopConnectDevice(sel.value);
         }
       }).catch(()=>{});
