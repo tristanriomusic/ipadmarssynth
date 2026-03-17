@@ -74,6 +74,19 @@
     #xPad canvas{ position:absolute; inset:0; width:100%; height:100%; }
     .pad-label{ position:absolute; top:10px; left:14px; font-size:10px; font-weight:900; letter-spacing:3px; color:rgba(255,255,255,0.6); z-index:5; pointer-events:none; text-shadow:0 0 8px rgba(0,242,255,0.8); }
 
+    /* PAD ASSIGNMENT */
+    .pad-assign-row{ display:flex; gap:6px; padding:0 3vw 5px; }
+    .pad-assign-btn{ flex:1; background:rgba(0,10,30,0.42); border:1px solid rgba(0,242,255,0.2); color:rgba(0,242,255,0.5); font-size:9px; font-weight:900; padding:7px 10px; border-radius:20px; cursor:pointer; letter-spacing:1px; transition:all .15s; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+    .pad-assign-btn.on{ background:rgba(0,242,255,0.14); color:#00f2ff; border-color:rgba(0,242,255,0.55); box-shadow:0 0 10px rgba(0,242,255,0.18); }
+    .pad-assign-btn.smp.on{ background:rgba(160,80,255,0.18); color:#cc88ff; border-color:rgba(160,80,255,0.6); box-shadow:0 0 10px rgba(160,80,255,0.22); }
+    /* SAMPLER CONTROLS */
+    .sampler-ctrl-row{ display:none; align-items:center; gap:7px; padding:0 3vw 6px; overflow-x:auto; scrollbar-width:none; }
+    .sampler-ctrl-row.active{ display:flex; }
+    .smp-btn{ flex-shrink:0; background:rgba(10,0,30,0.5); border:1px solid rgba(160,80,255,0.4); color:rgba(160,80,255,0.85); font-size:9px; font-weight:900; padding:7px 14px; border-radius:20px; cursor:pointer; letter-spacing:1px; touch-action:manipulation; -webkit-tap-highlight-color:transparent; transition:all .15s; }
+    .smp-btn.mic{ border-color:rgba(255,60,60,0.4); color:rgba(255,100,100,0.8); }
+    .smp-btn.mic.rec{ background:rgba(255,60,60,0.2); color:#ff6666; border-color:rgba(255,60,60,0.7); box-shadow:0 0 8px rgba(255,60,60,0.3); }
+    #samplerName{ flex:1; font-size:8px; font-weight:700; letter-spacing:.8px; color:rgba(255,255,255,0.38); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+
     /* MAIN */
     .main{ padding:0 3vw 300px; display:flex; flex-direction:column; gap:8px; }
 
@@ -291,6 +304,12 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     </div>
   </div>
 
+  <!-- PAD ASSIGNMENT -->
+  <div class="pad-assign-row">
+    <button class="pad-assign-btn on" onclick="setPadAssign('xs',this)">XS NEBULA</button>
+    <button class="pad-assign-btn smp" onclick="setPadAssign('sampler',this)">SAMPLERIZER</button>
+  </div>
+
   <div class="pad-mode-row">
     <button class="pm on" onclick="setPadMode('shimmer',this)">SHIMMER</button>
     <button class="pm"    onclick="setPadMode('abyss',this)">ABYSS</button>
@@ -299,8 +318,18 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <button class="pm"    onclick="setPadMode('pulse',this)">PULSE</button>
   </div>
 
+  <!-- SAMPLER CONTROLS (shown when samplerizer active) -->
+  <div class="sampler-ctrl-row" id="samplerCtrlRow">
+    <button class="smp-btn" onclick="samplerLoadFile()">⊕ LOAD</button>
+    <button class="smp-btn mic" id="samplerMicBtn" onclick="samplerToggleMicRec()">● MIC</button>
+    <span id="samplerName">— no sample —</span>
+    <span style="flex-shrink:0;font-size:7px;color:rgba(160,80,255,0.35);letter-spacing:1px">Y=PITCH · X=POS</span>
+  </div>
+  <input type="file" id="samplerFileInput" accept="audio/*" style="display:none" onchange="samplerOnFile(this)">
+
   <div id="xPad">
-    <span class="pad-label">XS NEBULA — <span id="modeLabel">SHIMMER</span> <span id="zoneLabel" style="color:rgba(255,220,80,0.9);font-size:9px;letter-spacing:2px;"></span></span>
+    <span class="pad-label" id="xsLabel">XS NEBULA — <span id="modeLabel">SHIMMER</span> <span id="zoneLabel" style="color:rgba(255,220,80,0.9);font-size:9px;letter-spacing:2px;"></span></span>
+    <span class="pad-label" id="samplerLabel" style="display:none;color:rgba(180,100,255,0.85);text-shadow:0 0 10px rgba(160,80,255,0.7)">SAMPLERIZER</span>
     <canvas id="padCanvas"></canvas>
   </div>
 
@@ -1066,6 +1095,8 @@ let delSyncDiv=null; // null=free, 0.25=1/16, 0.5=1/8, 1.0=1/4, 2.0=1/2
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
+let padAssign='xs'; // 'xs' | 'sampler'
+let samplerBuf=null, samplerSrc=null, samplerMicRec=null, samplerMicChunks=[], samplerMicActive=false;
 
 // ── MUTE STATE ────────────────────────────────────
 const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:false};
@@ -2285,6 +2316,111 @@ function chordFreqFromX(px){
   return full[Math.max(0,Math.min(full.length-1,idx))];
 }
 
+// ═══ PAD ASSIGNMENT ═══════════════════════════════
+function setPadAssign(mode,btn){
+  padAssign=mode;
+  document.querySelectorAll('.pad-assign-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  const isSmp=mode==='sampler';
+  document.getElementById('samplerCtrlRow').classList.toggle('active',isSmp);
+  document.querySelector('.pad-mode-row').style.display=isSmp?'none':'';
+  document.getElementById('xsLabel').style.display=isSmp?'none':'';
+  document.getElementById('samplerLabel').style.display=isSmp?'':'none';
+  document.getElementById('xPad').style.borderColor=isSmp?'rgba(160,80,255,0.7)':'rgba(0,242,255,0.7)';
+  document.getElementById('xPad').style.boxShadow=isSmp?'0 0 25px rgba(160,80,255,0.25)':'0 0 25px rgba(0,242,255,0.25)';
+  if(!isSmp){ stopPadVoice(false); drawCanvas(); }
+  else { samplerStop(); drawSamplerWaveform(); }
+}
+
+// ═══ SAMPLERIZER ══════════════════════════════════
+function samplerLoadFile(){
+  document.getElementById('samplerFileInput').click();
+}
+function samplerOnFile(input){
+  const file=input.files[0]; if(!file||!ctx) return;
+  document.getElementById('samplerName').textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    ctx.decodeAudioData(e.target.result.slice(0), buf=>{
+      samplerBuf=buf;
+      drawSamplerWaveform();
+    }, err=>{ console.warn('Decode:',err); document.getElementById('samplerName').textContent='⚠ decode error'; });
+  };
+  reader.readAsArrayBuffer(file);
+  input.value='';
+}
+async function samplerToggleMicRec(){
+  const btn=document.getElementById('samplerMicBtn');
+  if(samplerMicActive){
+    samplerMicActive=false; btn.classList.remove('rec'); btn.textContent='● MIC';
+    if(samplerMicRec&&samplerMicRec.state!=='inactive') samplerMicRec.stop();
+    return;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    samplerMicChunks=[];
+    const mt=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';
+    samplerMicRec=new MediaRecorder(stream,{mimeType:mt});
+    samplerMicRec.ondataavailable=e=>{ if(e.data&&e.data.size>0) samplerMicChunks.push(e.data); };
+    samplerMicRec.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(samplerMicChunks,{type:'audio/webm'});
+      blob.arrayBuffer().then(ab=>ctx.decodeAudioData(ab,buf=>{
+        samplerBuf=buf;
+        document.getElementById('samplerName').textContent='mic-rec.webm';
+        drawSamplerWaveform();
+      }));
+      samplerMicActive=false; btn.classList.remove('rec'); btn.textContent='● MIC';
+    };
+    samplerMicRec.start(100);
+    samplerMicActive=true; btn.classList.add('rec'); btn.textContent='■ STOP';
+  }catch(e){ console.warn('Mic err:',e); }
+}
+function samplerStart(px,py){
+  if(!samplerBuf||!ctx) return;
+  samplerStop();
+  const src=ctx.createBufferSource();
+  src.buffer=samplerBuf;
+  // Y axis: top(0)=+2 oct, mid(0.5)=normal, bottom(1)=-2 oct
+  src.playbackRate.value=Math.pow(2,(0.5-py)*2.5);
+  src.connect(masterEQ);
+  send(src, 0.45, 0.2);
+  const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
+  src.start(0, offset);
+  samplerSrc=src;
+  triggerEnergy(0.5);
+}
+function samplerUpdate(px,py){
+  if(!samplerSrc||!ctx) return;
+  samplerSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-py)*2.5),ctx.currentTime,0.04);
+}
+function samplerStop(){
+  if(!samplerSrc) return;
+  try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
+  samplerSrc=null;
+}
+function drawSamplerWaveform(){
+  if(!canvas||!ctx2) return;
+  ctx2.clearRect(0,0,padW,padH);
+  if(!samplerBuf){ return; }
+  const data=samplerBuf.getChannelData(0);
+  const step=Math.max(1,Math.ceil(data.length/padW));
+  ctx2.strokeStyle='rgba(180,100,255,0.55)';
+  ctx2.lineWidth=1.2;
+  ctx2.beginPath();
+  for(let x=0;x<padW;x++){
+    let peak=0;
+    for(let i=x*step,end=Math.min((x+1)*step,data.length);i<end;i++) peak=Math.max(peak,Math.abs(data[i]));
+    const h=peak*(padH*0.44);
+    const cy=padH/2;
+    ctx2.moveTo(x+0.5,cy-h); ctx2.lineTo(x+0.5,cy+h);
+  }
+  ctx2.stroke();
+  // Centre line
+  ctx2.strokeStyle='rgba(160,80,255,0.2)';
+  ctx2.lineWidth=0.5;
+  ctx2.beginPath(); ctx2.moveTo(0,padH/2); ctx2.lineTo(padW,padH/2); ctx2.stroke();
+}
+
 // ═══ SUSTAINED PAD VOICE ══════════════════════════
 // One persistent oscillator per touch — glides between chord notes, rings through chord changes
 let padVoice=null;
@@ -3120,7 +3256,7 @@ function loop(){
   // Arp — driven from same rAF loop as sequencer (no separate setInterval)
   arpTick();
   // Pad grains
-  if(padActive&&ctx){
+  if(padActive&&ctx&&padAssign==='xs'){
     const now=ctx.currentTime, rate=0.12+(1-n('X-Grain'))*0.60;
     if(now-lastGrain>rate){ spawnGrain(); lastGrain=now; }
   }
@@ -3500,12 +3636,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildPresets('D');  buildPresets('H');
 
   const pad=document.getElementById('xPad');
-  pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); startPadVoice(padX,padY); },{passive:false});
-  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); updatePadVoice(padX,padY); },{passive:false});
-  pad.addEventListener('touchend',  ()=>{ padActive=false; stopPadVoice(false); });
-  pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); startPadVoice(padX,padY); });
-  pad.addEventListener('mousemove', e=>{ if(padActive){ padPos(e); updatePadVoice(padX,padY); } });
-  pad.addEventListener('mouseup',   ()=>{ padActive=false; stopPadVoice(false); });
+  pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else startPadVoice(padX,padY); },{passive:false});
+  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); },{passive:false});
+  pad.addEventListener('touchend',  ()=>{ padActive=false; if(padAssign!=='sampler') stopPadVoice(false); });
+  pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else startPadVoice(padX,padY); });
+  pad.addEventListener('mousemove', e=>{ if(padActive){ padPos(e); if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); } });
+  pad.addEventListener('mouseup',   ()=>{ padActive=false; if(padAssign!=='sampler') stopPadVoice(false); });
   window.addEventListener('resize',()=>{
     if(canvas){ const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; }
     if(omniCanvas2){ omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight; placeOmniOrbs(); }
