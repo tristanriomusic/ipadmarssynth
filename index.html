@@ -2524,46 +2524,53 @@ function samplerSpawnAt(px,py,schedT,volMult){
   if(!samplerBuf||!ctx) return;
   const pitchRate=Math.pow(2,(0.5-py)*2.5);
   const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
+  const capDur=Math.min(samplerBuf.duration-offset, 3.0); // cap so old gens decay cleanly
   const src=ctx.createBufferSource();
   src.buffer=samplerBuf;
   src.playbackRate.value=pitchRate;
-  const mg=ctx.createGain(); mg.gain.value=0.72*volMult;
+  const mg=ctx.createGain();
+  mg.gain.setValueAtTime(0.72*volMult, schedT);
+  mg.gain.exponentialRampToValueAtTime(0.0001, schedT+capDur*0.90);
   src.connect(mg); mg.connect(masterEQ);
-  const rv0=ctx.createGain(); rv0.gain.value=0.55; mg.connect(rv0); rv0.connect(revPre);
-  const dl0=ctx.createGain(); dl0.gain.value=0.32; mg.connect(dl0); dl0.connect(delNode);
-  src.start(schedT, offset);
-  _spawnPsychoLayers(samplerBuf, pitchRate, offset, schedT, 0.85*volMult);
+  const rv0=ctx.createGain(); rv0.gain.value=0.55*volMult; mg.connect(rv0); rv0.connect(revPre);
+  const dl0=ctx.createGain(); dl0.gain.value=0.32*volMult; mg.connect(dl0); dl0.connect(delNode);
+  src.start(schedT, offset, capDur);
+  _spawnPsychoLayers(samplerBuf, pitchRate, offset, schedT, 0.85*volMult, capDur);
   triggerEnergy(0.3*volMult);
 }
 
-// Psychedelic rainbow layers: perfect 5th, octave, sub-octave — each with shimmer LFO
-function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol){
+// Psychedelic rainbow layers: perfect 5th, octave, sub-octave — each with shimmer LFO.
+// capDur limits playback so successive loop iterations don't accumulate in the reverb.
+// vol already incorporates the generation-based volMult, so decay carries through naturally.
+function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur){
   if(!buf||!ctx) return;
+  const dur=capDur||Math.min(buf.duration-offset, 3.0); // 3s default cap
   // [semitones, relVol, revAmount, dlyAmount, lfoHz, lfoCents, fadeInSec]
   const layers=[
-    [ 7,  0.30, 0.80, 0.38, 0.55, 12, 0.25],  // perfect 5th — warm harmony
-    [12,  0.18, 0.90, 0.28, 0.28,  8, 0.50],  // octave — shimmer shimmer
-    [-12, 0.12, 0.85, 0.20, 0.80, 18, 0.70],  // sub octave — deep glow
-    [19,  0.10, 0.95, 0.15, 0.18,  5, 0.90],  // octave+5th — rainbow sparkle
+    [ 7,  0.30, 0.72, 0.32, 0.55, 12, 0.20],
+    [12,  0.18, 0.80, 0.22, 0.28,  8, 0.40],
+    [-12, 0.12, 0.75, 0.16, 0.80, 18, 0.60],
+    [19,  0.09, 0.85, 0.12, 0.18,  5, 0.78],
   ];
   layers.forEach(([st,rv,revAmt,dlyAmt,lfoHz,lfoCents,fadeIn])=>{
     const s=ctx.createBufferSource();
     s.buffer=buf;
     s.playbackRate.value=basePitchRate*Math.pow(2,st/12);
-    // Shimmer LFO on detune for "rainbow" colour
     const lfo=ctx.createOscillator(), lfoG=ctx.createGain();
     lfo.type='sine'; lfo.frequency.value=lfoHz+(Math.random()-0.5)*0.15;
     lfoG.gain.value=lfoCents+(Math.random()-0.5)*4;
     lfo.connect(lfoG); lfoG.connect(s.detune);
     const g=ctx.createGain();
+    const peakT=schedT+Math.min(fadeIn, dur*0.45);
     g.gain.setValueAtTime(0,schedT);
-    g.gain.linearRampToValueAtTime(vol*rv, schedT+fadeIn);
+    g.gain.linearRampToValueAtTime(vol*rv, peakT);
+    g.gain.exponentialRampToValueAtTime(0.0001, schedT+dur*0.88); // fade out before cap
     s.connect(g); g.connect(masterEQ);
-    const rv2=ctx.createGain(); rv2.gain.value=revAmt; g.connect(rv2); rv2.connect(revPre);
-    const dl2=ctx.createGain(); dl2.gain.value=dlyAmt; g.connect(dl2); dl2.connect(delNode);
-    const dur=buf.duration-offset;
+    // Scale rev/dly by vol so generation decay also reduces the reverb feed
+    const rv2=ctx.createGain(); rv2.gain.value=revAmt*Math.min(1,vol*1.4); g.connect(rv2); rv2.connect(revPre);
+    const dl2=ctx.createGain(); dl2.gain.value=dlyAmt*Math.min(1,vol*1.4); g.connect(dl2); dl2.connect(delNode);
     s.start(schedT, offset, Math.max(0.01, dur));
-    lfo.start(schedT); lfo.stop(schedT+Math.max(dur,2));
+    lfo.start(schedT); lfo.stop(schedT+dur+0.1);
   });
 }
 function samplerUpdate(px,py){
