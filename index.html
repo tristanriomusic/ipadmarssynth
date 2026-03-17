@@ -331,14 +331,17 @@
         <div id="gloop-controls" style="display:none">
 
           <!-- I/O device selectors -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-            <div>
-              <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">INPUT</label>
-              <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
-            </div>
-            <div>
-              <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">OUTPUT</label>
-              <select class="gloop-select" id="gloop-outdevice" onchange="gloopSetOutput(this.value)"></select>
+          <div style="margin-bottom:10px">
+            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">INPUT</label>
+            <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">OUTPUT</label>
+            <!-- Desktop/Chrome: real selector. iOS: output follows system audio route. -->
+            <select class="gloop-select" id="gloop-outdevice" onchange="gloopSetOutput(this.value)" style="display:none"></select>
+            <div id="gloop-out-info" style="display:none;background:rgba(0,0,20,0.5);border:1px solid rgba(255,153,68,0.25);border-radius:7px;padding:8px 10px">
+              <div id="gloop-out-label" style="font-size:10px;font-weight:700;color:#fff;margin-bottom:3px">—</div>
+              <div style="font-size:8px;color:rgba(255,153,68,0.5);line-height:1.5">iOS routes output to your connected interface automatically.<br>To change: swipe down → long-press the volume icon in Control Center.</div>
             </div>
           </div>
 
@@ -1056,23 +1059,25 @@ async function gloopEnumDevices(){
   const outSel=document.getElementById('gloop-outdevice');
   outSel.innerHTML='';
   if(ctx.setSinkId && outputs.length){
+    // Desktop/Chrome — real output selection works
+    outSel.style.display='block';
+    document.getElementById('gloop-out-info').style.display='none';
     let bestOut='default';
     outputs.forEach((d,i)=>{
       const opt=document.createElement('option');
       opt.value=d.deviceId;
       opt.textContent=d.label||(d.deviceId==='default'?'Default Output':`Output ${i+1}`);
-      if(!bestOut||( d.deviceId!=='default'&&!/built.?in|internal/i.test(d.label)))
-        bestOut=d.deviceId;
+      if(d.deviceId!=='default' && !/built.?in|internal/i.test(d.label)) bestOut=d.deviceId;
       outSel.appendChild(opt);
     });
     outSel.value=bestOut;
     await gloopSetOutput(bestOut);
   } else {
-    // iOS — output follows system audio routing (interface auto-selected by iOS)
-    const opt=document.createElement('option');
-    opt.textContent='System routing (iOS)'; opt.value='';
-    outSel.appendChild(opt);
-    outSel.disabled=true; outSel.style.opacity='0.35';
+    // iOS — output is auto-routed by the OS to whatever interface is connected.
+    // Show the connected device name so the user can confirm it's working.
+    outSel.style.display='none';
+    document.getElementById('gloop-out-info').style.display='block';
+    // We'll update the label after gloopConnectDevice reads the active track
   }
 
   await gloopConnectDevice(bestIn);
@@ -1126,6 +1131,12 @@ async function gloopConnectDevice(deviceId){
     const boost=1+(r('gloop-boost')/100)*1.5; // 1.0 … 2.5
     master.gain.setTargetAtTime(Math.min(master.gain.value*boost,2.5), ctx.currentTime, 0.1);
 
+    // Update the output info label — iOS routes output through same device as input
+    const outInfo=document.getElementById('gloop-out-info');
+    if(outInfo && outInfo.style.display!=='none'){
+      const trackLabel=micStream.getAudioTracks()[0]?.label||'Connected Interface';
+      document.getElementById('gloop-out-label').textContent=trackLabel;
+    }
     document.getElementById('gloop-status').textContent='READY';
   }catch(err){
     document.getElementById('gloop-status').textContent='ERR: '+err.message;
