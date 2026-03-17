@@ -1077,12 +1077,12 @@ let hueShift=0, moodPhase=0;
 let bgCvs, bgCtx, bgW, bgH;
 // Mood palettes cycling with the music
 const MOODS=[
-  {h:0,   s:1.4, name:'FIRE'},    // warm reds
-  {h:40,  s:1.3, name:'GOLD'},    // amber
-  {h:200, s:1.5, name:'OCEAN'},   // blue
-  {h:270, s:1.6, name:'DREAM'},   // purple
-  {h:320, s:1.4, name:'NEON'},    // pink
-  {h:290, s:1.7, name:'VIOLET'},  // deep violet
+  {h:0,   s:1.8, name:'EMBER'},   // deep crimson
+  {h:22,  s:1.7, name:'LAVA'},    // deep burnt orange
+  {h:265, s:1.9, name:'VOID'},    // deep indigo/purple
+  {h:210, s:1.7, name:'ABYSS'},   // deep midnight blue
+  {h:290, s:1.8, name:'DUSK'},    // deep violet
+  {h:340, s:1.6, name:'BLOOM'},   // deep burgundy
 ];
 let moodIdx=0, moodT=0;
 const bS=Array(16).fill(1), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
@@ -1455,19 +1455,9 @@ function seqRecToggle(){
 }
 
 function seqRecTapAndPlay(inst){
-  // Play immediately for feedback
-  if(ctx){
-    const t=ctx.currentTime+0.01;
-    switch(inst){
-      case 'K':   playKick(t); break;
-      case 'SN':  playSnare(t); break;
-      case 'H':   playH(t); break;
-      case 'D':   playD(t); break;
-      case 'B':   playBassArpNote(t, bassArpFreq(), (60/bpm)*0.25); break;
-      case 'ARP': playArpNote(t, arpFreq(), (60/bpm)*arpDiv); break;
-    }
-  }
-  // Write into the real sequencer grid
+  // Do NOT play immediately — seqStep is the next scheduled step (fires within
+  // the lookahead window, ≤100ms). Playing here AND letting the scheduler fire
+  // it at nextT causes a double-hit. The scheduler provides the audio feedback.
   seqRecTap(inst);
 }
 
@@ -1718,7 +1708,7 @@ function drawGloopVU(){
   const w=canvas.width, h=canvas.height;
   gc.fillStyle='rgba(0,0,0,0.3)'; gc.fillRect(0,0,w,h);
   const grad=gc.createLinearGradient(0,0,w,0);
-  grad.addColorStop(0,'#00ff88'); grad.addColorStop(0.65,'#ffcc00'); grad.addColorStop(1,'#ff2200');
+  grad.addColorStop(0,'#ff9944'); grad.addColorStop(0.65,'#cc44ff'); grad.addColorStop(1,'#ff2200');
   gc.fillStyle=grad; gc.fillRect(0,1,w*Math.min(peak*2,1),h-2);
 }
 
@@ -2147,11 +2137,13 @@ function drawBg(){
   const blendedHue = curMood.h + (nextMood.h-curMood.h)*moodT;
   const blendedSat = curMood.s + (nextMood.s-curMood.s)*moodT;
 
-  // Slow hue drift + energy burst
-  hueShift += 0.04 + energy*0.4;
-  const totalHue  = (blendedHue + hueShift) % 360;
-  const bri = 0.75 + energy*0.7 + beatFlash*0.45;
-  const sat = blendedSat*1.3 + energy*1.4;
+  // Organic hue wave — two slow sine oscillators instead of linear spin,
+  // so the hue breathes back and forth rather than cycling through greens
+  const pt=performance.now()*0.001;
+  hueShift = Math.sin(pt*0.18)*28 + Math.sin(pt*0.11+1.4)*18 + Math.sin(pt*0.07+2.8)*12;
+  const totalHue  = ((blendedHue + hueShift) % 360 + 360) % 360;
+  const bri = 0.72 + energy*0.65 + beatFlash*0.4;
+  const sat = blendedSat*1.5 + energy*1.2;
 
   // Apply CSS filter to the background image element
   document.getElementById('bg').style.filter=
@@ -2174,6 +2166,23 @@ function drawBg(){
 
   // ── Canvas overlay effects ─────────────────────
   bgCtx.clearRect(0,0,bgW,bgH);
+
+  // Organic flowing colour blobs — slow sine-driven positions, deep tones
+  const bt=pt; // pt already computed above
+  const blobs=[
+    {bx:0.25+Math.sin(bt*0.17)*0.22,    by:0.35+Math.cos(bt*0.11)*0.20, dh:0,   r:0.42, a:0.10+energy*0.06},
+    {bx:0.75+Math.sin(bt*0.13+2.0)*0.18,by:0.55+Math.cos(bt*0.19)*0.22, dh:40,  r:0.38, a:0.08+energy*0.05},
+    {bx:0.50+Math.sin(bt*0.09+4.2)*0.28,by:0.75+Math.cos(bt*0.15)*0.18, dh:80,  r:0.35, a:0.07+energy*0.04},
+    {bx:0.15+Math.sin(bt*0.21+1.1)*0.14,by:0.65+Math.cos(bt*0.14+0.8)*0.26,dh:160,r:0.30,a:0.06+energy*0.03},
+  ];
+  for(const b of blobs){
+    const gx=b.bx*bgW, gy=b.by*bgH, gr=b.r*bgW;
+    const blobGrad=bgCtx.createRadialGradient(gx,gy,0,gx,gy,gr);
+    const bh=((totalHue+b.dh)%360).toFixed(0);
+    blobGrad.addColorStop(0,`hsla(${bh},75%,18%,${Math.min(b.a,0.22).toFixed(2)})`);
+    blobGrad.addColorStop(1,'rgba(0,0,0,0)');
+    bgCtx.fillStyle=blobGrad; bgCtx.fillRect(0,0,bgW,bgH);
+  }
 
   // Beat flash radial burst from center
   if(beatFlash>0.05){
