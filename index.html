@@ -114,7 +114,10 @@
     .step.h-on { background:var(--hihat); box-shadow:0 0 10px var(--hihat); }
     .step.dr-on{ background:var(--drone); box-shadow:0 0 14px var(--drone); }
     .step.k-on { background:var(--kick);  box-shadow:0 0 10px var(--kick); }
-    .step.sn-on{ background:var(--snare); box-shadow:0 0 10px var(--snare); }
+    .step.sn-on { background:var(--snare); box-shadow:0 0 10px var(--snare); }
+    .step.smp-on{ background:#a855f7;      box-shadow:0 0 10px #a855f7; }
+    .smp-pad-mode-btn{ font-size:8px; font-weight:900; padding:5px 10px; border-radius:6px; border:1px solid rgba(168,85,247,0.4); background:rgba(168,85,247,0.12); color:rgba(168,85,247,0.7); cursor:pointer; letter-spacing:1px; transition:all .2s; }
+    .smp-pad-mode-btn.active{ background:rgba(168,85,247,0.4); color:#d4aaff; border-color:rgba(168,85,247,0.8); box-shadow:0 0 10px rgba(168,85,247,0.4); }
     .drum-sec{ margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.07); }
     .drum-sec:last-child{ margin-bottom:0; padding-bottom:0; border-bottom:none; }
     .drum-sec-lbl{ font-size:8px; font-weight:900; letter-spacing:3px; margin-bottom:7px; }
@@ -472,6 +475,21 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(255,136,204,0.5)">REV</span>
         </div>
       </div>
+    </div>
+    <!-- SAMPLER -->
+    <div class="inst-circle" id="circ-SMP">
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(168,85,247,0.2);border:2px solid rgba(168,85,247,0.65);box-shadow:0 0 16px rgba(168,85,247,0.2),inset 0 0 20px rgba(168,85,247,0.1)" onclick="openCirclePopup('drSMPLR',event,'SMP')">
+          <div class="circ-ring" id="cring-SMP" style="border-color:#a855f7"></div>
+          <div class="circ-name">SMPLR</div>
+          <button class="circ-mute-btn" id="cmute-SMP" onclick="instMute('SMP',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="35" style="accent-color:#a855f7" oninput="syncCircVol('SMP-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(168,85,247,0.5)">REV</span>
+        </div>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="75" style="accent-color:#a855f7" oninput="syncCircVol('SMP-Vol',this.value)">
     </div>
     <!-- FX -->
     <div class="inst-circle" id="circ-FX">
@@ -1078,6 +1096,58 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
       </div>
     </div>
 
+    <!-- SAMPLER SEQUENCER -->
+    <div class="drawer" id="drSMPLR">
+      <div class="drawer-hdr" onclick="toggleD('drSMPLR')" style="color:#a855f7">
+        <span>SAMPLER</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="cmr-row">
+            <button class="cmr" onclick="instClear('SMP');event.stopPropagation()">CLR</button>
+            <button class="cmr" id="muteSMP" onclick="instMute('SMP',this);event.stopPropagation()">MUTE</button>
+            <button class="cmr" onclick="instRandom('SMP');event.stopPropagation()">RND</button>
+          </div>
+          <span class="arr">▼</span>
+        </div>
+      </div>
+      <div class="drawer-body">
+        <div class="grid" id="gSMPLR"></div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 8px">
+          <div class="sec" style="margin:0">PAD CONTROL</div>
+          <button class="smp-pad-mode-btn" id="smpPadModeBtn" onclick="toggleSmpPadMode()">◈ PAD CTRL OFF</button>
+        </div>
+        <div id="smpPadModeInfo" style="font-size:8px;color:rgba(168,85,247,0.5);letter-spacing:.8px;margin-bottom:10px;display:none">
+          PAD ACTIVE — X: POSITION · Y: PITCH · modulates sequenced sample in real-time
+        </div>
+
+        <div class="sec">SAMPLE</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+          <span id="smpDrawerName" style="font-size:8px;color:rgba(168,85,247,0.65);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">— no sample —</span>
+        </div>
+
+        <div class="pg2" style="margin-bottom:10px">
+          <div class="ctrl"><label>Vol</label>  <input type="range" id="SMP-Vol"   min="0" max="100" value="75" oninput="applyFX('SMP-Vol',this.value)"><div class="dv" id="SMP-Vol-v">75</div></div>
+          <div class="ctrl"><label>Pitch</label><input type="range" id="SMP-Pitch" min="0" max="100" value="50"><div class="dv" id="SMP-Pitch-v" style="font-size:8px">0st</div></div>
+        </div>
+
+        <div class="pg2" style="margin-bottom:10px">
+          <div class="ctrl"><label>Start %</label><input type="range" id="SMP-Start" min="0" max="100" value="0" oninput="document.getElementById('SMP-Start-v').textContent=this.value+'%'"><div class="dv" id="SMP-Start-v">0%</div></div>
+          <div class="ctrl"><label>End %</label>  <input type="range" id="SMP-End"   min="0" max="100" value="100" oninput="document.getElementById('SMP-End-v').textContent=this.value+'%'"><div class="dv" id="SMP-End-v">100%</div></div>
+        </div>
+
+        <div class="pg2" style="margin-bottom:10px">
+          <div class="ctrl"><label>Decay</label><input type="range" id="SMP-Dcy" min="0" max="100" value="80" oninput="document.getElementById('SMP-Dcy-v').textContent=Math.round(this.value*0.04*10)/10+'s'"><div class="dv" id="SMP-Dcy-v">3.2s</div></div>
+          <div class="ctrl"><label>Gate</label> <input type="range" id="SMP-Gate" min="0" max="100" value="90" oninput="document.getElementById('SMP-Gate-v').textContent=this.value+'%'"><div class="dv" id="SMP-Gate-v">90%</div></div>
+        </div>
+
+        <div class="sec">FX SEND</div>
+        <div class="pg2">
+          <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="SMP-Rev" min="0" max="100" value="35" oninput="document.getElementById('SMP-Rev-v').textContent=this.value"><div class="dv" id="SMP-Rev-v">35</div></div>
+          <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="SMP-Dly" min="0" max="100" value="18" oninput="document.getElementById('SMP-Dly-v').textContent=this.value"><div class="dv" id="SMP-Dly-v">18</div></div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- .main -->
 </div><!-- #ui -->
 
@@ -1097,9 +1167,11 @@ let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
 let padAssign='xs'; // 'xs' | 'sampler'
 let samplerBuf=null, samplerSrc=null, samplerMicRec=null, samplerMicChunks=[], samplerMicActive=false;
+const smpS=new Array(16).fill(0);
+let smpPadMode=false, smpSeqSrc=null, smpSeqGain=null;
 
 // ── MUTE STATE ────────────────────────────────────
-const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:false};
+const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:false,SMP:false};
 let omniRandT=0;
 
 // ── AUDIO REACTIVITY ──────────────────────────────
@@ -2348,6 +2420,7 @@ function samplerOnFile(input){
       ctx.decodeAudioData(ab, buf=>{
         samplerBuf=buf;
         nameEl.textContent=file.name;
+        syncSmpDrawerName(file.name);
         drawSamplerWaveform();
       }, err=>{
         console.warn('Decode error:',err);
@@ -2409,6 +2482,74 @@ function samplerStop(){
   try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
   samplerSrc=null;
 }
+// ─── SAMPLER SEQUENCER ────────────────────────────
+function playSamplerStep(t){
+  if(!samplerBuf||!ctx||muted.SMP) return;
+  // If pad ctrl is active, X/Y override start position and pitch
+  const startPct = smpPadMode&&padActive ? padX : r('SMP-Start')/100;
+  const pitch     = smpPadMode&&padActive ? (0.5-padY)*2.0 : (r('SMP-Pitch')-50)/50;  // ±1 oct
+  const rate = Math.pow(2, pitch);
+  const start = Math.min(startPct * samplerBuf.duration, samplerBuf.duration-0.001);
+  const endPct = r('SMP-End')/100;
+  const end   = Math.max(start+0.01, endPct * samplerBuf.duration);
+  const gate  = r('SMP-Gate')/100;
+  const durRaw= (end - start) / rate;
+  const dur   = durRaw * gate;
+  const vol   = r('SMP-Vol')/100;
+
+  // Stop previous seq source with fast fade
+  if(smpSeqSrc){
+    try{
+      smpSeqGain.gain.setTargetAtTime(0, t, 0.015);
+      smpSeqSrc.stop(t+0.08);
+    }catch(e){}
+    smpSeqSrc=null; smpSeqGain=null;
+  }
+
+  const src=ctx.createBufferSource();
+  src.buffer=samplerBuf;
+  src.playbackRate.value=rate;
+
+  const g=ctx.createGain(); g.gain.value=vol;
+  // Soft release at end
+  g.gain.setValueAtTime(vol, t);
+  g.gain.setTargetAtTime(0, t+Math.max(0.01, dur-0.05), 0.04);
+
+  const revAmt=r('SMP-Rev')/100;
+  const dlyAmt=r('SMP-Dly')/100;
+
+  src.connect(g);
+  g.connect(masterEQ);
+  if(revAmt>0.005){ const rv=ctx.createGain(); rv.gain.value=revAmt*0.9; g.connect(rv); rv.connect(revPre); }
+  if(dlyAmt>0.005){ const dl=ctx.createGain(); dl.gain.value=dlyAmt*0.9; g.connect(dl); dl.connect(delNode); }
+
+  src.start(t, start, Math.max(0.01, dur));
+  smpSeqSrc=src; smpSeqGain=g;
+  flashCircle('SMP');
+  // Keep a reference to apply live pad modulation
+  src.onended=()=>{ if(smpSeqSrc===src){ smpSeqSrc=null; smpSeqGain=null; } };
+}
+
+function toggleSmpPadMode(){
+  smpPadMode=!smpPadMode;
+  const btn=document.getElementById('smpPadModeBtn');
+  const info=document.getElementById('smpPadModeInfo');
+  btn.textContent=smpPadMode?'◈ PAD CTRL ON':'◈ PAD CTRL OFF';
+  btn.classList.toggle('active',smpPadMode);
+  if(info) info.style.display=smpPadMode?'block':'none';
+}
+
+// Keep drawer sample name in sync with samplerizer
+function syncSmpDrawerName(name){ const el=document.getElementById('smpDrawerName'); if(el) el.textContent=name||'— no sample —'; }
+
+// Update pitch display
+document.addEventListener('input', e=>{
+  if(e.target&&e.target.id==='SMP-Pitch'){
+    const st=Math.round((e.target.value-50)/50*12);
+    document.getElementById('SMP-Pitch-v').textContent=(st>0?'+':'')+st+'st';
+  }
+});
+
 function drawSamplerWaveform(){
   if(!canvas||!ctx2) return;
   ctx2.clearRect(0,0,padW,padH);
@@ -3250,6 +3391,7 @@ function loop(){
       if(snS[seqStep]) playSnare(nextT+swOff);
       if(dS[seqStep])  playD(nextT+swOff);
       if(hS[seqStep])  playH(nextT+swOff);
+      if(smpS[seqStep]&&!muted.SMP) playSamplerStep(nextT+swOff);
       nextT+=sl;
       const wasLast=(seqStep===15);
       seqStep=(seqStep+1)%16;
@@ -3302,6 +3444,7 @@ const INST_CFG={
   H:   [{s:hS, cls:'h-on', gid:'gH'}],
   DRMS:[{s:kS, cls:'k-on', gid:'gK'},{s:snS,cls:'sn-on',gid:'gSN'},
         {s:dS, cls:'d-on', gid:'gD'},{s:hS, cls:'h-on', gid:'gH'}],
+  SMP: [{s:smpS,cls:'smp-on',gid:'gSMPLR'}],
 };
 function instClear(key){
   const grids=INST_CFG[key]; if(!grids) return;
@@ -3313,7 +3456,7 @@ function instRandom(key){
     // musical density varies: drone sparse, bass medium, drums weighted by position
     const density=key==='DR'?0.4 : key==='B'?0.5 :
                   key==='K'?0.55 : key==='SN'?0.45 : key==='D'?0.6 : key==='H'?0.7 :
-                  [0.55,0.45,0.6,0.7][gi]||0.5;
+                  key==='SMP'?0.38 : [0.55,0.45,0.6,0.7][gi]||0.5;
     for(let i=0;i<16;i++){
       let p;
       if(i===0)        p=0.82+density*0.17;
@@ -3643,15 +3786,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
   buildGrid('gK',kS,'k-on');    buildGrid('gSN',snS,'sn-on');
   buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
+  buildGrid('gSMPLR',smpS,'smp-on');
   buildPresets('DR'); buildPresets('K'); buildPresets('SN');
   buildPresets('D');  buildPresets('H');
 
   const pad=document.getElementById('xPad');
   pad.addEventListener('touchstart',e=>{ e.preventDefault(); padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else startPadVoice(padX,padY); },{passive:false});
-  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); },{passive:false});
+  pad.addEventListener('touchmove', e=>{ e.preventDefault(); padPos(e); if(smpPadMode&&smpSeqSrc){ smpSeqSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-padY)*2.0),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); },{passive:false});
   pad.addEventListener('touchend',  ()=>{ padActive=false; if(padAssign!=='sampler') stopPadVoice(false); });
   pad.addEventListener('mousedown', e=>{ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else startPadVoice(padX,padY); });
-  pad.addEventListener('mousemove', e=>{ if(padActive){ padPos(e); if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); } });
+  pad.addEventListener('mousemove', e=>{ if(padActive){ padPos(e); if(smpPadMode&&smpSeqSrc){ smpSeqSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-padY)*2.0),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else updatePadVoice(padX,padY); } });
   pad.addEventListener('mouseup',   ()=>{ padActive=false; if(padAssign!=='sampler') stopPadVoice(false); });
   window.addEventListener('resize',()=>{
     if(canvas){ const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; }
