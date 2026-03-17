@@ -1471,6 +1471,9 @@ function tickLooper(){
       }
       loopScheduled=schedAt+0.0008;
     } else {
+      // Sort by time before next bar so find() works correctly even after overdub
+      // appends new events at the end with earlier t values than existing events
+      loopEvents.sort((a,b)=>a.t-b.t);
       loopScheduled=iterStart+len+0.0001;
     }
   }
