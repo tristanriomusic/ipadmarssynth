@@ -1037,7 +1037,6 @@ function loopRecord(){
     loopEvents.forEach(e=>e.gen=(e.gen||0)+1);
     loopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
     updateLoopUI();
-    setTimeout(()=>{ if(loopRec&&loopOverdub){ loopRec=false; loopOverdub=false; updateLoopUI(); } }, getLoopLen()*1000+200);
     return;
   }
   // Fresh record — snap start to next bar boundary if sequencer is running
