@@ -1137,23 +1137,35 @@ function init(){
 
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ ctx.resume(); startAudioKeepAlive(); acquireWakeLock(); } });
   document.addEventListener('touchstart',()=>{ if(ctx.state!=='running') ctx.resume(); },{passive:true});
-  setInterval(()=>{ if(ctx&&ctx.state!=='running') ctx.resume(); },8000);
   acquireWakeLock();
 }
 
 // ═══ AUDIO KEEP-ALIVE — prevents iOS Safari from suspending AudioContext ════
-// A silent 1-sample buffer looping continuously keeps the audio graph active.
-// iOS suspends the context when it thinks nothing is playing; this tricks it.
-let _keepAliveNode=null;
+// iOS Safari detects true silence (all-zero buffers) and suspends the context anyway.
+// We loop a 2048-sample buffer filled with sub-noise at ~-120 dB — completely
+// inaudible but non-zero, so iOS sees real audio activity and stays awake.
+// Also poll ctx.resume() every second in case it slips through anyway.
+let _keepAliveNode=null, _keepAliveInterval=null;
 function startAudioKeepAlive(){
   if(!ctx) return;
+  // Stop previous node if any
   if(_keepAliveNode){ try{ _keepAliveNode.stop(); }catch(e){} _keepAliveNode=null; }
-  const buf=ctx.createBuffer(1,1,ctx.sampleRate); // 1 channel, 1 sample, silent
+  if(_keepAliveInterval){ clearInterval(_keepAliveInterval); _keepAliveInterval=null; }
+
+  // Fill buffer with inaudible noise (~1e-5 amplitude, about -100 dB)
+  const bufSize=2048;
+  const buf=ctx.createBuffer(1,bufSize,ctx.sampleRate);
+  const data=buf.getChannelData(0);
+  for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1)*1e-5;
+
   const src=ctx.createBufferSource();
   src.buffer=buf; src.loop=true;
-  src.connect(ctx.destination); // connect directly — bypasses master gain (truly silent)
+  src.connect(ctx.destination); // bypass master gain — inaudible regardless
   src.start(0);
   _keepAliveNode=src;
+
+  // Belt-and-suspenders: aggressively resume every 1 s while page is alive
+  _keepAliveInterval=setInterval(()=>{ if(ctx&&ctx.state!=='running') ctx.resume(); },1000);
 }
 
 // ═══ WAKE LOCK — keep iPad screen on ════════════════
