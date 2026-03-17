@@ -470,7 +470,7 @@
 
         <!-- KICK -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--kick)">KICK</div>
+          <div class="drum-sec-lbl" style="color:var(--kick);display:flex;justify-content:space-between;align-items:center"><span>KICK</span><button class="cmr" id="muteK" onclick="instMute('K',this)">MUTE</button></div>
           <div class="grid" id="gK"></div>
           <div class="preset-row" id="preK"></div>
           <div class="pg4">
@@ -487,7 +487,7 @@
 
         <!-- SNARE -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--snare)">SNARE</div>
+          <div class="drum-sec-lbl" style="color:var(--snare);display:flex;justify-content:space-between;align-items:center"><span>SNARE</span><button class="cmr" id="muteSN" onclick="instMute('SN',this)">MUTE</button></div>
           <div class="grid" id="gSN"></div>
           <div class="preset-row" id="preSN"></div>
           <div class="pg4">
@@ -504,7 +504,7 @@
 
         <!-- BONGO -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--drum)">BONGO</div>
+          <div class="drum-sec-lbl" style="color:var(--drum);display:flex;justify-content:space-between;align-items:center"><span>BONGO</span><button class="cmr" id="muteD" onclick="instMute('D',this)">MUTE</button></div>
           <div class="grid" id="gD"></div>
           <div class="preset-row" id="preD"></div>
           <div class="pg4">
@@ -522,7 +522,7 @@
 
         <!-- HI-HAT -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--hihat)">HI-HAT</div>
+          <div class="drum-sec-lbl" style="color:var(--hihat);display:flex;justify-content:space-between;align-items:center"><span>HI-HAT</span><button class="cmr" id="muteH" onclick="instMute('H',this)">MUTE</button></div>
           <div class="grid" id="gH"></div>
           <div class="preset-row" id="preH"></div>
           <div class="pg4">
@@ -662,7 +662,8 @@ let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
 
 // ── MUTE STATE ────────────────────────────────────
-const muted={X:false,DR:false,B:false,DRMS:false,ARP:false};
+const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:false};
+let omniRandT=0;
 
 // ── AUDIO REACTIVITY ──────────────────────────────
 let energy=0, beatFlash=0, padEnergy=0;
@@ -1537,7 +1538,7 @@ function setBassNoteLen(steps,btn){
 
 // ═══ KICK ══════════════════════════════════════════
 function playKick(t){
-  const vol=n('K-Vol'); if(vol<0.01||muted.DRMS) return;
+  const vol=n('K-Vol'); if(vol<0.01||muted.K) return;
   triggerEnergy(vol*0.7);
   const tune=n('K-Tune'), dec=n('K-Decay'), punch=n('K-Punch');
   const startF=55+tune*110, endF=26+tune*22;
@@ -1569,7 +1570,7 @@ function playKick(t){
 
 // ═══ SNARE ═════════════════════════════════════════
 function playSnare(t){
-  const vol=n('SN-Vol'); if(vol<0.01||muted.DRMS) return;
+  const vol=n('SN-Vol'); if(vol<0.01||muted.SN) return;
   triggerEnergy(vol*0.45);
   const snap=n('SN-Snap'), body=n('SN-Body'), dec=n('SN-Decay');
   const decayT=0.07+dec*0.32;
@@ -1769,7 +1770,7 @@ function playB(t){
   o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
 }
 function playD(t){
-  const vol=n('D-Vol'); if(vol<0.01||muted.DRMS) return;
+  const vol=n('D-Vol'); if(vol<0.01||muted.D) return;
   triggerEnergy(vol*0.5);
   const tune=n('D-Tune'), dec=n('D-Decay'), thump=n('D-Thump'), snap=n('D-Snap');
   const pan=ctx.createStereoPanner(); pan.pan.value=n('D-Pan')*2-1;
@@ -1805,7 +1806,7 @@ function playD(t){
   const st=t+decT+0.15; o1.stop(st); o2.stop(st);
 }
 function playH(t){
-  const vol=n('H-Vol'); if(vol<0.01||muted.DRMS) return;
+  const vol=n('H-Vol'); if(vol<0.01||muted.H) return;
   triggerEnergy(vol*0.15);
   const color=n('H-Color'), dec=0.06+n('H-Decay')*0.72, jitt=n('H-Jitter'), shine=n('H-Shine');
   const pan=ctx.createStereoPanner(); pan.pan.value=n('H-Pan')*2-1;
@@ -1860,12 +1861,6 @@ function loop(){
           chordSeqStep=(chordSeqStep+1)%chordSeqLen;
           currentChordIdx=CHORD_SEQ_DATA[chordSeqStep];
           updateChordUI();
-        }
-        // CHAOS: randomly mutate a pattern on bar boundaries
-        if(chaosMutateRate>0.05 && Math.random()<chaosMutateRate){
-          const picks=[{s:dS,c:'d-on',g:'gD'},{s:hS,c:'h-on',g:'gH'},{s:kS,c:'k-on',g:'gK'},{s:snS,c:'sn-on',g:'gSN'}];
-          const p=picks[Math.floor(Math.random()*picks.length)];
-          omniPattern(p.s,p.c,0.3+Math.random()*0.6,p.g);
         }
       }
     }
@@ -1927,8 +1922,24 @@ function instRandom(key){
   });
 }
 function instMute(key,btn){
-  muted[key]=!muted[key];
-  btn.classList.toggle('muted',muted[key]);
+  if(key==='DRMS'){
+    // Master drums: all-mute or all-unmute
+    const allMuted=muted.K&&muted.SN&&muted.D&&muted.H;
+    const s=!allMuted;
+    ['K','SN','D','H'].forEach(k=>{
+      muted[k]=s;
+      const b=document.getElementById('mute'+k); if(b) b.classList.toggle('muted',s);
+    });
+    btn.classList.toggle('muted',s);
+  } else {
+    muted[key]=!muted[key];
+    btn.classList.toggle('muted',muted[key]);
+    // Sync master DRMS button
+    if(['K','SN','D','H'].includes(key)){
+      const allMuted=muted.K&&muted.SN&&muted.D&&muted.H;
+      const mb=document.getElementById('muteDRMS'); if(mb) mb.classList.toggle('muted',allMuted);
+    }
+  }
 }
 
 function buildGrid(cid,state,cls){
@@ -1999,12 +2010,12 @@ function padPos(e){
 // ═══ OMNIMODE ═════════════════════════════════════
 let omniActive=false, omniCanvas2=null, omniCtx2D=null, omniAnimId=null;
 const OMN_ORBS=[
-  {id:'energy',     lbl:'ENERGY',  sub:'X: tempo  ·  Y: intensity',    col:'#ff4400', nx:0.50, ny:0.22},
-  {id:'tension',    lbl:'TENSION', sub:'X: harmony  ·  Y: edge',       col:'#ff0099', nx:0.18, ny:0.22},
-  {id:'space',      lbl:'SPACE',   sub:'X: echo  ·  Y: reverb',        col:'#7722cc', nx:0.82, ny:0.22},
-  {id:'groove',     lbl:'GROOVE',  sub:'X: density  ·  Y: swing',      col:'#ff6600', nx:0.18, ny:0.75},
-  {id:'bassweight', lbl:'BASS',    sub:'X: balance  ·  Y: weight',     col:'#ffcc00', nx:0.50, ny:0.75},
-  {id:'chaos',      lbl:'CHAOS',   sub:'X: order  ·  Y: mutation',     col:'#00e8ff', nx:0.82, ny:0.75},
+  {id:'reverb',    lbl:'REVERB',    sub:'X: size  ·  Y: wet mix',          col:'#4466ff', nx:0.18, ny:0.25},
+  {id:'chords',    lbl:'CHORDS',    sub:'X: now  ·  Y: next chord',         col:'#ff88cc', nx:0.50, ny:0.25},
+  {id:'delay',     lbl:'DELAY',     sub:'X: time  ·  Y: feedback',          col:'#00e8ff', nx:0.82, ny:0.25},
+  {id:'octaves',   lbl:'OCTAVES',   sub:'X: arp range+oct  ·  Y: bass oct', col:'#ff006e', nx:0.18, ny:0.75},
+  {id:'groove',    lbl:'GROOVE',    sub:'X: density  ·  Y: swing',          col:'#ff6600', nx:0.50, ny:0.75},
+  {id:'randomize', lbl:'RANDOMIZE', sub:'X: drums  ·  Y: synths',           col:'#aa44ff', nx:0.82, ny:0.75},
 ];
 
 // Generate a musically sensible random pattern based on complexity (0=sparse/simple, 1=dense/complex)
@@ -2030,96 +2041,93 @@ function applyOrbParams(id,nx,ny){
   if(!ctx) return;
   function setSlider(sid,val){
     const el=document.getElementById(sid); if(!el) return;
-    el.value=Math.round(val);
-    const dv=document.getElementById(sid+'-v'); if(dv) dv.textContent=Math.round(val);
+    el.value=Math.round(Math.max(0,Math.min(100,val)));
+    const dv=document.getElementById(sid+'-v'); if(dv) dv.textContent=Math.round(el.value);
   }
   switch(id){
 
-    case 'energy':{
-      // X = tempo (60–180 BPM), Y = overall intensity
-      const newBpm=Math.round(60+nx*120);
-      setBpm(newBpm);
-      const intensity=ny;
-      master.gain.setTargetAtTime(0.38+intensity*0.62, ctx.currentTime, 0.12);
-      setSlider('FX-Vol',  38+intensity*57);
-      setSlider('DR-Vol',  8 +intensity*55);
-      setSlider('BA-Vol',  12+intensity*65);
-      setSlider('D-Vol',   8 +intensity*65);
-      setSlider('H-Vol',   6 +intensity*55);
-      setSlider('ARP-Vol', 8 +intensity*65);
-      // Master EQ brightness opens up with intensity
-      masterEQ.frequency.setTargetAtTime(3000+intensity*13000, ctx.currentTime, 0.1);
+    case 'reverb':{
+      // X = room size + decay, Y = wet mix
+      buildReverb(0.3+nx*9, 0.2+nx*0.85);
+      revWet.gain.setTargetAtTime(0.02+ny*0.93, ctx.currentTime, 0.1);
+      setSlider('FX-RevSize',  nx*100);
+      setSlider('FX-RevDecay', nx*100);
+      setSlider('FX-RevMix',   ny*100);
       break;
     }
 
-    case 'tension':{
-      // X = harmonic colour (cycles through chords from stable→tense→release)
+    case 'delay':{
+      // X = delay time (short echo → long slap), Y = feedback amount + mix
+      const dlyTime=0.03+nx*1.7;
+      delNode.delayTime.setTargetAtTime(dlyTime, ctx.currentTime, 0.05);
+      setSlider('FX-DlyTime', nx*100);
+      delFb.gain.setTargetAtTime(ny*0.92, ctx.currentTime, 0.05);
+      delWet.gain.setTargetAtTime(0.04+ny*0.8, ctx.currentTime, 0.05);
+      setSlider('FX-DlyFb',  ny*92);
+      setSlider('FX-DlyMix', 4+ny*80);
+      break;
+    }
+
+    case 'octaves':{
+      // X = arp octave range (1–3) + arp pitch shift
+      setSlider('ARP-Octaves', nx*100);
+      setSlider('ARP-Oct',     nx*100);
+      // Y = bass octave shift (low → high)
+      setSlider('BA-Oct',     ny*100);
+      setSlider('BA-Octaves', ny*100);
+      break;
+    }
+
+    case 'chords':{
+      // X = select current chord from all available chords
       const chordI=Math.min(ARP_CHORDS.length-1, Math.round(nx*(ARP_CHORDS.length-1)));
       currentChordIdx=chordI;
       CHORD_SEQ_DATA[chordSeqStep]=chordI;
+      // Y = set the NEXT chord slot to a different chord — evolves the sequence
+      const nextSlot=(chordSeqStep+1)%chordSeqLen;
+      const nextChord=Math.min(ARP_CHORDS.length-1, Math.round(ny*(ARP_CHORDS.length-1)));
+      CHORD_SEQ_DATA[nextSlot]=nextChord;
+      const nb=document.getElementById('chs-'+nextSlot);
+      if(nb) nb.textContent=ARP_CHORDS[nextChord].name;
       updateChordUI();
-      // Y = timbral edge (filter aggression, fast attack, bass punch)
-      const edge=ny;
-      setSlider('ARP-Cut',  8+edge*82);
-      setSlider('ARP-FEnv', edge*92);
-      setSlider('ARP-Res',  edge*68);
-      setSlider('ARP-Atk',  Math.max(1,(1-edge)*42));  // sharp edge = fast attack
-      setSlider('BA-Cut',   8+edge*75);
-      setSlider('BA-FEnv',  edge*88);
-      setSlider('D-Snap',   edge*78);
-      break;
-    }
-
-    case 'space':{
-      // X = echo depth (delay time + feedback + mix)
-      const dlyAmt=nx;
-      const dlyTime=0.03+dlyAmt*1.6;
-      delNode.delayTime.setTargetAtTime(dlyTime, ctx.currentTime, 0.08);
-      setSlider('FX-DlyTime', dlyAmt*100);
-      delFb.gain.setTargetAtTime(dlyAmt*0.88, ctx.currentTime, 0.08);
-      setSlider('FX-DlyFb', dlyAmt*88);
-      delWet.gain.setTargetAtTime(0.04+dlyAmt*0.78, ctx.currentTime, 0.08);
-      setSlider('FX-DlyMix', 4+dlyAmt*78);
-      // Y = reverb size + wet
-      const revAmt=ny;
-      revWet.gain.setTargetAtTime(0.04+revAmt*0.88, ctx.currentTime, 0.12);
-      setSlider('FX-RevMix', 4+revAmt*88);
-      buildReverb(0.4+revAmt*9, 0.18+revAmt*0.88);
-      setSlider('FX-RevSize',  revAmt*100);
-      setSlider('FX-RevDecay', revAmt*100);
       break;
     }
 
     case 'groove':{
-      // X = rhythmic density — regenerate all patterns
-      omniPattern(kS,'k-on',nx*0.65,'gK');
-      omniPattern(snS,'sn-on',nx*0.5,'gSN');
-      omniPattern(dS,'d-on',nx,'gD');
-      omniPattern(hS,'h-on',nx,'gH');
-      // Y = swing amount
+      // X = rhythmic density — regenerates patterns on the fly
+      omniPattern(kS,'k-on',  nx*0.65,'gK');
+      omniPattern(snS,'sn-on',nx*0.5, 'gSN');
+      omniPattern(dS,'d-on',  nx,     'gD');
+      omniPattern(hS,'h-on',  nx,     'gH');
+      // Y = swing
       swingAmount=ny;
       break;
     }
 
-    case 'bassweight':{
-      // X = drone ↔ bass balance (left=all drone, right=all bass)
-      const drVol=Math.max(0,Math.min(100,(1-nx)*2*65));
-      const bsVol=Math.max(0,Math.min(100,nx*2*68));
-      setSlider('DR-Vol', drVol);
-      setSlider('BA-Vol', bsVol);
-      // Y = low-end weight (sub depth + filter + drone cutoff)
-      const weight=ny;
-      setSlider('BA-Sub',   weight*92);
-      setSlider('BA-Cut',   5+weight*40);
-      setSlider('DR-Cutoff',3+weight*32);
-      break;
-    }
-
-    case 'chaos':{
-      // X = arp pattern order (UP → DOWN → UPDOWN → RANDOM)
-      setSlider('ARP-Pattern', nx*100);
-      // Y = mutation rate (patterns randomly regenerate each bar)
-      chaosMutateRate=ny;
+    case 'randomize':{
+      // Throttled: only fire every 200ms while dragging so it nudges, not floods
+      const now=Date.now();
+      if(now-omniRandT<200) break;
+      omniRandT=now;
+      // X = drum pattern scatter (flip steps probabilistically)
+      const drumAmt=nx;
+      [{s:kS,cls:'k-on',gid:'gK'},{s:snS,cls:'sn-on',gid:'gSN'},
+       {s:dS,cls:'d-on',gid:'gD'},{s:hS,cls:'h-on',gid:'gH'}].forEach(({s,cls,gid})=>{
+        let changed=false;
+        for(let i=0;i<16;i++) if(Math.random()<drumAmt*0.14){ s[i]=s[i]?0:1; changed=true; }
+        if(!s.some(Boolean)) s[0]=1;
+        if(changed) refreshGrid(gid,cls,s);
+      });
+      // Y = synth parameter micro-drift (keeps the sound alive and evolving)
+      if(ny>0.04){
+        function nudge(id,range){
+          const el=document.getElementById(id); if(!el) return;
+          el.value=Math.max(0,Math.min(100,parseFloat(el.value)+(Math.random()-0.5)*range*ny));
+          const dv=document.getElementById(id+'-v'); if(dv) dv.textContent=Math.round(el.value);
+        }
+        nudge('ARP-Dcy',18); nudge('ARP-Cut',14); nudge('ARP-Res',10); nudge('ARP-FEnv',12);
+        nudge('BA-Dcy',18);  nudge('BA-Cut',14);  nudge('BA-Res',8);   nudge('BA-FEnv',12);
+      }
       break;
     }
   }
