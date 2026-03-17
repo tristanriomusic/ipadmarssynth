@@ -1468,7 +1468,12 @@ function tickLooper(){
     const next=loopEvents.find(e=>e.t>posInIter);
     if(next){
       const schedAt=iterStart+next.t;
-      if(schedAt>now-0.01) spawnGrainAt(next.x, next.y, schedAt, getEventVol(next));
+      if(schedAt>now-0.01){
+        const v=getEventVol(next);
+        if(next.mode==='holo') holoSpawnGrainAt(next.x,next.y,schedAt,v);
+        else if(next.mode==='sampler') samplerSpawnAt(next.x,next.y,schedAt,v);
+        else spawnGrainAt(next.x,next.y,schedAt,v);
+      }
       loopScheduled=schedAt+0.0008;
     } else {
       loopScheduled=iterStart+len+0.0001;
@@ -2439,7 +2444,7 @@ function samplerLoadFile(){
 }
 function samplerOnFile(input){
   const file=input.files[0]; if(!file) return;
-  if(!ctx) initAudio();
+  if(!ctx) init();
   const nameEl=document.getElementById('samplerName');
   nameEl.textContent='loading…';
   const reader=new FileReader();
@@ -2492,16 +2497,74 @@ async function samplerToggleMicRec(){
 function samplerStart(px,py){
   if(!samplerBuf||!ctx) return;
   samplerStop();
+  // Record into XS Loop looper
+  if(loopRec){
+    const t=ctx.currentTime-loopRecStart;
+    if(t<=getLoopLen()+0.05) loopEvents.push({x:px,y:py,t,gen:0,mode:'sampler'});
+  }
+  // Main continuous voice (tracked for samplerUpdate pitch control)
+  const pitchRate=Math.pow(2,(0.5-py)*2.5);
+  const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
   const src=ctx.createBufferSource();
   src.buffer=samplerBuf;
-  // Y axis: top(0)=+2 oct, mid(0.5)=normal, bottom(1)=-2 oct
-  src.playbackRate.value=Math.pow(2,(0.5-py)*2.5);
-  src.connect(masterEQ);
-  send(src, 0.45, 0.2);
-  const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
+  src.playbackRate.value=pitchRate;
+  const mg=ctx.createGain(); mg.gain.value=0.72;
+  src.connect(mg); mg.connect(masterEQ);
+  const rv0=ctx.createGain(); rv0.gain.value=0.55; mg.connect(rv0); rv0.connect(revPre);
+  const dl0=ctx.createGain(); dl0.gain.value=0.32; mg.connect(dl0); dl0.connect(delNode);
   src.start(0, offset);
   samplerSrc=src;
+  // Psychedelic harmonic layers with shimmer LFOs
+  _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85);
   triggerEnergy(0.5);
+}
+
+// Scheduled sampler trigger for looper playback — includes psychedelic layers
+function samplerSpawnAt(px,py,schedT,volMult){
+  if(!samplerBuf||!ctx) return;
+  const pitchRate=Math.pow(2,(0.5-py)*2.5);
+  const offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
+  const src=ctx.createBufferSource();
+  src.buffer=samplerBuf;
+  src.playbackRate.value=pitchRate;
+  const mg=ctx.createGain(); mg.gain.value=0.72*volMult;
+  src.connect(mg); mg.connect(masterEQ);
+  const rv0=ctx.createGain(); rv0.gain.value=0.55; mg.connect(rv0); rv0.connect(revPre);
+  const dl0=ctx.createGain(); dl0.gain.value=0.32; mg.connect(dl0); dl0.connect(delNode);
+  src.start(schedT, offset);
+  _spawnPsychoLayers(samplerBuf, pitchRate, offset, schedT, 0.85*volMult);
+  triggerEnergy(0.3*volMult);
+}
+
+// Psychedelic rainbow layers: perfect 5th, octave, sub-octave — each with shimmer LFO
+function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol){
+  if(!buf||!ctx) return;
+  // [semitones, relVol, revAmount, dlyAmount, lfoHz, lfoCents, fadeInSec]
+  const layers=[
+    [ 7,  0.30, 0.80, 0.38, 0.55, 12, 0.25],  // perfect 5th — warm harmony
+    [12,  0.18, 0.90, 0.28, 0.28,  8, 0.50],  // octave — shimmer shimmer
+    [-12, 0.12, 0.85, 0.20, 0.80, 18, 0.70],  // sub octave — deep glow
+    [19,  0.10, 0.95, 0.15, 0.18,  5, 0.90],  // octave+5th — rainbow sparkle
+  ];
+  layers.forEach(([st,rv,revAmt,dlyAmt,lfoHz,lfoCents,fadeIn])=>{
+    const s=ctx.createBufferSource();
+    s.buffer=buf;
+    s.playbackRate.value=basePitchRate*Math.pow(2,st/12);
+    // Shimmer LFO on detune for "rainbow" colour
+    const lfo=ctx.createOscillator(), lfoG=ctx.createGain();
+    lfo.type='sine'; lfo.frequency.value=lfoHz+(Math.random()-0.5)*0.15;
+    lfoG.gain.value=lfoCents+(Math.random()-0.5)*4;
+    lfo.connect(lfoG); lfoG.connect(s.detune);
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0,schedT);
+    g.gain.linearRampToValueAtTime(vol*rv, schedT+fadeIn);
+    s.connect(g); g.connect(masterEQ);
+    const rv2=ctx.createGain(); rv2.gain.value=revAmt; g.connect(rv2); rv2.connect(revPre);
+    const dl2=ctx.createGain(); dl2.gain.value=dlyAmt; g.connect(dl2); dl2.connect(delNode);
+    const dur=buf.duration-offset;
+    s.start(schedT, offset, Math.max(0.01, dur));
+    lfo.start(schedT); lfo.stop(schedT+Math.max(dur,2));
+  });
 }
 function samplerUpdate(px,py){
   if(!samplerSrc||!ctx) return;
@@ -2530,10 +2593,31 @@ function setHoloPreset(idx,btn){
   const lbl=document.getElementById('holoPresetLbl'); if(lbl) lbl.textContent=HOLO_PRESETS[idx].name;
 }
 
+function holoSpawnGrainAt(px,py,schedT,volMult){
+  // Scheduled version called by looper playback
+  const _px=padX, _py=padY, _t=ctx.currentTime;
+  padX=px; padY=py;
+  const p=HOLO_PRESETS[holoPresetIdx];
+  const vol=(0.28+py*0.58)*volMult;
+  _holoSpawnCore(p, px, py, schedT, vol);
+  padX=_px; padY=_py;
+}
+
 function holoSpawnGrain(){
   if(!ctx) return;
+  // Record into XS Loop looper
+  if(loopRec){
+    const t=ctx.currentTime-loopRecStart;
+    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'holo'});
+  }
   const p=HOLO_PRESETS[holoPresetIdx];
   const vol=0.28+padY*0.58;
+  _holoSpawnCore(p, padX, padY, ctx.currentTime, vol);
+  triggerEnergy(vol*0.1);
+}
+
+function _holoSpawnCore(p, px, py, schedT, vol){
+  if(!ctx) return;
 
   // Build source buffer — use samplerBuf if loaded, else a short self-oscillating tone
   let buf;
@@ -2932,7 +3016,7 @@ function spawnGrain(){
   triggerEnergy(n('X-Vol')*0.15);
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
-    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0});
+    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0,mode:'xs'});
   }
   spawnGrainAt(padX, padY, ctx.currentTime);
   const zl=document.getElementById('zoneLabel');
@@ -3930,7 +4014,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildPresets('D');  buildPresets('H');
 
   const pad=document.getElementById('xPad');
-  function padStart(e){ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else if(padAssign==='hologram'){ if(!ctx) initAudio(); } else startPadVoice(padX,padY); }
+  function padStart(e){ padActive=true; padPos(e); ripples.push({x:padX,y:padY,t:performance.now()}); if(padAssign==='sampler') samplerStart(padX,padY); else if(padAssign==='hologram'){ if(!ctx) init(); } else startPadVoice(padX,padY); }
   function padMove(e){ padPos(e); if(smpPadMode&&smpSeqSrc){ smpSeqSrc.playbackRate.setTargetAtTime(Math.pow(2,(0.5-padY)*2.0),ctx.currentTime,0.03); } else if(padAssign==='sampler') samplerUpdate(padX,padY); else if(padAssign!=='hologram') updatePadVoice(padX,padY); }
   function padEnd(){ padActive=false; if(padAssign==='xs') stopPadVoice(false); }
   pad.addEventListener('touchstart',e=>{ e.preventDefault(); padStart(e); },{passive:false});
