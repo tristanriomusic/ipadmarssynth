@@ -212,6 +212,10 @@
 .drawer.popup-mode .drawer-body{ display:block!important; }
 #circles-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:10px 3vw 8px; justify-items:center; }
 .inst-circle{ display:flex; flex-direction:column; align-items:center; gap:5px; }
+.circ-inner-row{ display:flex; align-items:center; gap:5px; }
+.circ-y-wrap{ display:flex; flex-direction:column; align-items:center; gap:3px; }
+.circ-y-lbl{ font-size:6px; font-weight:900; letter-spacing:.5px; color:rgba(255,255,255,0.38); text-transform:uppercase; pointer-events:none; }
+input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; direction:rtl; width:20px; height:72px; cursor:pointer; touch-action:none; padding:0; background:transparent; }
 .circ-body{ position:relative; width:82px; height:82px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); transition:transform .1s,filter .1s; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .circ-body:active{ transform:scale(0.91); }
 .circ-ring{ position:absolute; inset:-6px; border-radius:50%; border:2px solid transparent; pointer-events:none; opacity:0; }
@@ -308,82 +312,136 @@
     <!-- ROW 1: LOOPERS + ARPEGGIATORS -->
     <!-- XS LOOP -->
     <div class="inst-circle" id="circ-X">
-      <div class="circ-body" style="background:rgba(0,242,255,0.2);border:2px solid rgba(0,242,255,0.65);box-shadow:0 0 16px rgba(0,242,255,0.2),inset 0 0 20px rgba(0,242,255,0.1)" onclick="openCirclePopup('drX',event,'X')">
-        <div class="circ-ring" id="cring-X" style="border-color:#00f2ff"></div>
-        <div class="circ-name">XS LOOP</div>
-        <button class="circ-mute-btn" id="cmute-X" onclick="instMute('X',this);event.stopPropagation()">MUTE</button>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(0,242,255,0.2);border:2px solid rgba(0,242,255,0.65);box-shadow:0 0 16px rgba(0,242,255,0.2),inset 0 0 20px rgba(0,242,255,0.1)" onclick="openCirclePopup('drX',event,'X')">
+          <div class="circ-ring" id="cring-X" style="border-color:#00f2ff"></div>
+          <div class="circ-name">XS LOOP</div>
+          <button class="circ-mute-btn" id="cmute-X" onclick="instMute('X',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="78" style="accent-color:#00f2ff" oninput="syncCircVol('X-Rel',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(0,242,255,0.5)">DCY</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="62" style="accent-color:#00f2ff" oninput="syncCircVol('X-Vol',this.value)">
     </div>
     <!-- GTR LOOP -->
     <div class="inst-circle" id="circ-GL">
-      <div class="circ-body" style="background:rgba(255,153,68,0.2);border:2px solid rgba(255,153,68,0.65);box-shadow:0 0 16px rgba(255,153,68,0.2),inset 0 0 20px rgba(255,153,68,0.1)" onclick="openCirclePopup('drGLOOP',event,null)">
-        <div class="circ-ring" id="cring-GL" style="border-color:#ff9944"></div>
-        <div class="circ-name">GTR LOOP</div>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,153,68,0.2);border:2px solid rgba(255,153,68,0.65);box-shadow:0 0 16px rgba(255,153,68,0.2),inset 0 0 20px rgba(255,153,68,0.1)" onclick="openCirclePopup('drGLOOP',event,null)">
+          <div class="circ-ring" id="cring-GL" style="border-color:#ff9944"></div>
+          <div class="circ-name">GTR LOOP</div>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="100" style="accent-color:#ff9944" oninput="syncCircVol('gloop-decay',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,153,68,0.5)">DCY</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="80" style="accent-color:#ff9944" oninput="syncCircVol('gloop-loopvol',this.value)">
     </div>
     <!-- ARP -->
     <div class="inst-circle" id="circ-ARP">
-      <div class="circ-body" style="background:rgba(255,0,110,0.2);border:2px solid rgba(255,0,110,0.65);box-shadow:0 0 16px rgba(255,0,110,0.2),inset 0 0 20px rgba(255,0,110,0.1)" onclick="openCirclePopup('drARP',event,'ARP')">
-        <div class="circ-ring" id="cring-ARP" style="border-color:#ff006e"></div>
-        <div class="circ-name">ARP</div>
-        <button class="circ-mute-btn" id="cmute-ARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,0,110,0.2);border:2px solid rgba(255,0,110,0.65);box-shadow:0 0 16px rgba(255,0,110,0.2),inset 0 0 20px rgba(255,0,110,0.1)" onclick="openCirclePopup('drARP',event,'ARP')">
+          <div class="circ-ring" id="cring-ARP" style="border-color:#ff006e"></div>
+          <div class="circ-name">ARP</div>
+          <button class="circ-mute-btn" id="cmute-ARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="38" style="accent-color:#ff006e" oninput="syncCircVol('ARP-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,0,110,0.5)">REV</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="58" style="accent-color:#ff006e" oninput="syncCircVol('ARP-Vol',this.value)">
     </div>
     <!-- BASS -->
     <div class="inst-circle" id="circ-B">
-      <div class="circ-body" style="background:rgba(255,204,0,0.2);border:2px solid rgba(255,204,0,0.65);box-shadow:0 0 16px rgba(255,204,0,0.2),inset 0 0 20px rgba(255,204,0,0.1)" onclick="openCirclePopup('drB',event,'B')">
-        <div class="circ-ring" id="cring-B" style="border-color:#ffcc00"></div>
-        <div class="circ-name">BASS</div>
-        <button class="circ-mute-btn" id="cmute-B" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,204,0,0.2);border:2px solid rgba(255,204,0,0.65);box-shadow:0 0 16px rgba(255,204,0,0.2),inset 0 0 20px rgba(255,204,0,0.1)" onclick="openCirclePopup('drB',event,'B')">
+          <div class="circ-ring" id="cring-B" style="border-color:#ffcc00"></div>
+          <div class="circ-name">BASS</div>
+          <button class="circ-mute-btn" id="cmute-B" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="42" style="accent-color:#ffcc00" oninput="syncCircVol('BA-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,204,0,0.5)">REV</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="65" style="accent-color:#ffcc00" oninput="syncCircVol('BA-Vol',this.value)">
     </div>
     <!-- ROW 2: PERCUSSION -->
     <!-- KICK -->
     <div class="inst-circle" id="circ-K">
-      <div class="circ-body" style="background:rgba(255,34,0,0.2);border:2px solid rgba(255,34,0,0.65);box-shadow:0 0 16px rgba(255,34,0,0.2),inset 0 0 20px rgba(255,34,0,0.1)" onclick="openCirclePopup('drDRMS',event,'K')">
-        <div class="circ-ring" id="cring-K" style="border-color:#ff2200"></div>
-        <div class="circ-name">KICK</div>
-        <button class="circ-mute-btn" id="cmute-K" onclick="instMute('K',this);event.stopPropagation()">MUTE</button>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,34,0,0.2);border:2px solid rgba(255,34,0,0.65);box-shadow:0 0 16px rgba(255,34,0,0.2),inset 0 0 20px rgba(255,34,0,0.1)" onclick="openCirclePopup('drDRMS',event,'K')">
+          <div class="circ-ring" id="cring-K" style="border-color:#ff2200"></div>
+          <div class="circ-name">KICK</div>
+          <button class="circ-mute-btn" id="cmute-K" onclick="instMute('K',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="18" style="accent-color:#ff2200" oninput="syncCircVol('K-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,34,0,0.5)">REV</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="75" style="accent-color:#ff2200" oninput="syncCircVol('K-Vol',this.value)">
     </div>
     <!-- SNARE -->
     <div class="inst-circle" id="circ-SN">
-      <div class="circ-body" style="background:rgba(255,170,68,0.2);border:2px solid rgba(255,170,68,0.65);box-shadow:0 0 16px rgba(255,170,68,0.2),inset 0 0 20px rgba(255,170,68,0.1)" onclick="openCirclePopup('drDRMS',event,'SN')">
-        <div class="circ-ring" id="cring-SN" style="border-color:#ffaa44"></div>
-        <div class="circ-name">SNARE</div>
-        <button class="circ-mute-btn" id="cmute-SN" onclick="instMute('SN',this);event.stopPropagation()">MUTE</button>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,170,68,0.2);border:2px solid rgba(255,170,68,0.65);box-shadow:0 0 16px rgba(255,170,68,0.2),inset 0 0 20px rgba(255,170,68,0.1)" onclick="openCirclePopup('drDRMS',event,'SN')">
+          <div class="circ-ring" id="cring-SN" style="border-color:#ffaa44"></div>
+          <div class="circ-name">SNARE</div>
+          <button class="circ-mute-btn" id="cmute-SN" onclick="instMute('SN',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="35" style="accent-color:#ffaa44" oninput="syncCircVol('SN-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,170,68,0.5)">REV</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="65" style="accent-color:#ffaa44" oninput="syncCircVol('SN-Vol',this.value)">
     </div>
     <!-- BONGO -->
     <div class="inst-circle" id="circ-D">
-      <div class="circ-body" style="background:rgba(255,102,0,0.2);border:2px solid rgba(255,102,0,0.65);box-shadow:0 0 16px rgba(255,102,0,0.2),inset 0 0 20px rgba(255,102,0,0.1)" onclick="openCirclePopup('drDRMS',event,'D')">
-        <div class="circ-ring" id="cring-D" style="border-color:#ff6600"></div>
-        <div class="circ-name">BONGO</div>
-        <button class="circ-mute-btn" id="cmute-D" onclick="instMute('D',this);event.stopPropagation()">MUTE</button>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,102,0,0.2);border:2px solid rgba(255,102,0,0.65);box-shadow:0 0 16px rgba(255,102,0,0.2),inset 0 0 20px rgba(255,102,0,0.1)" onclick="openCirclePopup('drDRMS',event,'D')">
+          <div class="circ-ring" id="cring-D" style="border-color:#ff6600"></div>
+          <div class="circ-name">BONGO</div>
+          <button class="circ-mute-btn" id="cmute-D" onclick="instMute('D',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="32" style="accent-color:#ff6600" oninput="syncCircVol('D-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,102,0,0.5)">REV</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="60" style="accent-color:#ff6600" oninput="syncCircVol('D-Vol',this.value)">
     </div>
     <!-- HI-HAT -->
     <div class="inst-circle" id="circ-H">
-      <div class="circ-body" style="background:rgba(0,210,255,0.2);border:2px solid rgba(0,210,255,0.65);box-shadow:0 0 16px rgba(0,210,255,0.2),inset 0 0 20px rgba(0,210,255,0.1)" onclick="openCirclePopup('drDRMS',event,'H')">
-        <div class="circ-ring" id="cring-H" style="border-color:#00d2ff"></div>
-        <div class="circ-name">HI-HAT</div>
-        <button class="circ-mute-btn" id="cmute-H" onclick="instMute('H',this);event.stopPropagation()">MUTE</button>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(0,210,255,0.2);border:2px solid rgba(0,210,255,0.65);box-shadow:0 0 16px rgba(0,210,255,0.2),inset 0 0 20px rgba(0,210,255,0.1)" onclick="openCirclePopup('drDRMS',event,'H')">
+          <div class="circ-ring" id="cring-H" style="border-color:#00d2ff"></div>
+          <div class="circ-name">HI-HAT</div>
+          <button class="circ-mute-btn" id="cmute-H" onclick="instMute('H',this);event.stopPropagation()">MUTE</button>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="48" style="accent-color:#00d2ff" oninput="syncCircVol('H-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(0,210,255,0.5)">REV</span>
+        </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="35" style="accent-color:#00d2ff" oninput="syncCircVol('H-Vol',this.value)">
     </div>
     <!-- ROW 3: CHORDS + FX -->
     <!-- CHORDS -->
     <div class="inst-circle" id="circ-CHD">
-      <div class="circ-body" style="background:rgba(255,136,204,0.2);border:2px solid rgba(255,136,204,0.65);box-shadow:0 0 16px rgba(255,136,204,0.2),inset 0 0 20px rgba(255,136,204,0.1)" onclick="openCirclePopup('drCHD',event,null)">
-        <div class="circ-ring" id="cring-CHD" style="border-color:#ff88cc"></div>
-        <div class="circ-name">CHORDS</div>
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,136,204,0.2);border:2px solid rgba(255,136,204,0.65);box-shadow:0 0 16px rgba(255,136,204,0.2),inset 0 0 20px rgba(255,136,204,0.1)" onclick="openCirclePopup('drCHD',event,null)">
+          <div class="circ-ring" id="cring-CHD" style="border-color:#ff88cc"></div>
+          <div class="circ-name">CHORDS</div>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="38" style="accent-color:#ff88cc" oninput="syncCircVol('ARP-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,136,204,0.5)">REV</span>
+        </div>
       </div>
     </div>
     <!-- FX -->
