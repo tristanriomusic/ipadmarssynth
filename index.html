@@ -259,6 +259,11 @@
             <button class="loop-bar-btn"    data-bars="4" onclick="setLoopBars(4,this)">4 BAR</button>
             <button class="loop-bar-btn"    data-bars="8" onclick="setLoopBars(8,this)">8 BAR</button>
           </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:7px">
+            <label style="font-size:8px;color:#aaa;font-weight:900;letter-spacing:1.5px;white-space:nowrap">DECAY</label>
+            <input type="range" id="loop-decay" min="0" max="100" value="100" style="flex:1" oninput="document.getElementById('loop-decay-v').textContent=this.value">
+            <div style="font-size:9px;color:#aaa;min-width:22px;text-align:right" id="loop-decay-v">100</div>
+          </div>
           <div class="loop-status" id="loop-status">EMPTY</div>
         </div>
 
@@ -470,7 +475,7 @@
 
         <!-- KICK -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--kick);display:flex;justify-content:space-between;align-items:center"><span>KICK</span><button class="cmr" id="muteK" onclick="instMute('K',this)">MUTE</button></div>
+          <div class="drum-sec-lbl" style="color:var(--kick);display:flex;justify-content:space-between;align-items:center"><span>KICK</span><div style="display:flex;gap:4px"><button class="cmr" id="muteK" onclick="instMute('K',this)">MUTE</button><button class="cmr" onclick="instRandom('K')">RND</button></div></div>
           <div class="grid" id="gK"></div>
           <div class="preset-row" id="preK"></div>
           <div class="pg4">
@@ -487,7 +492,7 @@
 
         <!-- SNARE -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--snare);display:flex;justify-content:space-between;align-items:center"><span>SNARE</span><button class="cmr" id="muteSN" onclick="instMute('SN',this)">MUTE</button></div>
+          <div class="drum-sec-lbl" style="color:var(--snare);display:flex;justify-content:space-between;align-items:center"><span>SNARE</span><div style="display:flex;gap:4px"><button class="cmr" id="muteSN" onclick="instMute('SN',this)">MUTE</button><button class="cmr" onclick="instRandom('SN')">RND</button></div></div>
           <div class="grid" id="gSN"></div>
           <div class="preset-row" id="preSN"></div>
           <div class="pg4">
@@ -504,7 +509,7 @@
 
         <!-- BONGO -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--drum);display:flex;justify-content:space-between;align-items:center"><span>BONGO</span><button class="cmr" id="muteD" onclick="instMute('D',this)">MUTE</button></div>
+          <div class="drum-sec-lbl" style="color:var(--drum);display:flex;justify-content:space-between;align-items:center"><span>BONGO</span><div style="display:flex;gap:4px"><button class="cmr" id="muteD" onclick="instMute('D',this)">MUTE</button><button class="cmr" onclick="instRandom('D')">RND</button></div></div>
           <div class="grid" id="gD"></div>
           <div class="preset-row" id="preD"></div>
           <div class="pg4">
@@ -522,7 +527,7 @@
 
         <!-- HI-HAT -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--hihat);display:flex;justify-content:space-between;align-items:center"><span>HI-HAT</span><button class="cmr" id="muteH" onclick="instMute('H',this)">MUTE</button></div>
+          <div class="drum-sec-lbl" style="color:var(--hihat);display:flex;justify-content:space-between;align-items:center"><span>HI-HAT</span><div style="display:flex;gap:4px"><button class="cmr" id="muteH" onclick="instMute('H',this)">MUTE</button><button class="cmr" onclick="instRandom('H')">RND</button></div></div>
           <div class="grid" id="gH"></div>
           <div class="preset-row" id="preH"></div>
           <div class="pg4">
@@ -790,25 +795,51 @@ const activePre={DR:0,B:0,D:0,H:0,K:0,SN:0};
 const instDeep={X:false,DR:false,B:false,D:false,H:false};
 
 // ═══ LOOPER ══════════════════════════════════════
-let loopEvents=[], loopBars=1, loopRec=false, loopPlay=false;
-let loopRecStart=0, loopPlayStart=0, loopScheduled=0;
+let loopEvents=[], loopBars=1, loopRec=false, loopPlay=false, loopOverdub=false;
+let loopRecStart=0, loopPlayStart=0, loopScheduled=0, loopPhaseOrigin=0;
+let nextBarTime=0; // set by sequencer each time bar rolls over
 function getLoopLen(){ return loopBars*4*(60/bpm); }
+function getEventVol(e){
+  const el=document.getElementById('loop-decay');
+  const retain=el ? 0.15+(parseFloat(el.value)/100)*0.85 : 1.0;
+  return Math.pow(retain, e.gen||0);
+}
 
 function loopRecord(){
-  if(loopRec){ loopRec=false; updateLoopUI(); return; }
-  loopEvents=[]; loopRec=true; loopPlay=false;
-  loopRecStart=ctx.currentTime;
+  if(loopRec){
+    // Manual stop (works for both normal rec and overdub)
+    loopRec=false; loopOverdub=false; updateLoopUI(); return;
+  }
+  if(loopPlay && loopEvents.length){
+    // Start overdub: age all existing events by one generation, record fresh ones at gen 0
+    loopOverdub=true; loopRec=true;
+    loopEvents.forEach(e=>e.gen=(e.gen||0)+1);
+    loopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
+    updateLoopUI();
+    setTimeout(()=>{ if(loopRec&&loopOverdub){ loopRec=false; loopOverdub=false; updateLoopUI(); } }, getLoopLen()*1000+200);
+    return;
+  }
+  // Fresh record — snap start to next bar boundary if sequencer is running
+  loopEvents=[]; loopRec=true; loopPlay=false; loopOverdub=false;
+  loopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
   updateLoopUI();
-  setTimeout(()=>{ if(loopRec){ loopRec=false; updateLoopUI(); } }, getLoopLen()*1000+200);
+  const waitMs=((isPlaying && nextBarTime>ctx.currentTime)?(nextBarTime-ctx.currentTime)*1000:0)+getLoopLen()*1000+200;
+  setTimeout(()=>{
+    if(loopRec && !loopOverdub){
+      loopRec=false;
+      if(loopEvents.length){ loopPlay=true; loopPhaseOrigin=loopRecStart; loopPlayStart=loopRecStart; loopScheduled=loopRecStart; }
+      updateLoopUI();
+    }
+  }, waitMs);
 }
 function loopToggle(){
   if(!loopEvents.length) return;
   loopPlay=!loopPlay;
-  if(loopPlay){ loopPlayStart=ctx.currentTime; loopScheduled=ctx.currentTime; }
+  if(loopPlay){ loopPhaseOrigin=loopPlayStart=ctx.currentTime; loopScheduled=ctx.currentTime; }
   updateLoopUI();
 }
 function loopClear(){
-  loopEvents=[]; loopPlay=false; loopRec=false; updateLoopUI();
+  loopEvents=[]; loopPlay=false; loopRec=false; loopOverdub=false; updateLoopUI();
 }
 function setLoopBars(bars,btn){
   loopBars=bars;
@@ -821,7 +852,7 @@ function updateLoopUI(){
   document.getElementById('loop-clear').disabled=loopEvents.length===0&&!loopRec;
   const t=loopEvents.length;
   document.getElementById('loop-status').textContent=
-    loopRec?'● RECORDING...':(loopPlay?'▶ LOOPING':(t>0?`${t} EVENTS`:'EMPTY'));
+    loopOverdub?'◉ OVERDUB':loopRec?'● RECORDING...':(loopPlay?'▶ LOOPING':(t>0?`${t} EVENTS`:'EMPTY'));
 }
 
 function tickLooper(){
@@ -829,14 +860,14 @@ function tickLooper(){
   const lookahead=0.2, now=ctx.currentTime;
   while(loopScheduled < now+lookahead){
     const len=getLoopLen();
-    const sinceStart=Math.max(0, loopScheduled-loopPlayStart);
+    const sinceStart=Math.max(0, loopScheduled-loopPhaseOrigin);
     const iter=Math.floor(sinceStart/len);
-    const iterStart=loopPlayStart+iter*len;
+    const iterStart=loopPhaseOrigin+iter*len;
     const posInIter=loopScheduled-iterStart;
     const next=loopEvents.find(e=>e.t>posInIter);
     if(next){
       const schedAt=iterStart+next.t;
-      if(schedAt>now-0.01) spawnGrainAt(next.x, next.y, schedAt);
+      if(schedAt>now-0.01) spawnGrainAt(next.x, next.y, schedAt, getEventVol(next));
       loopScheduled=schedAt+0.0008;
     } else {
       loopScheduled=iterStart+len+0.0001;
@@ -1103,9 +1134,18 @@ function init(){
   wireSliders();
   loop();
 
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') ctx.resume(); });
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ ctx.resume(); acquireWakeLock(); } });
   document.addEventListener('touchstart',()=>{ if(ctx.state!=='running') ctx.resume(); },{passive:true});
   setInterval(()=>{ if(ctx&&ctx.state!=='running') ctx.resume(); },8000);
+  acquireWakeLock();
+}
+
+// ═══ WAKE LOCK — keep iPad screen on ════════════════
+let wakeLock=null;
+async function acquireWakeLock(){
+  if(!navigator.wakeLock) return;
+  try{ if(wakeLock) wakeLock.release(); wakeLock=await navigator.wakeLock.request('screen'); }
+  catch(e){}
 }
 
 function buildReverb(size,decay){
@@ -1326,8 +1366,8 @@ function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly){
   osc.start(t); osc.stop(t+atk+rel+0.15);
 }
 
-function spawnGrainAt(px, py, schedT){
-  const vol=n('X-Vol'); if(vol<0.01||muted.X) return;
+function spawnGrainAt(px, py, schedT, volMult=1){
+  const vol=n('X-Vol')*volMult; if(vol<0.01||muted.X) return;
   const jitter  = n('X-Jitter')*800;
   const grain   = n('X-Grain');
   const harm    = n('X-Harm');          // 0–1, used within grain modes for harmonic layering
@@ -1496,7 +1536,7 @@ function spawnGrain(){
   triggerEnergy(n('X-Vol')*0.15);
   if(loopRec){
     const t=ctx.currentTime-loopRecStart;
-    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t});
+    if(t<=getLoopLen()+0.05) loopEvents.push({x:padX,y:padY,t,gen:0});
   }
   spawnGrainAt(padX, padY, ctx.currentTime);
   const zl=document.getElementById('zoneLabel');
@@ -1918,6 +1958,7 @@ function loop(){
       const wasLast=(seqStep===15);
       seqStep=(seqStep+1)%16;
       if(wasLast){
+        nextBarTime=nextT; // looper uses this to snap recording to bar boundary
         chordBarCount++;
         if(chordBarCount%chordBarsPerStep===0){
           chordSeqStep=(chordSeqStep+1)%chordSeqLen;
@@ -1958,6 +1999,10 @@ function refreshGrid(gid,cls,state){
 const INST_CFG={
   DR:  [{s:drS,cls:'dr-on',gid:'gDR'}],
   B:   [{s:bS, cls:'b-on', gid:'gB'}],
+  K:   [{s:kS, cls:'k-on', gid:'gK'}],
+  SN:  [{s:snS,cls:'sn-on',gid:'gSN'}],
+  D:   [{s:dS, cls:'d-on', gid:'gD'}],
+  H:   [{s:hS, cls:'h-on', gid:'gH'}],
   DRMS:[{s:kS, cls:'k-on', gid:'gK'},{s:snS,cls:'sn-on',gid:'gSN'},
         {s:dS, cls:'d-on', gid:'gD'},{s:hS, cls:'h-on', gid:'gH'}],
 };
@@ -1969,7 +2014,9 @@ function instRandom(key){
   const grids=INST_CFG[key]; if(!grids) return;
   grids.forEach(({s,cls,gid},gi)=>{
     // musical density varies: drone sparse, bass medium, drums weighted by position
-    const density=key==='DR'?0.4 : key==='B'?0.5 : [0.55,0.45,0.6,0.7][gi]||0.5;
+    const density=key==='DR'?0.4 : key==='B'?0.5 :
+                  key==='K'?0.55 : key==='SN'?0.45 : key==='D'?0.6 : key==='H'?0.7 :
+                  [0.55,0.45,0.6,0.7][gi]||0.5;
     for(let i=0;i<16;i++){
       let p;
       if(i===0)        p=0.82+density*0.17;
