@@ -232,6 +232,15 @@
 .arp-preset-btn.on{ background:rgba(255,0,110,0.35)!important; color:#ff66aa!important; border-color:rgba(255,0,110,0.6)!important; }
 /* Bass preset buttons */
 .bass-preset-btn.on{ background:rgba(255,204,0,0.35)!important; color:#ffcc00!important; border-color:rgba(255,204,0,0.6)!important; }
+/* FX Ambiance presets */
+.amb-preset-row{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+.amb-preset-btn{ flex:1; min-width:0; padding:9px 3px; background:rgba(255,68,136,0.1); border:1px solid rgba(255,68,136,0.28); color:rgba(255,68,136,0.7); font-size:8px; font-weight:900; border-radius:8px; cursor:pointer; letter-spacing:.5px; transition:all .2s; }
+.amb-preset-btn.on{ background:rgba(255,68,136,0.38)!important; color:#ff88bb!important; border-color:rgba(255,68,136,0.75)!important; box-shadow:0 0 10px rgba(255,68,136,0.28); }
+/* Rev/Dly type rows */
+.rev-type-row,.dly-type-row{ display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px; }
+.rev-type-btn,.dly-type-btn{ flex:1; padding:6px 2px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.5); font-size:8px; font-weight:900; border-radius:6px; cursor:pointer; letter-spacing:.4px; transition:all .15s; }
+.rev-type-btn.on{ background:rgba(80,160,255,0.28); color:#aaddff; border-color:rgba(80,160,255,0.55); box-shadow:0 0 8px rgba(80,160,255,0.2); }
+.dly-type-btn.on{ background:rgba(160,80,255,0.28); color:#ccaaff; border-color:rgba(160,80,255,0.55); box-shadow:0 0 8px rgba(160,80,255,0.2); }
 /* DELAY SYNC */
 .dly-sync-row{ display:flex; gap:4px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
 .dly-sync-lbl{ font-size:8px; font-weight:900; letter-spacing:2px; color:rgba(255,68,136,0.6); margin-right:2px; }
@@ -554,12 +563,31 @@
         <span>EFFECTS RACK</span><span class="arr">▼</span>
       </div>
       <div class="drawer-body">
+        <div class="sec">AMBIANCE</div>
+        <div class="amb-preset-row">
+          <button class="amb-preset-btn" onclick="loadAmbiancePreset('DRY MIX',this)">DRY MIX</button>
+          <button class="amb-preset-btn" onclick="loadAmbiancePreset('STUDIO',this)">STUDIO</button>
+          <button class="amb-preset-btn" onclick="loadAmbiancePreset('DEEP SPC',this)">DEEP SPC</button>
+          <button class="amb-preset-btn" onclick="loadAmbiancePreset('CONCERT',this)">CONCERT</button>
+          <button class="amb-preset-btn" onclick="loadAmbiancePreset('CAVE',this)">CAVE</button>
+          <button class="amb-preset-btn" onclick="loadAmbiancePreset('COSMOS',this)">COSMOS</button>
+        </div>
+
         <div class="pg3">
           <div class="ctrl fx-ctrl"><label>Rev Mix</label>  <input type="range" id="FX-RevMix"  min="0" max="100" value="58"><div class="dv" id="FX-RevMix-v">58</div></div>
           <div class="ctrl fx-ctrl"><label>Dly Mix</label>  <input type="range" id="FX-DlyMix"  min="0" max="100" value="38"><div class="dv" id="FX-DlyMix-v">38</div></div>
           <div class="ctrl fx-ctrl"><label>Master Vol</label><input type="range" id="FX-Vol"    min="0" max="100" value="75"><div class="dv" id="FX-Vol-v">75</div></div>
         </div>
+
         <div class="sec">REVERB</div>
+        <div class="rev-type-row">
+          <button class="rev-type-btn on" data-rtype="HALL"      onclick="switchReverbType('HALL')">HALL</button>
+          <button class="rev-type-btn"    data-rtype="ROOM"      onclick="switchReverbType('ROOM')">ROOM</button>
+          <button class="rev-type-btn"    data-rtype="PLATE"     onclick="switchReverbType('PLATE')">PLATE</button>
+          <button class="rev-type-btn"    data-rtype="CAVE"      onclick="switchReverbType('CAVE')">CAVE</button>
+          <button class="rev-type-btn"    data-rtype="SHIMMER"   onclick="switchReverbType('SHIMMER')">SHIMMER</button>
+          <button class="rev-type-btn"    data-rtype="CATHEDRAL" onclick="switchReverbType('CATHEDRAL')">CATH.</button>
+        </div>
         <div class="pg4">
           <div class="ctrl fx-ctrl"><label>Size</label>     <input type="range" id="FX-RevSize"  min="0" max="100" value="72"><div class="dv" id="FX-RevSize-v">72</div></div>
           <div class="ctrl fx-ctrl"><label>Decay</label>    <input type="range" id="FX-RevDecay" min="0" max="100" value="68"><div class="dv" id="FX-RevDecay-v">68</div></div>
@@ -570,14 +598,22 @@
           <div class="ctrl fx-ctrl"><label>HP Cut</label>   <input type="range" id="FX-RevHP" min="0" max="100" value="8"><div class="dv" id="FX-RevHP-v">8</div></div>
           <div class="ctrl fx-ctrl"><label>LP Cut</label>   <input type="range" id="FX-RevLP" min="0" max="100" value="65"><div class="dv" id="FX-RevLP-v">65</div></div>
         </div>
+
         <div class="sec">DELAY</div>
+        <div class="dly-type-row">
+          <button class="dly-type-btn on" data-dtype="ECHO"     onclick="switchDelayType('ECHO')">ECHO</button>
+          <button class="dly-type-btn"    data-dtype="SLAPBACK" onclick="switchDelayType('SLAPBACK')">SLAP</button>
+          <button class="dly-type-btn"    data-dtype="TAPE"     onclick="switchDelayType('TAPE')">TAPE</button>
+          <button class="dly-type-btn"    data-dtype="DUB"      onclick="switchDelayType('DUB')">DUB</button>
+          <button class="dly-type-btn"    data-dtype="DOTTED"   onclick="switchDelayType('DOTTED')">DOTTED</button>
+        </div>
         <div class="dly-sync-row">
           <span class="dly-sync-lbl">SYNC</span>
-          <button class="dly-sync-btn on" onclick="setDelaySync(null,this)">FREE</button>
-          <button class="dly-sync-btn"    onclick="setDelaySync(0.25,this)">1/16</button>
-          <button class="dly-sync-btn"    onclick="setDelaySync(0.5,this)">1/8</button>
-          <button class="dly-sync-btn"    onclick="setDelaySync(1.0,this)">1/4</button>
-          <button class="dly-sync-btn"    onclick="setDelaySync(2.0,this)">1/2</button>
+          <button class="dly-sync-btn on" data-div="free" onclick="setDelaySync(null,this)">FREE</button>
+          <button class="dly-sync-btn"    data-div="0.25" onclick="setDelaySync(0.25,this)">1/16</button>
+          <button class="dly-sync-btn"    data-div="0.5"  onclick="setDelaySync(0.5,this)">1/8</button>
+          <button class="dly-sync-btn"    data-div="1.0"  onclick="setDelaySync(1.0,this)">1/4</button>
+          <button class="dly-sync-btn"    data-div="2.0"  onclick="setDelaySync(2.0,this)">1/2</button>
         </div>
         <div class="pg4">
           <div class="ctrl fx-ctrl"><label>Time</label>    <input type="range" id="FX-DlyTime" min="0" max="100" value="40"><div class="dv" id="FX-DlyTime-v">40</div></div>
@@ -1875,7 +1911,7 @@ function init(){
   revPre.connect(revNode); revNode.connect(revHP); revHP.connect(revLP); revLP.connect(revWet); revWet.connect(masterEQ);
   // Shimmer: high-passed reverb return → slight detune
   revNode.connect(shimGain); shimGain.connect(masterEQ);
-  buildReverb(4, 0.55);
+  revNode.buffer=buildReverbIR(3.5, 0.55, 'hall'); // initial HALL IR
 
   // Delay
   delNode=ctx.createDelay(5.0); delNode.delayTime.value=60/bpm/2;
@@ -1960,14 +1996,38 @@ async function acquireWakeLock(){
   catch(e){}
 }
 
-function buildReverb(size,decay){
-  const len=ctx.sampleRate*Math.max(0.1,size);
+function buildReverbIR(size, decay, shape){
+  const len=Math.floor(ctx.sampleRate*Math.max(0.1,size));
   const buf=ctx.createBuffer(2,len,ctx.sampleRate);
   for(let ch=0;ch<2;ch++){
     const d=buf.getChannelData(ch);
-    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay*3);
+    for(let i=0;i<len;i++){
+      const t=i/len;
+      let env;
+      switch(shape){
+        case 'room':
+          env=Math.pow(Math.max(0,1-t),decay*4)*(1+0.4*Math.exp(-t*22)*Math.sin(t*180+ch*1.1));
+          break;
+        case 'plate':
+          env=(t<0.015?1.0:Math.pow(Math.max(0,1-t),decay*2.8))*(1-0.45*t*t);
+          break;
+        case 'cave':
+          env=Math.min(1,t*5)*Math.pow(Math.max(0,1-t),decay*2.2);
+          break;
+        case 'cathedral':
+          env=(1-Math.exp(-t*18))*Math.pow(Math.max(0,1-t),decay*1.8);
+          break;
+        default: // hall
+          env=Math.pow(Math.max(0,1-t),decay*3);
+      }
+      d[i]=(Math.random()*2-1)*Math.max(0,env);
+    }
   }
-  revNode.buffer=buf;
+  return buf;
+}
+function buildReverb(size,decay){
+  const cfg=REV_TYPES[currentRevType]||REV_TYPES.HALL;
+  revNode.buffer=buildReverbIR(size,decay,cfg.shape);
 }
 function makeDistCurve(amount){
   const s=512,c=new Float32Array(s),k=amount*300;
@@ -2066,7 +2126,7 @@ function applyFX(id,val){
     case 'FX-RevMix':    revWet.gain.setTargetAtTime(nv*0.9,t,0.05); break;
     case 'FX-Shimmer':   shimGain.gain.setTargetAtTime(nv*0.35,t,0.1); break;
     case 'FX-RevSize':
-    case 'FX-RevDecay':  buildReverb(0.3+n('FX-RevSize')*9, 0.2+n('FX-RevDecay')*0.9); break;
+    case 'FX-RevDecay':{ const _cfg=REV_TYPES[currentRevType]||REV_TYPES.HALL; revNode.buffer=buildReverbIR(0.3+n('FX-RevSize')*9, 0.2+n('FX-RevDecay')*0.9, _cfg.shape); break; }
     case 'FX-RevPre':    revPre.delayTime.setTargetAtTime(nv*0.4,t,0.05); break;
     case 'FX-DlyFb':     delFb.gain.setTargetAtTime(nv*0.96,t,0.05); break;
     case 'FX-DlyMix':    delWet.gain.setTargetAtTime(nv*0.85,t,0.05); break;
@@ -2575,6 +2635,130 @@ function loadBassPreset(idx,btn){
   ['Gate','Vol','Wave','Oct','Detune','Sub','Cut','Res','FEnv','Atk','Dcy','Sus','Rel','FAtk','FDcy','LRate','LDpth','Pattern','Octaves','Rev','Dly'].forEach(k=>{
     const el=document.getElementById('BA-'+k); if(el){ el.value=p[k]; el.dispatchEvent(new Event('input')); }
   });
+}
+
+// ═══ REVERB / DELAY TYPES & AMBIANCE PRESETS ═══════
+const REV_TYPES={
+  HALL:      {size:3.5, decay:0.55, shape:'hall',      pre:0.02,  hp:60,   lp:7500,  shim:0    },
+  ROOM:      {size:1.2, decay:0.50, shape:'room',      pre:0.005, hp:120,  lp:9000,  shim:0    },
+  PLATE:     {size:2.2, decay:0.45, shape:'plate',     pre:0.002, hp:200,  lp:10000, shim:0    },
+  CAVE:      {size:5.5, decay:0.75, shape:'cave',      pre:0.04,  hp:40,   lp:4000,  shim:0    },
+  SHIMMER:   {size:4.0, decay:0.60, shape:'hall',      pre:0.03,  hp:180,  lp:9000,  shim:0.28 },
+  CATHEDRAL: {size:8.0, decay:0.80, shape:'cathedral', pre:0.06,  hp:40,   lp:5500,  shim:0.12 },
+};
+let currentRevType='HALL';
+
+const DLY_TYPES={
+  ECHO:     {syncDiv:1.0,  freeTime:null,  fb:0.45, damp:5000 },
+  SLAPBACK: {syncDiv:null, freeTime:0.055, fb:0.08, damp:12000},
+  TAPE:     {syncDiv:1.0,  freeTime:null,  fb:0.58, damp:1800 },
+  DUB:      {syncDiv:2.0,  freeTime:null,  fb:0.72, damp:900  },
+  DOTTED:   {syncDiv:null, freeTime:null,  fb:0.50, damp:4500 }, // computed from bpm
+};
+let currentDlyType='ECHO';
+
+const AMBIANCE_PRESETS=[
+  {name:'DRY MIX',  revType:'ROOM',      dlyType:'SLAPBACK', RevMix:15, DlyMix:10, RevSize:28, RevDecay:25, RevPre:2,  Shimmer:0,  RevHP:25, RevLP:85, DlyFb:8,  DlyDamp:78, Drive:0,  Vol:75},
+  {name:'STUDIO',   revType:'PLATE',     dlyType:'ECHO',     RevMix:42, DlyMix:28, RevSize:52, RevDecay:45, RevPre:4,  Shimmer:5,  RevHP:22, RevLP:80, DlyFb:42, DlyDamp:58, Drive:0,  Vol:75},
+  {name:'DEEP SPC', revType:'SHIMMER',   dlyType:'DOTTED',   RevMix:72, DlyMix:52, RevSize:75, RevDecay:72, RevPre:18, Shimmer:62, RevHP:18, RevLP:72, DlyFb:55, DlyDamp:45, Drive:0,  Vol:72},
+  {name:'CONCERT',  revType:'HALL',      dlyType:'ECHO',     RevMix:58, DlyMix:32, RevSize:68, RevDecay:65, RevPre:12, Shimmer:18, RevHP:12, RevLP:75, DlyFb:48, DlyDamp:52, Drive:0,  Vol:75},
+  {name:'CAVE',     revType:'CAVE',      dlyType:'TAPE',     RevMix:68, DlyMix:48, RevSize:80, RevDecay:78, RevPre:25, Shimmer:8,  RevHP:5,  RevLP:55, DlyFb:62, DlyDamp:32, Drive:5,  Vol:72},
+  {name:'COSMOS',   revType:'CATHEDRAL', dlyType:'DUB',      RevMix:88, DlyMix:68, RevSize:90, RevDecay:88, RevPre:35, Shimmer:35, RevHP:8,  RevLP:62, DlyFb:72, DlyDamp:22, Drive:0,  Vol:70},
+];
+
+function setSliderUI(id, val){
+  const el=document.getElementById(id); if(!el) return;
+  el.value=Math.round(Math.max(0,Math.min(el.max||100,val)));
+  const dv=document.getElementById(id+'-v'); if(dv) dv.textContent=el.value;
+}
+
+function switchReverbType(typeName, smooth){
+  const cfg=REV_TYPES[typeName]; if(!cfg||!ctx) return;
+  currentRevType=typeName;
+  // Build new IR in a new ConvolverNode
+  const newBuf=buildReverbIR(cfg.size, cfg.decay, cfg.shape);
+  const newRev=ctx.createConvolver();
+  newRev.buffer=newBuf;
+  // Route new node: revPre → newRev → revHP (same downstream chain)
+  revPre.connect(newRev);
+  newRev.connect(revHP);
+  // Stop feeding old node (its tail decays naturally)
+  const oldRev=revNode;
+  try{ revPre.disconnect(oldRev); }catch(e){}
+  // Clean up old node after tail has died
+  setTimeout(()=>{ try{ oldRev.disconnect(); }catch(e){} }, Math.ceil(cfg.size*1400));
+  revNode=newRev;
+  // Smoothly update filter parameters
+  const t=ctx.currentTime, tc=smooth?0.5:0.08;
+  revPre.delayTime.setTargetAtTime(cfg.pre, t, tc*0.15);
+  if(revHP) revHP.frequency.setTargetAtTime(cfg.hp, t, tc);
+  if(revLP) revLP.frequency.setTargetAtTime(cfg.lp, t, tc);
+  shimGain.gain.setTargetAtTime(cfg.shim, t, tc);
+  // Update UI
+  document.querySelectorAll('.rev-type-btn').forEach(b=>b.classList.toggle('on',b.dataset.rtype===typeName));
+}
+
+function switchDelayType(typeName, smooth){
+  const cfg=DLY_TYPES[typeName]; if(!cfg||!ctx) return;
+  currentDlyType=typeName;
+  const t=ctx.currentTime, tc=smooth?0.35:0.05;
+  if(cfg.syncDiv!==null){
+    delSyncDiv=cfg.syncDiv;
+    delNode.delayTime.setTargetAtTime((60/bpm)*cfg.syncDiv, t, tc);
+    // Update sync button UI
+    document.querySelectorAll('.dly-sync-btn').forEach(b=>{
+      const dv=b.dataset.div==='free'?null:parseFloat(b.dataset.div);
+      b.classList.toggle('on', dv===cfg.syncDiv);
+    });
+  } else if(cfg.freeTime!==null){
+    delSyncDiv=null;
+    delNode.delayTime.setTargetAtTime(cfg.freeTime, t, tc);
+    document.querySelectorAll('.dly-sync-btn').forEach(b=>b.classList.toggle('on',b.dataset.div==='free'));
+  } else {
+    // DOTTED — compute 3/16 from bpm
+    delSyncDiv=null;
+    delNode.delayTime.setTargetAtTime((60/bpm)*0.75, t, tc);
+    document.querySelectorAll('.dly-sync-btn').forEach(b=>b.classList.remove('on'));
+  }
+  delFb.gain.setTargetAtTime(cfg.fb, t, tc);
+  delDamp.frequency.setTargetAtTime(cfg.damp, t, tc);
+  // Update UI
+  document.querySelectorAll('.dly-type-btn').forEach(b=>b.classList.toggle('on',b.dataset.dtype===typeName));
+}
+
+function loadAmbiancePreset(name, btn){
+  const p=AMBIANCE_PRESETS.find(x=>x.name===name); if(!p||!ctx) return;
+  document.querySelectorAll('.amb-preset-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  const t=ctx.currentTime, tc=0.4;
+  // Switch reverb type (tail-preserving)
+  switchReverbType(p.revType, true);
+  // Switch delay type (smooth parameter glide)
+  switchDelayType(p.dlyType, true);
+  // Smoothly ramp all wet/gain params
+  revWet.gain.setTargetAtTime(p.RevMix/100*0.9, t, tc);
+  delWet.gain.setTargetAtTime(p.DlyMix/100*0.85, t, tc);
+  master.gain.setTargetAtTime(p.Vol/100, t, tc);
+  shimGain.gain.setTargetAtTime(p.Shimmer/100*0.35, t, tc);
+  revPre.delayTime.setTargetAtTime(p.RevPre/250, t, tc*0.15);
+  if(revHP) revHP.frequency.setTargetAtTime(20+p.RevHP/100*800, t, tc);
+  if(revLP) revLP.frequency.setTargetAtTime(1000+p.RevLP/100*15000, t, tc);
+  delFb.gain.setTargetAtTime(p.DlyFb/100*0.96, t, tc);
+  delDamp.frequency.setTargetAtTime(500+p.DlyDamp/100*15000, t, tc);
+  waveshaper.curve=makeDistCurve(p.Drive/100);
+  driveMix.gain.setTargetAtTime(p.Drive/100*0.6, t, tc);
+  // Update slider UIs
+  setSliderUI('FX-RevMix',  p.RevMix);
+  setSliderUI('FX-DlyMix',  p.DlyMix);
+  setSliderUI('FX-Vol',     p.Vol);
+  setSliderUI('FX-RevSize', p.RevSize);
+  setSliderUI('FX-RevDecay',p.RevDecay);
+  setSliderUI('FX-RevPre',  p.RevPre);
+  setSliderUI('FX-Shimmer', p.Shimmer);
+  setSliderUI('FX-RevHP',   p.RevHP);
+  setSliderUI('FX-RevLP',   p.RevLP);
+  setSliderUI('FX-DlyFb',   p.DlyFb);
+  setSliderUI('FX-DlyDamp', p.DlyDamp);
+  setSliderUI('FX-Drive',   p.Drive);
 }
 
 function arpChordIdx(){ return Math.min(ARP_CHORDS.length-1,Math.floor(r('ARP-Chord')/(100/ARP_CHORDS.length))); }
