@@ -1947,12 +1947,12 @@ function gloopProcess(e){
 
   if(gloopRec&&!gloopPlay){
     // ── First pass: recording ──
-    // e.playbackTime is the OUTPUT timeline. inp[] was captured inputLatency seconds
-    // BEFORE e.playbackTime, so we shift the threshold forward by gloopLatTrim so
-    // that we only start capturing audio that actually corresponds to gloopRecStart.
-    const adjStart=gloopRecStart+gloopLatTrim;
-    if(t+count/ctx.sampleRate<=adjStart){ out.fill(0); return; }
-    const skipSamples=(t<adjStart) ? Math.max(0,Math.round((adjStart-t)*ctx.sampleRate)) : 0;
+    // Record from gloopRecStart (bar boundary in output time). inp[0] contains audio
+    // captured inputLatency seconds before e.playbackTime, so beat-1 audio lands at
+    // position latSamples (= gloopLatTrim * sr) inside the buffer. Playback then
+    // starts from that offset so beat 1 aligns to the bar boundary on output.
+    if(t+count/ctx.sampleRate<=gloopRecStart){ out.fill(0); return; }
+    const skipSamples=(t<gloopRecStart) ? Math.max(0,Math.round((gloopRecStart-t)*ctx.sampleRate)) : 0;
     // Only record up to exactly gloopTargetLen total samples
     const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
     const remaining=gloopTargetLen-recorded;
@@ -1968,7 +1968,13 @@ function gloopProcess(e){
       if(total>0){
         gloopBuffer=new Float32Array(total);
         let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
-        gloopLen=total; gloopPos=0; gloopPlay=true;
+        gloopLen=total;
+        // Start playback from the beat-1 position (latSamples into the buffer).
+        // inp[0] at e.playbackTime=gloopRecStart captured audio from gloopRecStart-inputLatency,
+        // so beat-1 audio sits at position latSamples = inputLatency * sr.
+        // Playing from there makes beat 1 hit exactly at the bar boundary on output.
+        const latSamples=Math.min(Math.round(gloopLatTrim*ctx.sampleRate), total-1);
+        gloopPos=latSamples; gloopPlay=true;
       }
       gloopSamples=[]; gloopRec=false; gloopFinalizing=false;
       setTimeout(updateGloopUI,0);
@@ -2004,7 +2010,9 @@ function gloopFinalize(){
   if(total>0){
     gloopBuffer=new Float32Array(total);
     let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
-    gloopLen=total; gloopPos=0; gloopPlay=true;
+    gloopLen=total;
+    const latSamples=Math.min(Math.round(gloopLatTrim*ctx.sampleRate), total-1);
+    gloopPos=latSamples; gloopPlay=true;
   }
   gloopSamples=[];
   updateGloopUI();
@@ -2019,12 +2027,13 @@ function gloopRecord(){
   gloopSamples=[]; gloopBuffer=null; gloopLen=0; gloopPos=0;
   gloopPlay=false; gloopOverdub=false; gloopFinalizing=false; gloopRec=true;
   gloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
-  gloopTargetLen=Math.round(gloopBars*4*(60/bpm)*ctx.sampleRate);
+  gloopTargetLen=gloopBars*Math.round(16*(60/bpm/4)*ctx.sampleRate); // per-bar rounding, matches sequencer
   updateGloopUI();
 }
 function gloopToggle(){
   if(!gloopLen) return;
-  gloopPlay=!gloopPlay; if(gloopPlay) gloopPos=0;
+  gloopPlay=!gloopPlay;
+  if(gloopPlay){ const lat=Math.min(Math.round(gloopLatTrim*ctx.sampleRate),gloopLen-1); gloopPos=lat; }
   updateGloopUI();
 }
 function gloopClear(){
