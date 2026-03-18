@@ -1927,44 +1927,65 @@ function gloopProcess(e){
   const out=e.outputBuffer.getChannelData(0);
   const count=inp.length;
   const inLvl=r('gloop-inlvl')/100;
+  const t=e.playbackTime; // sample-accurate buffer start time
 
-  if(gloopRec && !gloopPlay){
-    // ── First pass ──
-    if(ctx.currentTime < gloopRecStart){
-      // Pre-roll: waiting for bar boundary — output silence (monitor goes direct path)
-      out.fill(0); return;
-    }
-    // Accumulate whole buffer chunks — far cheaper than per-sample push
-    const chunk=new Float32Array(count);
-    for(let i=0;i<count;i++) chunk[i]=inp[i]*inLvl;
-    gloopSamples.push(chunk);
-    // Check if we've hit the target length
+  if(gloopRec&&!gloopPlay){
+    // ── First pass: recording ──
+    // Skip entire buffer if it ends before the bar boundary
+    if(t+count/ctx.sampleRate<=gloopRecStart){ out.fill(0); return; }
+    // Sub-buffer precision: skip samples that are before the bar start
+    const skipSamples=(t<gloopRecStart) ? Math.max(0,Math.round((gloopRecStart-t)*ctx.sampleRate)) : 0;
+    // Only record up to exactly gloopTargetLen total samples
     const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
-    if(gloopTargetLen>0 && recorded>=gloopTargetLen && !gloopFinalizing){
-      gloopFinalizing=true; setTimeout(gloopFinalize,0);
+    const remaining=gloopTargetLen-recorded;
+    const toRecord=Math.min(count-skipSamples, remaining);
+    if(toRecord>0){
+      const chunk=new Float32Array(toRecord);
+      for(let i=0;i<toRecord;i++) chunk[i]=inp[skipSamples+i]*inLvl;
+      gloopSamples.push(chunk);
     }
-    out.fill(0); // ScriptProcessor outputs only loop — monitor is the direct path
+    if(recorded+toRecord>=gloopTargetLen){
+      // Finalize synchronously — zero setTimeout latency on loop start
+      const total=gloopSamples.reduce((s,c)=>s+c.length,0);
+      if(total>0){
+        gloopBuffer=new Float32Array(total);
+        let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
+        gloopLen=total; gloopPos=0; gloopPlay=true;
+      }
+      gloopSamples=[]; gloopRec=false; gloopFinalizing=false;
+      setTimeout(updateGloopUI,0);
+      // Play the loop immediately for the tail of this same buffer
+      const playStart=skipSamples+toRecord;
+      for(let i=playStart;i<count;i++){
+        out[i]=gloopBuffer[gloopPos];
+        gloopPos=(gloopPos+1)%gloopLen;
+      }
+      if(playStart>0) for(let i=0;i<playStart;i++) out[i]=0;
+      return;
+    }
+    out.fill(0);
   } else if(gloopPlay){
     // ── Playback / overdub ──
     const retain=0.1+(r('gloop-decay')/100)*0.9;
     for(let i=0;i<count;i++){
-      if(gloopOverdub && gloopRec)
-        gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain + inp[i]*inLvl;
+      if(gloopOverdub&&gloopRec)
+        gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain+inp[i]*inLvl;
       out[i]=gloopBuffer[gloopPos];
       gloopPos=gloopReverse?(gloopPos-1+gloopLen)%gloopLen:(gloopPos+1)%gloopLen;
     }
   } else {
-    out.fill(0); // idle — silence out (monitor is separate direct path)
+    out.fill(0);
   }
 }
 
 function gloopFinalize(){
+  // Manual stop — finalize whatever is recorded so far
+  if(!gloopRec) return;
   gloopFinalizing=false; gloopRec=false;
-  // Flatten chunk array into a single Float32Array
   const total=gloopSamples.reduce((s,c)=>s+c.length,0);
   if(total>0){
     gloopBuffer=new Float32Array(total);
-    let off=0; gloopSamples.forEach(c=>{ gloopBuffer.set(c,off); off+=c.length; });
+    let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
     gloopLen=total; gloopPos=0; gloopPlay=true;
   }
   gloopSamples=[];
@@ -3992,8 +4013,9 @@ function loop(){
       nextT+=sl;
       const wasLast=(seqStep===seqBarCount*16-1);
       seqStep=(seqStep+1)%(seqBarCount*16);
+      // Update nextBarTime at every bar boundary so loopers always get the next 1-bar snap point
+      if(seqStep%16===0) nextBarTime=nextT;
       if(wasLast){
-        nextBarTime=nextT; // looper uses this to snap recording to bar boundary
         chordBarCount++;
         if(chordBarCount%chordBarsPerStep===0){
           const nextStep=(chordSeqStep+1)%chordSeqLen;
