@@ -2037,10 +2037,10 @@ function init(){
   // Reverb with shimmer return
   revPre=ctx.createDelay(0.5); revPre.delayTime.value=0.01;
   revNode=ctx.createConvolver();
-  revWet=ctx.createGain(); revWet.gain.value=0.4;
+  revWet=ctx.createGain(); revWet.gain.value=0.32;
   shimGain=ctx.createGain(); shimGain.gain.value=0;
   revHP=ctx.createBiquadFilter(); revHP.type='highpass'; revHP.frequency.value=80;
-  revLP=ctx.createBiquadFilter(); revLP.type='lowpass';  revLP.frequency.value=8000;
+  revLP=ctx.createBiquadFilter(); revLP.type='lowpass';  revLP.frequency.value=8000; revLP.Q.value=0.707; // Butterworth — no resonance peak
   revPre.connect(revNode); revNode.connect(revHP); revHP.connect(revLP); revLP.connect(revWet); revWet.connect(masterEQ);
   // Shimmer: high-passed reverb return → slight detune
   revNode.connect(shimGain); shimGain.connect(masterEQ);
@@ -2049,7 +2049,7 @@ function init(){
   // Delay — analog-style feedback path: LP damp → HP (stops bass buildup) → tanh sat → gain → loop
   delNode=ctx.createDelay(5.0); delNode.delayTime.value=60/bpm/2;
   delFb=ctx.createGain(); delFb.gain.value=0.5;
-  delDamp=ctx.createBiquadFilter(); delDamp.type='lowpass';  delDamp.frequency.value=3200; // warm default
+  delDamp=ctx.createBiquadFilter(); delDamp.type='lowpass';  delDamp.frequency.value=3200; delDamp.Q.value=0.707; // warm default + Butterworth (no resonance peak in feedback loop)
   delHP=ctx.createBiquadFilter();   delHP.type='highpass';   delHP.frequency.value=90;  delHP.Q.value=0.707;  // prevent bass mud + no resonance peak
   delSat=ctx.createWaveShaper();    delSat.curve=makeDelSatCurve(); delSat.oversample='2x'; // analog warmth
   delWet=ctx.createGain(); delWet.gain.value=0.28;
