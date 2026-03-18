@@ -333,64 +333,13 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     </div>
   </div>
 
-  <!-- PAD ASSIGNMENT -->
+  <!-- PAD ASSIGNMENT — quick switch above pad -->
   <div class="pad-assign-row">
-    <button class="pad-assign-btn on" onclick="setPadAssign('xs',this)">XS NEBULA</button>
-    <button class="pad-assign-btn smp" onclick="setPadAssign('sampler',this)">SAMPLERIZER</button>
-    <button class="pad-assign-btn holo" onclick="setPadAssign('hologram',this)">✦ HOLOGRAM</button>
-  </div>
-
-  <div class="pad-mode-row">
-    <button class="pm on" onclick="setPadMode('shimmer',this)">SHIMMER</button>
-    <button class="pm"    onclick="setPadMode('abyss',this)">ABYSS</button>
-    <button class="pm"    onclick="setPadMode('crystal',this)">CRYSTAL</button>
-    <button class="pm"    onclick="setPadMode('cloud',this)">CLOUD</button>
-    <button class="pm"    onclick="setPadMode('pulse',this)">PULSE</button>
-  </div>
-
-  <!-- SAMPLER CONTROLS (shown when samplerizer active) -->
-  <div class="sampler-ctrl-row" id="samplerCtrlRow">
-    <button class="smp-btn" onclick="samplerLoadFile()">⊕ LOAD</button>
-    <button class="smp-btn mic" id="samplerMicBtn" onclick="samplerToggleMicRec()">● MIC</button>
-    <span id="samplerName">— no sample —</span>
-    <span style="flex-shrink:0;font-size:7px;color:rgba(160,80,255,0.35);letter-spacing:1px">Y=PITCH · X=POS</span>
+    <button class="pad-assign-btn on" data-assign="xs"      onclick="setPadAssign('xs',this)">XS NEBULA</button>
+    <button class="pad-assign-btn smp" data-assign="sampler" onclick="setPadAssign('sampler',this)">SAMPLERIZER</button>
+    <button class="pad-assign-btn holo" data-assign="hologram" onclick="setPadAssign('hologram',this)">✦ HOLOGRAM</button>
   </div>
   <input type="file" id="samplerFileInput" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.flac,audio/mp4,audio/m4a,audio/x-m4a,audio/aac" style="display:none" onchange="samplerOnFile(this)">
-
-  <!-- SAMPLERIZER PAD PRESETS -->
-  <div class="smp-pad-preset-row" id="smpPadPresetRow">
-    <button class="spp on" onclick="setSmpPadPreset('speed',this)">⚡ SPEED+EQ</button>
-    <button class="spp"    onclick="setSmpPadPreset('echo',this)">◎ ECHO</button>
-    <button class="spp"    onclick="setSmpPadPreset('pitch',this)">♦ PITCH+REV</button>
-  </div>
-
-  <!-- HOLOGRAM PRESETS -->
-  <div class="holo-preset-row" id="holoPresetRow">
-    <button class="holo-btn on" onclick="setHoloPreset(0,this)">NEBULA</button>
-    <button class="holo-btn"    onclick="setHoloPreset(1,this)">SHATTER</button>
-    <button class="holo-btn"    onclick="setHoloPreset(2,this)">COSMOS</button>
-    <button class="holo-btn"    onclick="setHoloPreset(3,this)">VAPOR</button>
-    <button class="holo-btn"    onclick="setHoloPreset(4,this)">PULSE</button>
-    <button class="holo-btn"    onclick="setHoloPreset(5,this)">ATOM</button>
-  </div>
-
-  <!-- HOLOGRAM CONTROLS: reverb + delay sync -->
-  <div class="holo-ctrl-row" id="holoCtrlRow">
-    <div class="holo-ctrl-card" style="flex:1">
-      <label>REVERB</label>
-      <input type="range" id="holoRevSlider" min="0" max="100" value="72" style="width:100%" oninput="holoRevWet=this.value/100;document.getElementById('holoRevV').textContent=this.value">
-      <div class="dv" id="holoRevV">72</div>
-    </div>
-    <div class="holo-ctrl-card" style="flex:1.5">
-      <label>DELAY SYNC</label>
-      <div style="display:flex;gap:3px;width:100%">
-        <button class="hsync"    onclick="setHoloDelayDiv(0.25,this)">1/16</button>
-        <button class="hsync on" onclick="setHoloDelayDiv(0.5,this)">1/8</button>
-        <button class="hsync"    onclick="setHoloDelayDiv(1.0,this)">1/4</button>
-        <button class="hsync"    onclick="setHoloDelayDiv(2.0,this)">1/2</button>
-      </div>
-    </div>
-  </div>
 
   <div id="xPad">
     <span class="pad-label" id="xsLabel">XS NEBULA — <span id="modeLabel">SHIMMER</span> <span id="zoneLabel" style="color:rgba(255,220,80,0.9);font-size:9px;letter-spacing:2px;"></span></span>
@@ -399,26 +348,6 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <canvas id="padCanvas"></canvas>
   </div>
 
-  <!-- PAD LOOPER — always visible, records from XS Nebula, Samplerizer and Hologram -->
-  <div class="looper" style="margin:8px 3vw 4px">
-    <div class="looper-btns">
-      <button class="loop-btn rec"  id="loop-rec"  onclick="loopRecord()">● REC</button>
-      <button class="loop-btn play" id="loop-play" onclick="loopToggle()" disabled>▶ LOOP</button>
-      <button class="loop-btn"      id="loop-clear" onclick="loopClear()">✕ CLEAR</button>
-    </div>
-    <div class="loop-bars">
-      <button class="loop-bar-btn on" data-bars="1" onclick="setLoopBars(1,this)">1 BAR</button>
-      <button class="loop-bar-btn"    data-bars="2" onclick="setLoopBars(2,this)">2 BAR</button>
-      <button class="loop-bar-btn"    data-bars="4" onclick="setLoopBars(4,this)">4 BAR</button>
-      <button class="loop-bar-btn"    data-bars="8" onclick="setLoopBars(8,this)">8 BAR</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:7px">
-      <label style="font-size:8px;color:#aaa;font-weight:900;letter-spacing:1.5px;white-space:nowrap">DECAY</label>
-      <input type="range" id="loop-decay" min="0" max="100" value="72" style="flex:1" oninput="document.getElementById('loop-decay-v').textContent=this.value">
-      <div style="font-size:9px;color:#aaa;min-width:22px;text-align:right" id="loop-decay-v">72</div>
-    </div>
-    <div class="loop-status" id="loop-status">EMPTY</div>
-  </div>
 
   <!-- POPUP BACKDROP -->
   <div id="popup-bg" onclick="closeCirclePopup()"></div>
@@ -560,20 +489,33 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         </div>
       </div>
     </div>
-    <!-- SAMPLER -->
-    <div class="inst-circle" id="circ-SMP">
+    <!-- XS LOOPER -->
+    <div class="inst-circle" id="circ-LOOP">
       <div class="circ-inner-row">
-        <div class="circ-body" style="background:rgba(168,85,247,0.2);border:2px solid rgba(168,85,247,0.65);box-shadow:0 0 16px rgba(168,85,247,0.2),inset 0 0 20px rgba(168,85,247,0.1)" onclick="openCirclePopup('drSMPLR',event,'SMP')">
-          <div class="circ-ring" id="cring-SMP" style="border-color:#a855f7"></div>
-          <div class="circ-name">SMPLR</div>
-          <button class="circ-mute-btn" id="cmute-SMP" onclick="instMute('SMP',this);event.stopPropagation()">MUTE</button>
+        <div class="circ-body" style="background:rgba(80,255,160,0.2);border:2px solid rgba(80,255,160,0.65);box-shadow:0 0 16px rgba(80,255,160,0.2),inset 0 0 20px rgba(80,255,160,0.1)" onclick="openCirclePopup('drXSLOOP',event,null)">
+          <div class="circ-ring" id="cring-LOOP" style="border-color:#50ffa0"></div>
+          <div class="circ-name" id="loopCircName">XS LOOP</div>
         </div>
         <div class="circ-y-wrap">
-          <input type="range" class="circ-y" min="0" max="100" value="35" style="accent-color:#a855f7" oninput="syncCircVol('SMP-Rev',this.value)">
-          <span class="circ-y-lbl" style="color:rgba(168,85,247,0.5)">REV</span>
+          <input type="range" class="circ-y" min="0" max="100" value="72" style="accent-color:#50ffa0" oninput="document.getElementById('loop-decay').value=this.value;document.getElementById('loop-decay-v').textContent=this.value">
+          <span class="circ-y-lbl" style="color:rgba(80,255,160,0.5)">DCY</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="75" style="accent-color:#a855f7" oninput="syncCircVol('SMP-Vol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="100" value="85" style="accent-color:#50ffa0" oninput="if(xsPlayGain)xsPlayGain.gain.setTargetAtTime(this.value/100,ctx.currentTime,0.05)">
+    </div>
+    <!-- TOUCHPAD -->
+    <div class="inst-circle" id="circ-PAD">
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,200,80,0.2);border:2px solid rgba(255,200,80,0.65);box-shadow:0 0 16px rgba(255,200,80,0.2),inset 0 0 20px rgba(255,200,80,0.1)" onclick="openCirclePopup('drTOUCHPAD',event,null)">
+          <div class="circ-ring" id="cring-PAD" style="border-color:#ffc850"></div>
+          <div class="circ-name" id="padCircName">PAD</div>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="32" style="accent-color:#ffc850" oninput="syncCircVol('X-Grain',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,200,80,0.5)">DNS</span>
+        </div>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="62" style="accent-color:#ffc850" oninput="syncCircVol('X-Vol',this.value)">
     </div>
     <!-- FX -->
     <div class="inst-circle" id="circ-FX">
@@ -1205,6 +1147,98 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
       </div>
     </div>
 
+
+    <!-- XS LOOPER DRAWER -->
+    <div class="drawer" id="drXSLOOP">
+      <div class="drawer-hdr" onclick="toggleD('drXSLOOP')" style="color:#50ffa0">
+        <span>XS LOOPER</span>
+        <span class="arr">▼</span>
+      </div>
+      <div class="drawer-body">
+        <div class="looper-btns">
+          <button class="loop-btn rec"  id="loop-rec"   onclick="loopRecord()">● REC</button>
+          <button class="loop-btn play" id="loop-play"  onclick="loopToggle()" disabled>▶ LOOP</button>
+          <button class="loop-btn"      id="loop-clear" onclick="loopClear()">✕ CLEAR</button>
+        </div>
+        <div class="loop-bars" style="margin-top:8px">
+          <button class="loop-bar-btn on" data-bars="1" onclick="setLoopBars(1,this)">1 BAR</button>
+          <button class="loop-bar-btn"    data-bars="2" onclick="setLoopBars(2,this)">2 BAR</button>
+          <button class="loop-bar-btn"    data-bars="4" onclick="setLoopBars(4,this)">4 BAR</button>
+          <button class="loop-bar-btn"    data-bars="8" onclick="setLoopBars(8,this)">8 BAR</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+          <label style="font-size:8px;color:#aaa;font-weight:900;letter-spacing:1.5px;white-space:nowrap">DECAY</label>
+          <input type="range" id="loop-decay" min="0" max="100" value="72" style="flex:1;accent-color:#50ffa0" oninput="document.getElementById('loop-decay-v').textContent=this.value">
+          <div style="font-size:9px;color:#aaa;min-width:22px;text-align:right" id="loop-decay-v">72</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <label style="font-size:8px;color:#aaa;font-weight:900;letter-spacing:1.5px;white-space:nowrap">VOL</label>
+          <input type="range" min="0" max="100" value="85" style="flex:1;accent-color:#50ffa0" oninput="if(xsPlayGain)xsPlayGain.gain.setTargetAtTime(this.value/100,ctx.currentTime,0.05)">
+        </div>
+        <div class="loop-status" id="loop-status" style="margin-top:10px">EMPTY</div>
+      </div>
+    </div>
+
+    <!-- TOUCHPAD DRAWER -->
+    <div class="drawer" id="drTOUCHPAD">
+      <div class="drawer-hdr" onclick="toggleD('drTOUCHPAD')" style="color:#ffc850">
+        <span>TOUCHPAD</span>
+        <span class="arr">▼</span>
+      </div>
+      <div class="drawer-body">
+        <div class="sec">INSTRUMENT</div>
+        <div class="pad-assign-row" style="padding:0 0 10px">
+          <button class="pad-assign-btn on"   data-assign="xs"       onclick="setPadAssign('xs',this)">XS NEBULA</button>
+          <button class="pad-assign-btn smp"  data-assign="sampler"  onclick="setPadAssign('sampler',this)">SAMPLERIZER</button>
+          <button class="pad-assign-btn holo" data-assign="hologram" onclick="setPadAssign('hologram',this)">✦ HOLOGRAM</button>
+        </div>
+        <div class="sec">XS NEBULA MODE</div>
+        <div class="pad-mode-row" style="padding:0 0 10px;flex-wrap:wrap">
+          <button class="pm on" onclick="setPadMode('shimmer',this)">SHIMMER</button>
+          <button class="pm"    onclick="setPadMode('abyss',this)">ABYSS</button>
+          <button class="pm"    onclick="setPadMode('crystal',this)">CRYSTAL</button>
+          <button class="pm"    onclick="setPadMode('cloud',this)">CLOUD</button>
+          <button class="pm"    onclick="setPadMode('pulse',this)">PULSE</button>
+        </div>
+        <div class="sec">SAMPLERIZER</div>
+        <div class="sampler-ctrl-row" id="samplerCtrlRow" style="flex-wrap:wrap;padding:0 0 6px">
+          <button class="smp-btn" onclick="samplerLoadFile()">⊕ LOAD</button>
+          <button class="smp-btn mic" id="samplerMicBtn" onclick="samplerToggleMicRec()">● MIC</button>
+          <span id="samplerName">— no sample —</span>
+        </div>
+        <div class="smp-pad-preset-row" id="smpPadPresetRow" style="padding:0 0 10px">
+          <button class="spp on" onclick="setSmpPadPreset('speed',this)">⚡ SPEED+EQ</button>
+          <button class="spp"    onclick="setSmpPadPreset('echo',this)">◎ ECHO</button>
+          <button class="spp"    onclick="setSmpPadPreset('pitch',this)">♦ PITCH+REV</button>
+        </div>
+        <div class="sec">HOLOGRAM</div>
+        <div class="holo-preset-row" id="holoPresetRow" style="flex-wrap:wrap;padding:0 0 6px">
+          <button class="holo-btn on" onclick="setHoloPreset(0,this)">NEBULA</button>
+          <button class="holo-btn"    onclick="setHoloPreset(1,this)">SHATTER</button>
+          <button class="holo-btn"    onclick="setHoloPreset(2,this)">COSMOS</button>
+          <button class="holo-btn"    onclick="setHoloPreset(3,this)">VAPOR</button>
+          <button class="holo-btn"    onclick="setHoloPreset(4,this)">PULSE</button>
+          <button class="holo-btn"    onclick="setHoloPreset(5,this)">ATOM</button>
+        </div>
+        <div class="holo-ctrl-row" id="holoCtrlRow" style="padding:0 0 8px">
+          <div class="holo-ctrl-card" style="flex:1">
+            <label>REVERB</label>
+            <input type="range" id="holoRevSlider" min="0" max="100" value="72" style="width:100%" oninput="holoRevWet=this.value/100;document.getElementById('holoRevV').textContent=this.value">
+            <div class="dv" id="holoRevV">72</div>
+          </div>
+          <div class="holo-ctrl-card" style="flex:1.5">
+            <label>DELAY SYNC</label>
+            <div style="display:flex;gap:3px;width:100%">
+              <button class="hsync"    onclick="setHoloDelayDiv(0.25,this)">1/16</button>
+              <button class="hsync on" onclick="setHoloDelayDiv(0.5,this)">1/8</button>
+              <button class="hsync"    onclick="setHoloDelayDiv(1.0,this)">1/4</button>
+              <button class="hsync"    onclick="setHoloDelayDiv(2.0,this)">1/2</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- .main -->
 </div><!-- #ui -->
 
@@ -1443,6 +1477,7 @@ let xsBuf=null, xsBufLen=0;
 let xsRec=false, xsPlay=false, xsOverdub=false, xsFinz=false;
 let xsRecStart=0, xsTargetLen=0, xsChunks=[], xsBars=1;
 let xsPlaySrc=null; // AudioBufferSourceNode for loop playback
+let xsPlayGain=null; // GainNode for loop playback volume
 let nextBarTime=0;  // set by sequencer each bar
 
 function xsLoopProcess(e){
@@ -1476,11 +1511,12 @@ function xsFinalize(){
 function xsStartPlayback(){
   if(xsPlaySrc){try{xsPlaySrc.stop();}catch(e){} xsPlaySrc=null;}
   if(!xsBufLen||!ctx) return;
+  if(!xsPlayGain){ xsPlayGain=ctx.createGain(); xsPlayGain.gain.value=0.85; xsPlayGain.connect(masterEQ); }
   const ab=ctx.createBuffer(1,xsBufLen,ctx.sampleRate);
   ab.copyToChannel(xsBuf,0);
   xsPlaySrc=ctx.createBufferSource();
   xsPlaySrc.buffer=ab; xsPlaySrc.loop=true;
-  xsPlaySrc.connect(masterEQ);
+  xsPlaySrc.connect(xsPlayGain);
   xsPlaySrc.start();
 }
 function loopRecord(){
@@ -1515,13 +1551,19 @@ function setLoopBars(bars,btn){
   document.querySelectorAll('.loop-bar-btn').forEach(b=>b.classList.toggle('on',+b.dataset.bars===bars));
 }
 function updateLoopUI(){
-  document.getElementById('loop-rec').classList.toggle('active',xsRec);
-  document.getElementById('loop-play').classList.toggle('active',xsPlay);
-  document.getElementById('loop-play').disabled=xsBufLen===0;
-  document.getElementById('loop-clear').disabled=xsBufLen===0&&!xsRec;
+  const recBtn=document.getElementById('loop-rec');
+  const playBtn=document.getElementById('loop-play');
+  if(recBtn) recBtn.classList.toggle('active',xsRec);
+  if(playBtn){ playBtn.classList.toggle('active',xsPlay); playBtn.disabled=xsBufLen===0; }
+  const clearBtn=document.getElementById('loop-clear');
+  if(clearBtn) clearBtn.disabled=xsBufLen===0&&!xsRec;
   const sec=xsBufLen>0&&ctx?(xsBufLen/ctx.sampleRate).toFixed(1)+'s':'';
-  document.getElementById('loop-status').textContent=
-    xsOverdub?'◉ OVERDUB':xsRec?'● RECORDING...':(xsPlay?`▶ LOOPING ${sec}`:(xsBufLen>0?`READY ${sec}`:'EMPTY'));
+  const statusEl=document.getElementById('loop-status');
+  if(statusEl) statusEl.textContent=xsOverdub?'◉ OVERDUB':xsRec?'● RECORDING...':(xsPlay?`▶ LOOPING ${sec}`:(xsBufLen>0?`READY ${sec}`:'EMPTY'));
+  const ring=document.getElementById('cring-LOOP');
+  if(ring){ ring.style.borderColor=xsRec?'#ff4444':xsPlay?'#50ffa0':'rgba(80,255,160,0.4)'; ring.style.boxShadow=xsRec?'0 0 12px #ff4444':xsPlay?'0 0 12px #50ffa0':'none'; }
+  const nameEl=document.getElementById('loopCircName');
+  if(nameEl) nameEl.textContent=xsRec?'● REC':xsPlay?'▶ LOOP':'XS LOOP';
 }
 function tickLooper(){}
 
@@ -2488,7 +2530,7 @@ function chordFreqFromX(px){
 // ═══ PAD ASSIGNMENT ═══════════════════════════════
 function setPadAssign(mode,btn){
   padAssign=mode;
-  document.querySelectorAll('.pad-assign-btn').forEach(b=>b.classList.toggle('on',b===btn));
+  document.querySelectorAll('.pad-assign-btn').forEach(b=>b.classList.toggle('on',b.dataset.assign===mode));
   const isXS=mode==='xs', isSmp=mode==='sampler', isHolo=mode==='hologram';
   document.getElementById('samplerCtrlRow').classList.toggle('active',isSmp);
   const smpPresetRow=document.getElementById('smpPadPresetRow');
@@ -2497,8 +2539,7 @@ function setPadAssign(mode,btn){
   const holoCtrlRowEl=document.getElementById('holoCtrlRow');
   if(holoCtrlRowEl) holoCtrlRowEl.classList.toggle('active',isHolo);
   if(isSmp){ const lbMap={speed:'X=SPEED · Y=EQ',echo:'X=DELAY · Y=FEEDBACK',pitch:'X=PITCH · Y=REVERB'}; const el=document.getElementById('samplerLabel'); if(el) el.textContent='SAMPLERIZER — '+(lbMap[smpPadPreset]||''); }
-  document.querySelector('.pad-mode-row').style.display=(isSmp||isHolo)?'none':'';
-  document.getElementById('xsLabel').style.display=isXS?'':'none';
+document.getElementById('xsLabel').style.display=isXS?'':'none';
   document.getElementById('samplerLabel').style.display=isSmp?'':'none';
   document.getElementById('holoLabel').style.display=isHolo?'':'none';
   const padEl=document.getElementById('xPad');
