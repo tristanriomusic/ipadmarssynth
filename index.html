@@ -2006,12 +2006,12 @@ function gloopProcess(e){
 function _gloopStopSrc(){
   if(gloopSource){try{gloopSource.stop(0);}catch(e){}try{gloopSource.disconnect();}catch(e){} gloopSource=null;}
 }
-function _gloopMakeSrc(startTime){
+function _gloopMakeSrc(startTime, offset=0){
   const abuf=ctx.createBuffer(1,gloopLen,ctx.sampleRate);
   abuf.getChannelData(0).set(gloopBuffer);
   const src=ctx.createBufferSource();
   src.buffer=abuf; src.loop=true; src.loopStart=0; src.loopEnd=gloopLen/ctx.sampleRate;
-  src.connect(gloopOutGain); src.start(startTime);
+  src.connect(gloopOutGain); src.start(startTime, offset);
   gloopSource=src;
 }
 function _gloopSyncPos(){
@@ -2042,12 +2042,14 @@ function gloopFinalize(){
 function gloopRecord(){
   if(gloopRec&&!gloopOverdub){ gloopFinalize(); return; }
   if(gloopOverdub){
-    // End overdub — rebuild AudioBuffer with modified content and restart source
+    // End overdub — rebuild AudioBuffer with modified content, resume from current position
     gloopRec=false; gloopOverdub=false;
     if(gloopBuffer&&gloopLen>0){
       _gloopStopSrc();
-      gloopPlayStartTime=ctx.currentTime;
-      _gloopMakeSrc(gloopPlayStartTime);
+      // Resume from where the ScriptProcessor left off so phase is preserved
+      const offset=(gloopPos/ctx.sampleRate)%(gloopLen/ctx.sampleRate);
+      gloopPlayStartTime=ctx.currentTime-offset; // virtual phase reference
+      _gloopMakeSrc(ctx.currentTime, offset);
     }
     updateGloopUI(); return;
   }
