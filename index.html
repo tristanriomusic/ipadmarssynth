@@ -384,6 +384,20 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="80" style="accent-color:#ff9944" oninput="syncCircVol('gloop-loopvol',this.value)">
     </div>
+    <!-- PAD LOOP -->
+    <div class="inst-circle" id="circ-PL">
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(78,205,196,0.2);border:2px solid rgba(78,205,196,0.65);box-shadow:0 0 16px rgba(78,205,196,0.2),inset 0 0 20px rgba(78,205,196,0.1)" onclick="openCirclePopup('drPADLOOP',event,null)">
+          <div class="circ-ring" id="cring-PL" style="border-color:#4ecdc4"></div>
+          <div class="circ-name">PAD LOOP</div>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="100" style="accent-color:#4ecdc4" oninput="syncCircVol('padloop-decay',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(78,205,196,0.5)">DCY</span>
+        </div>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="80" style="accent-color:#4ecdc4" oninput="syncCircVol('padloop-loopvol',this.value)">
+    </div>
     <!-- ARP -->
     <div class="inst-circle" id="circ-ARP">
       <div class="circ-inner-row">
@@ -649,6 +663,64 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="loop-status" id="gloop-status">READY</div>
 
         </div><!-- #gloop-controls -->
+
+      </div>
+    </div>
+
+    <!-- TOUCHPAD LOOPER -->
+    <div class="drawer" id="drPADLOOP">
+      <div class="drawer-hdr" onclick="toggleD('drPADLOOP')" style="color:#4ecdc4">
+        <span>PAD LOOP</span><span class="arr">▼</span>
+      </div>
+      <div class="drawer-body">
+        <div style="font-size:8px;color:rgba(78,205,196,0.5);letter-spacing:1px;text-align:center;padding:2px 0 8px">records nebula · sampler · hologram</div>
+
+        <!-- Loop Vol + Decay -->
+        <div class="pg2" style="margin-bottom:8px">
+          <div class="ctrl">
+            <label>Loop Vol</label>
+            <input type="range" id="padloop-loopvol" min="0" max="100" value="80" oninput="document.getElementById('padloop-loopvol-v').textContent=this.value; if(padloopOutGain) padloopOutGain.gain.value=this.value/100;">
+            <div class="dv" id="padloop-loopvol-v">80</div>
+          </div>
+          <div class="ctrl">
+            <label>Decay</label>
+            <input type="range" id="padloop-decay" min="0" max="100" value="100" oninput="document.getElementById('padloop-decay-v').textContent=this.value">
+            <div class="dv" id="padloop-decay-v">100</div>
+          </div>
+        </div>
+
+        <!-- Bar selection -->
+        <div class="loop-bars" style="margin-bottom:8px">
+          <button class="loop-bar-btn" data-pbars="1" onclick="setPadloopBars(1,this)">1 BAR</button>
+          <button class="loop-bar-btn on" data-pbars="2" onclick="setPadloopBars(2,this)">2 BAR</button>
+          <button class="loop-bar-btn" data-pbars="4" onclick="setPadloopBars(4,this)">4 BAR</button>
+          <button class="loop-bar-btn" data-pbars="8" onclick="setPadloopBars(8,this)">8 BAR</button>
+        </div>
+
+        <!-- VU meter -->
+        <div class="gloop-vu-wrap"><canvas id="padloop-vu"></canvas></div>
+
+        <!-- FX sends -->
+        <div class="pg2" style="margin-bottom:8px">
+          <div class="ctrl fx-ctrl">
+            <label>→ Rev</label>
+            <input type="range" id="padloop-rev-send" min="0" max="100" value="0" oninput="document.getElementById('padloop-rev-send-v').textContent=this.value; if(padloopRevSend) padloopRevSend.gain.value=this.value/100;">
+            <div class="dv" id="padloop-rev-send-v">0</div>
+          </div>
+          <div class="ctrl fx-ctrl">
+            <label>→ Dly</label>
+            <input type="range" id="padloop-dly-send" min="0" max="100" value="0" oninput="document.getElementById('padloop-dly-send-v').textContent=this.value; if(padloopDlySend) padloopDlySend.gain.value=this.value/100;">
+            <div class="dv" id="padloop-dly-send-v">0</div>
+          </div>
+        </div>
+
+        <!-- Transport -->
+        <div class="looper-btns" style="margin-top:8px">
+          <button class="loop-btn rec"  id="padloop-rec"   onclick="padloopRecord()">● REC</button>
+          <button class="loop-btn play" id="padloop-play"  onclick="padloopToggle()" disabled>▶ LOOP</button>
+          <button class="loop-btn"      id="padloop-clear" onclick="padloopClear()"  disabled>✕ CLEAR</button>
+        </div>
+        <div class="loop-status" id="padloop-status" style="color:#4ecdc4">READY</div>
 
       </div>
     </div>
@@ -1464,6 +1536,26 @@ let micSource=null;
 let micInputGain=null;    // In Level  — how hot the signal going into the loop is
 let micMonitorGain=null;  // Monitor   — how loud you hear yourself live (direct, no latency)
 
+// ═══ TOUCHPAD LOOPER STATE ════════════════════════
+let padloopBuffer=null;       // Float32Array — the loop
+let padloopLen=0;             // loop length in samples
+let padloopPos=0;             // playhead
+let padloopRec=false;
+let padloopPlay=false;
+let padloopOverdub=false;
+let padloopFinalizing=false;
+let padloopSamples=[];        // chunk array during first-pass record
+let padloopTargetLen=0;       // target sample count
+let padloopRecStart=0;        // ctx.currentTime to start recording
+let padloopBars=2;            // default 2 bars
+let padloopCapBus=null;       // capture bus — send() taps here when recording/overdubbing
+let padloopNode=null;         // ScriptProcessorNode
+let padloopOutGain=null;      // loop playback → masterEQ
+let padloopRevSend=null;      // → revPre
+let padloopDlySend=null;      // → delNode
+let padloopAnalyser=null;
+let padloopAnalyserBuf=null;
+
 function setGloopBars(bars,btn){
   gloopBars=bars;
   document.querySelectorAll('[data-gbars]').forEach(b=>b.classList.toggle('on',+b.dataset.gbars===bars));
@@ -1482,6 +1574,33 @@ function initGloop(){
   gloopAnalyser=ctx.createAnalyser(); gloopAnalyser.fftSize=256;
   gloopAnalyserBuf=new Uint8Array(gloopAnalyser.frequencyBinCount);
   // Do NOT call gloopEnumDevices() here
+}
+
+function setPadloopBars(bars,btn){
+  padloopBars=bars;
+  document.querySelectorAll('[data-pbars]').forEach(b=>b.classList.toggle('on',+b.dataset.pbars===bars));
+}
+
+function initPadloop(){
+  // Capture bus — receives pad audio from send() during recording/overdub
+  padloopCapBus=ctx.createGain(); padloopCapBus.gain.value=1.0;
+  // ScriptProcessor: reads capture bus, outputs loop playback (mono)
+  padloopNode=ctx.createScriptProcessor(2048,1,1);
+  padloopNode.onaudioprocess=padloopProcess;
+  padloopCapBus.connect(padloopNode);
+  // Playback output
+  padloopOutGain=ctx.createGain(); padloopOutGain.gain.value=r('padloop-loopvol')/100||0.8;
+  padloopNode.connect(padloopOutGain);
+  padloopOutGain.connect(masterEQ);
+  // FX sends
+  padloopRevSend=ctx.createGain(); padloopRevSend.gain.value=0;
+  padloopOutGain.connect(padloopRevSend); padloopRevSend.connect(revPre);
+  padloopDlySend=ctx.createGain(); padloopDlySend.gain.value=0;
+  padloopOutGain.connect(padloopDlySend); padloopDlySend.connect(delNode);
+  // Analyser — shows loop output level
+  padloopAnalyser=ctx.createAnalyser(); padloopAnalyser.fftSize=256;
+  padloopAnalyserBuf=new Uint8Array(padloopAnalyser.frequencyBinCount);
+  padloopOutGain.connect(padloopAnalyser);
 }
 
 // ═══ SESSION RECORDER ═════════════════════════════
@@ -1803,6 +1922,97 @@ function drawGloopVU(){
   gc.fillStyle=grad; gc.fillRect(0,1,w*Math.min(peak*2,1),h-2);
 }
 
+// ═══ TOUCHPAD LOOPER FUNCTIONS ════════════════════
+function padloopProcess(e){
+  const inp=e.inputBuffer.getChannelData(0);
+  const out=e.outputBuffer.getChannelData(0);
+  const count=inp.length;
+  if(padloopRec && !padloopPlay){
+    // First-pass: wait for bar boundary, then record
+    if(ctx.currentTime < padloopRecStart){ out.fill(0); return; }
+    const chunk=new Float32Array(count);
+    for(let i=0;i<count;i++) chunk[i]=inp[i];
+    padloopSamples.push(chunk);
+    const recorded=padloopSamples.reduce((s,c)=>s+c.length,0);
+    if(padloopTargetLen>0 && recorded>=padloopTargetLen && !padloopFinalizing){
+      padloopFinalizing=true; setTimeout(padloopFinalize,0);
+    }
+    out.fill(0);
+  } else if(padloopPlay){
+    // Playback / overdub
+    const retain=0.1+(r('padloop-decay')/100)*0.9;
+    for(let i=0;i<count;i++){
+      if(padloopOverdub && padloopRec)
+        padloopBuffer[padloopPos]=padloopBuffer[padloopPos]*retain + inp[i];
+      out[i]=padloopBuffer[padloopPos];
+      padloopPos=(padloopPos+1)%padloopLen;
+    }
+  } else {
+    out.fill(0);
+  }
+}
+function padloopFinalize(){
+  padloopFinalizing=false; padloopRec=false;
+  const total=padloopSamples.reduce((s,c)=>s+c.length,0);
+  if(total>0){
+    padloopBuffer=new Float32Array(total);
+    let off=0; padloopSamples.forEach(c=>{ padloopBuffer.set(c,off); off+=c.length; });
+    padloopLen=total; padloopPos=0; padloopPlay=true;
+  }
+  padloopSamples=[];
+  updatePadloopUI();
+}
+function padloopRecord(){
+  if(!ctx) return;
+  if(padloopRec && !padloopOverdub){ padloopFinalize(); return; }
+  if(padloopOverdub){ padloopRec=false; padloopOverdub=false; updatePadloopUI(); return; }
+  if(padloopPlay && padloopLen>0){ padloopOverdub=true; padloopRec=true; updatePadloopUI(); return; }
+  // Fresh record
+  padloopSamples=[]; padloopBuffer=null; padloopLen=0; padloopPos=0;
+  padloopPlay=false; padloopOverdub=false; padloopFinalizing=false; padloopRec=true;
+  padloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
+  padloopTargetLen=Math.round(padloopBars*4*(60/bpm)*ctx.sampleRate);
+  updatePadloopUI();
+}
+function padloopToggle(){
+  if(!padloopLen) return;
+  padloopPlay=!padloopPlay; if(padloopPlay) padloopPos=0;
+  updatePadloopUI();
+}
+function padloopClear(){
+  padloopBuffer=null; padloopLen=0; padloopPos=0; padloopFinalizing=false;
+  padloopRec=false; padloopPlay=false; padloopOverdub=false; padloopSamples=[];
+  if(padloopOutGain) padloopOutGain.gain.value=r('padloop-loopvol')/100||0.8;
+  updatePadloopUI();
+}
+function updatePadloopUI(){
+  const has=padloopLen>0;
+  document.getElementById('padloop-rec').classList.toggle('active',padloopRec);
+  document.getElementById('padloop-play').classList.toggle('active',padloopPlay);
+  document.getElementById('padloop-play').disabled=!has;
+  document.getElementById('padloop-clear').disabled=!has&&!padloopRec;
+  const waiting=padloopRec&&!padloopPlay&&ctx&&ctx.currentTime<padloopRecStart;
+  const sec=has?(padloopLen/ctx.sampleRate).toFixed(2)+'s':'';
+  document.getElementById('padloop-status').textContent=
+    padloopOverdub?'◉ OVERDUB':
+    waiting?'⏳ WAITING FOR BAR...':
+    padloopRec?'● RECORDING...':
+    (padloopPlay?`▶ LOOP ${sec}`:(has?`READY ${sec}`:'READY'));
+}
+function drawPadloopVU(){
+  const canvas=document.getElementById('padloop-vu'); if(!canvas||!padloopAnalyser) return;
+  canvas.width=canvas.offsetWidth; canvas.height=canvas.offsetHeight;
+  const gc=canvas.getContext('2d'); if(!gc) return;
+  padloopAnalyser.getByteTimeDomainData(padloopAnalyserBuf);
+  let peak=0;
+  for(let i=0;i<padloopAnalyserBuf.length;i++){ const s=Math.abs(padloopAnalyserBuf[i]-128)/128; if(s>peak) peak=s; }
+  const w=canvas.width, h=canvas.height;
+  gc.fillStyle='rgba(0,0,0,0.3)'; gc.fillRect(0,0,w,h);
+  const grad=gc.createLinearGradient(0,0,w,0);
+  grad.addColorStop(0,'#4ecdc4'); grad.addColorStop(0.65,'#44ddff'); grad.addColorStop(1,'#88ff44');
+  gc.fillStyle=grad; gc.fillRect(0,1,w*Math.min(peak*2,1),h-2);
+}
+
 // ═══ PRESETS ══════════════════════════════════════
 const PRESETS={
   DR:{ color:'#aa00ff', names:['STRINGS','SPARSE','DARK','SHIMMER','BREATH'],
@@ -2075,6 +2285,7 @@ function init(){
 
   wireSliders();
   initGloop();
+  initPadloop();
   loop();
   startAudioKeepAlive();
 
@@ -2319,6 +2530,8 @@ function send(src,toRev,toDly,bus){
   src.connect(masterEQ);
   if(bus && bus!==masterEQ) src.connect(bus);
   src.connect(waveshaper);
+  // Tap dry signal into pad looper capture bus when recording or overdubbing
+  if(padloopCapBus && (padloopRec || padloopOverdub)) src.connect(padloopCapBus);
 }
 
 // ═══ FX LIVE ══════════════════════════════════════
@@ -3682,6 +3895,7 @@ function loop(){
     if(now-lastHoloGrain>rate){ holoSpawnGrain(); lastHoloGrain=now; }
   }
   drawGloopVU();
+  drawPadloopVU();
   requestAnimationFrame(loop);
 }
 
