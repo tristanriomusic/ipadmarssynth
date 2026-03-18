@@ -1062,8 +1062,15 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
             <button class="chd-mode" data-smode="Mel Min"  onclick="setChordScaleMode('Mel Min',this)">Mel Min</button>
           </div>
         </div>
+        <div style="font-size:7px;color:rgba(255,200,100,0.55);letter-spacing:2px;margin-bottom:3px;text-align:left">A</div>
         <div class="chd-row" id="chdRow"></div>
-        <div style="font-size:7px;color:rgba(255,136,200,0.4);letter-spacing:1px;text-align:center;margin-top:2px">TAP STEP TO CYCLE CHORD  ·  GLOWING = PLAYING</div>
+        <div style="font-size:7px;color:rgba(100,200,255,0.55);letter-spacing:2px;margin:8px 0 3px;text-align:left">B</div>
+        <div class="chd-row" id="chdRowB"></div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-top:8px">
+          <button class="chd-btn on" id="gotoABtn" onclick="gotoSection('A')">● A</button>
+          <button class="chd-btn"    id="gotoBBtn" onclick="gotoSection('B')">→ B</button>
+        </div>
+        <div style="font-size:7px;color:rgba(255,136,200,0.4);letter-spacing:1px;text-align:center;margin-top:4px">TAP STEP TO CYCLE CHORD  ·  GLOWING = PLAYING</div>
       </div>
     </div>
 
@@ -1073,9 +1080,9 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <span>ARPEGGIATOR — PROPHET</span>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="cmr-row">
-            <button class="cmr" id="muteARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
+            <button class="cmr muted" id="muteARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
           </div>
-          <button id="arpBtn" class="imode-btn" onclick="toggleArp();event.stopPropagation()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ START</button>
+          <button id="arpBtn" class="imode-btn" onclick="toggleArp();event.stopPropagation()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ ARM</button>
           <span class="arr">▼</span>
         </div>
       </div>
@@ -1301,7 +1308,7 @@ let holoRevWet=0.72, holoDelayDiv=0.5;
 let holoDelNode=null, holoDelFb=null, holoDelWet=null;
 
 // ── MUTE STATE ────────────────────────────────────
-const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:false,SMP:false};
+const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:true,SMP:false};
 let omniRandT=0;
 
 // ── AUDIO REACTIVITY ──────────────────────────────
@@ -1318,7 +1325,7 @@ const MOODS=[
   {h:340, s:1.6, name:'BLOOM'},   // deep burgundy
 ];
 let moodIdx=0, moodT=0;
-const bS=Array(16).fill(1), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
+const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
 const kS=Array(16).fill(0), snS=Array(16).fill(0);
 
 // ── CHORD SEQUENCE ─────────────────────────────────
@@ -1329,6 +1336,8 @@ let swingAmount=0;      // 0=no swing, 1=heavy swing (~33% of step length)
 let chaosMutateRate=0;  // 0=stable, 1=mutate a random pattern every bar
 const CHORD_SEQ_DATA=[0,2,3,4, 0,2,5,1]; // Em9 Cmaj7 Asus2 Dmaj9 Em9 Cmaj7 Amin Fmaj
 const CHORD_SEQ_CUSTOM=[0,2,3,4, 0,2,5,1]; // original sequence — restored on CUSTOM mode
+const CHORD_SEQ_B=[0,2,3,4, 0,2,5,1]; // B section chord sequence
+let currentSection='A', pendingSection=null; // section A/B switching
 
 // ── SCALE-BASED CHORD GENERATION ──────────────────
 let chordGenMode='custom', chordKey='C', chordScaleMode='Aeolian';
@@ -1366,8 +1375,8 @@ function buildScaleChords(key, mode){
   ARP_CHORDS.splice(0,ARP_CHORDS.length,...newChords);
   for(let i=0;i<8;i++) CHORD_SEQ_DATA[i]=i%7;
   currentChordIdx=CHORD_SEQ_DATA[chordSeqStep]||0;
-  const row=document.getElementById('chdRow');
-  if(row){ row.innerHTML=''; buildChordSeq(); }
+  const row=document.getElementById('chdRow'); const rowB=document.getElementById('chdRowB');
+  if(row){ row.innerHTML=''; if(rowB) rowB.innerHTML=''; buildChordSeq(); }
 }
 
 function setChordGenMode(mode,btn){
@@ -1380,8 +1389,8 @@ function setChordGenMode(mode,btn){
     ARP_CHORDS.splice(0,ARP_CHORDS.length,...CHORD_CUSTOM.map(c=>({name:c.name,notes:[...c.notes]})));
     for(let i=0;i<8;i++) CHORD_SEQ_DATA[i]=CHORD_SEQ_CUSTOM[i];
     currentChordIdx=CHORD_SEQ_DATA[chordSeqStep]||0;
-    const row=document.getElementById('chdRow');
-    if(row){ row.innerHTML=''; buildChordSeq(); }
+    const row=document.getElementById('chdRow'); const rowB=document.getElementById('chdRowB');
+    if(row){ row.innerHTML=''; if(rowB) rowB.innerHTML=''; buildChordSeq(); }
   } else {
     buildScaleChords(chordKey, chordScaleMode);
   }
@@ -2157,12 +2166,12 @@ function togglePlay(){
   if(isPlaying){
     nextT=ctx.currentTime+0.05; seqStep=0; smpBeatCount=0;
     chordSeqStep=0; chordBarCount=0; bassChordStep=0; bassArpStep=0;
-    currentChordIdx=CHORD_SEQ_DATA[0];
+    currentChordIdx=(currentSection==='A'?CHORD_SEQ_DATA:CHORD_SEQ_B)[0];
     updateChordUI();
     if(arpActive){ arpNextT=nextT; arpStep=0; } // re-sync arp to sequencer
     btn.textContent='■  STOP'; btn.classList.add('playing');
   }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); smpBeatCount=0; if(arpActive) toggleArp(); }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); smpBeatCount=0; }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -2223,30 +2232,59 @@ function buildPresets(inst){
 
 // ═══ CHORD SEQUENCE ═══════════════════════════════
 function buildChordSeq(){
-  const row=document.getElementById('chdRow');
+  const rowA=document.getElementById('chdRow');
+  const rowB=document.getElementById('chdRowB');
   for(let i=0;i<8;i++){
-    const btn=document.createElement('button');
-    btn.className='chd-step'+(i>=chordSeqLen?' off':'');
-    btn.id='chs-'+i;
-    btn.textContent=ARP_CHORDS[CHORD_SEQ_DATA[i]].name;
-    btn.addEventListener('click',()=>cycleChordStep(i));
-    row.appendChild(btn);
+    const btnA=document.createElement('button');
+    btnA.className='chd-step'+(i>=chordSeqLen?' off':'');
+    btnA.id='chs-'+i;
+    btnA.textContent=ARP_CHORDS[CHORD_SEQ_DATA[i]].name;
+    btnA.addEventListener('click',()=>cycleChordStep(i,'A'));
+    rowA.appendChild(btnA);
+    const btnB=document.createElement('button');
+    btnB.className='chd-step'+(i>=chordSeqLen?' off':'');
+    btnB.id='chsB-'+i;
+    btnB.textContent=ARP_CHORDS[CHORD_SEQ_B[i]].name;
+    btnB.addEventListener('click',()=>cycleChordStep(i,'B'));
+    rowB.appendChild(btnB);
   }
   updateChordUI();
+  updateSectionUI();
 }
-function cycleChordStep(i){
-  CHORD_SEQ_DATA[i]=(CHORD_SEQ_DATA[i]+1)%ARP_CHORDS.length;
-  document.getElementById('chs-'+i).textContent=ARP_CHORDS[CHORD_SEQ_DATA[i]].name;
+function cycleChordStep(i,section){
+  if(section==='B'){
+    CHORD_SEQ_B[i]=(CHORD_SEQ_B[i]+1)%ARP_CHORDS.length;
+    document.getElementById('chsB-'+i).textContent=ARP_CHORDS[CHORD_SEQ_B[i]].name;
+  } else {
+    CHORD_SEQ_DATA[i]=(CHORD_SEQ_DATA[i]+1)%ARP_CHORDS.length;
+    document.getElementById('chs-'+i).textContent=ARP_CHORDS[CHORD_SEQ_DATA[i]].name;
+  }
 }
 function updateChordUI(){
   for(let i=0;i<8;i++){
-    const btn=document.getElementById('chs-'+i); if(!btn) continue;
-    btn.classList.toggle('off', i>=chordSeqLen);
-    btn.classList.toggle('playing', isPlaying&&i===chordSeqStep&&i<chordSeqLen);
+    const btnA=document.getElementById('chs-'+i);
+    if(btnA){ btnA.classList.toggle('off',i>=chordSeqLen); btnA.classList.toggle('playing',isPlaying&&currentSection==='A'&&i===chordSeqStep&&i<chordSeqLen); }
+    const btnB=document.getElementById('chsB-'+i);
+    if(btnB){ btnB.classList.toggle('off',i>=chordSeqLen); btnB.classList.toggle('playing',isPlaying&&currentSection==='B'&&i===chordSeqStep&&i<chordSeqLen); }
   }
   const cl=document.getElementById('arpChordLbl');
   if(cl) cl.textContent=ARP_CHORDS[currentChordIdx].name;
   updatePadVoiceForChord(); // glide sustained pad note to new chord
+}
+function updateSectionUI(){
+  ['A','B'].forEach(s=>{
+    const btn=document.getElementById('goto'+s+'Btn');
+    if(!btn) return;
+    const isActive=currentSection===s;
+    const isPending=pendingSection===s;
+    btn.classList.toggle('on', isActive);
+    btn.textContent=isActive?('● '+s):(isPending?('→ '+s+' …'):('→ '+s));
+  });
+}
+function gotoSection(s){
+  if(s===currentSection){ pendingSection=null; updateSectionUI(); return; }
+  if(!isPlaying){ currentSection=s; pendingSection=null; currentChordIdx=(currentSection==='A'?CHORD_SEQ_DATA:CHORD_SEQ_B)[chordSeqStep]; updateChordUI(); updateSectionUI(); return; }
+  pendingSection=s; updateSectionUI();
 }
 function setChordLen(n,btn){
   chordSeqLen=n;
@@ -3191,15 +3229,15 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         const det=(v-1.5)*(3+detW*0.2)+(Math.random()-0.5)*jitter*0.15;
         const panV=((v/3)-0.5)*spread*1.6;
         const aV=amp*(0.38+Math.random()*0.18)*0.65;
-        const vo=ctx.createOscillator(), ve=ctx.createGain(), vp=ctx.createStereoPanner();
+        const vo=ctx.createOscillator(), ve=ctx.createGain(), vt=ctx.createGain(), vp=ctx.createStereoPanner();
         vo.type='sine'; vo.frequency.value=Math.max(20,baseFreq+det);
-        // Tremolo LFO — glass bowl resonance (~0.2–0.55 Hz)
+        // Tremolo LFO — glass bowl resonance (~0.2–0.55 Hz), multiplicative so gain stays positive
         const trem=ctx.createOscillator(), tg=ctx.createGain();
-        trem.type='sine'; trem.frequency.value=0.18+Math.random()*0.38; tg.gain.value=aV*0.18;
-        trem.connect(tg); tg.connect(ve.gain);
+        trem.type='sine'; trem.frequency.value=0.18+Math.random()*0.38; tg.gain.value=0.14;
+        vt.gain.value=1.0; trem.connect(tg); tg.connect(vt.gain);
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.22));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.22)+rel);
-        vp.pan.value=panV; vo.connect(ve); ve.connect(vp);
+        vp.pan.value=panV; vo.connect(ve); ve.connect(vt); vt.connect(vp);
         send(vp,toRev*1.3,toDly*0.2);
         const sT=schedT+atk+(v*0.22)+rel+0.4;
         vo.start(schedT); vo.stop(sT); trem.start(schedT); trem.stop(sT);
@@ -3257,20 +3295,20 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         const harmMult=[1.0,1.5,2.0][v];
         const f=baseFreq*harmMult+(Math.random()-0.5)*jitter*0.4;
         const aV=amp*[0.52,0.32,0.18][v];
-        const vo=ctx.createOscillator(), ve=ctx.createGain(), vp=ctx.createStereoPanner();
+        const vo=ctx.createOscillator(), ve=ctx.createGain(), vt=ctx.createGain(), vp=ctx.createStereoPanner();
         vo.type=v===0?'triangle':'sine'; vo.frequency.value=Math.max(20,f);
         // Pitch drift LFO — signal tuning in/out
         const dL=ctx.createOscillator(), dG=ctx.createGain();
         dL.type='sine'; dL.frequency.value=0.35+Math.random()*0.9; dG.gain.value=driftD*(1+v*0.6);
         dL.connect(dG); dG.connect(vo.frequency);
-        // Amplitude tremolo — radio fading
+        // Amplitude tremolo — radio fading, multiplicative so gain stays positive
         const tL=ctx.createOscillator(), tG=ctx.createGain();
-        tL.type='sine'; tL.frequency.value=0.5+Math.random()*1.5; tG.gain.value=aV*0.28;
-        tL.connect(tG); tG.connect(ve.gain);
+        tL.type='sine'; tL.frequency.value=0.5+Math.random()*1.5; tG.gain.value=0.22;
+        vt.gain.value=1.0; tL.connect(tG); tG.connect(vt.gain);
         const onset=schedT+(v*0.18);
         ve.gain.setValueAtTime(0,onset); ve.gain.linearRampToValueAtTime(aV,onset+atk);
         ve.gain.exponentialRampToValueAtTime(0.0001,onset+atk+rel);
-        vp.pan.value=(v-1)*spread*0.9; vo.connect(ve); ve.connect(vp);
+        vp.pan.value=(v-1)*spread*0.9; vo.connect(ve); ve.connect(vt); vt.connect(vp);
         send(vp,toRev*(1+v*0.25),v===0?toDly:0);
         const sT=onset+atk+rel+0.3;
         vo.start(onset); vo.stop(sT); dL.start(onset); dL.stop(sT); tL.start(onset); tL.stop(sT);
@@ -3289,14 +3327,14 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         const panV=((v/3)-0.5)*spread*1.8;
         const aV=amp*0.32*(0.75+Math.random()*0.25);
         // Slow swell per voice
-        const vo=ctx.createOscillator(), ve=ctx.createGain(), vp=ctx.createStereoPanner();
+        const vo=ctx.createOscillator(), ve=ctx.createGain(), vt=ctx.createGain(), vp=ctx.createStereoPanner();
         vo.type='sine'; vo.frequency.value=Math.max(20,baseFreq+det);
         const sw=ctx.createOscillator(), sg=ctx.createGain();
-        sw.type='sine'; sw.frequency.value=0.20+Math.random()*0.15; sg.gain.value=aV*0.12;
-        sw.connect(sg); sg.connect(ve.gain);
+        sw.type='sine'; sw.frequency.value=0.20+Math.random()*0.15; sg.gain.value=0.10;
+        vt.gain.value=1.0; sw.connect(sg); sg.connect(vt.gain);
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.12));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.12)+rel);
-        vp.pan.value=panV; vo.connect(ve); ve.connect(vp);
+        vp.pan.value=panV; vo.connect(ve); ve.connect(vt); vt.connect(vp);
         send(vp,toRev*1.2,v===0?toDly:0);
         const sT=schedT+atk+(v*0.12)+rel+0.4;
         vo.start(schedT); vo.stop(sT); sw.start(schedT); sw.stop(sT);
@@ -3756,7 +3794,7 @@ function playArpNote(t,freq,stepLen){
   o1.stop(stopT); o2.stop(stopT); o3.stop(stopT);
 }
 function arpTick(){
-  if(!arpActive||!ctx) return;
+  if(!arpActive||!ctx||!isPlaying) return;
   while(arpNextT<ctx.currentTime+0.1){
     const stepLen=60/bpm*arpDiv;
     playArpNote(arpNextT,arpFreq(),stepLen);
@@ -3771,12 +3809,10 @@ function toggleArp(){
   arpActive=!arpActive;
   const btn=document.getElementById('arpBtn');
   if(arpActive){
-    // Sync to the sequencer's next scheduled step when playing, otherwise start fresh
-    arpNextT = isPlaying ? nextT : ctx.currentTime+0.05;
-    arpStep=0;
-    if(btn){ btn.textContent='■ STOP'; btn.classList.add('playing'); }
+    arpNextT=nextT; arpStep=0;
+    if(btn){ btn.textContent='■ ARMED'; btn.classList.add('playing'); }
   } else {
-    if(btn){ btn.textContent='▶ START'; btn.classList.remove('playing'); }
+    if(btn){ btn.textContent='▶ ARM'; btn.classList.remove('playing'); }
   }
 }
 
@@ -3920,8 +3956,14 @@ function loop(){
         nextBarTime=nextT; // looper uses this to snap recording to bar boundary
         chordBarCount++;
         if(chordBarCount%chordBarsPerStep===0){
-          chordSeqStep=(chordSeqStep+1)%chordSeqLen;
-          currentChordIdx=CHORD_SEQ_DATA[chordSeqStep];
+          const nextStep=(chordSeqStep+1)%chordSeqLen;
+          // Switch section at wrap-around point
+          if(nextStep===0&&pendingSection&&pendingSection!==currentSection){
+            currentSection=pendingSection; pendingSection=null;
+            updateSectionUI();
+          }
+          chordSeqStep=nextStep;
+          currentChordIdx=(currentSection==='A'?CHORD_SEQ_DATA:CHORD_SEQ_B)[chordSeqStep];
           updateChordUI();
         }
       }
