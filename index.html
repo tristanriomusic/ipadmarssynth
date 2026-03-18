@@ -202,17 +202,30 @@
     /* RANGE */
     input[type=range]{ -webkit-appearance:none; appearance:none; background:#222; height:4px; border-radius:2px; width:100%; cursor:pointer; }
     input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; background:#ddd; border-radius:50%; border:3px solid #000; box-shadow:0 0 6px rgba(0,0,0,.6); }
-    /* ══ OMNIMODE ══════════════════════════════════════ */
-    #omniMode{ position:fixed; inset:0; z-index:9000; display:none; overflow:hidden; }
-    #omniBg{ position:absolute; inset:-6%; z-index:0; background:url('bg.jpg') center/cover no-repeat; will-change:filter,transform; }
-    #omniCanvas{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; display:block; z-index:1; }
-    #omniExit{ position:absolute; top:20px; right:20px; z-index:9010; width:48px; height:48px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.55); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
-    .omni-orb{ position:absolute; width:80px; height:80px; border-radius:50%; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9005; will-change:transform; -webkit-tap-highlight-color:transparent; }
-    .omni-orb-inner{ width:46px; height:46px; border-radius:50%; transition:transform 0.1s; flex-shrink:0; }
-    .omni-orb:active .omni-orb-inner{ transform:scale(1.25); }
-    .omni-orb-lbl{ position:absolute; top:-20px; width:160%; left:-30%; text-align:center; font-size:9px; font-weight:900; letter-spacing:2px; white-space:nowrap; pointer-events:none; }
-    .omni-orb-sub{ position:absolute; bottom:-26px; width:180%; left:-40%; text-align:center; font-size:7px; font-weight:700; letter-spacing:0.5px; white-space:nowrap; pointer-events:none; opacity:0.65; color:#fff; line-height:1.3; }
-    #omniBtn{ display:block; width:94vw; margin:6px 3vw 0; padding:11px; border-radius:10px; border:1.5px solid rgba(255,0,110,0.5); font-weight:900; font-size:10px; letter-spacing:4px; cursor:pointer; background:rgba(70,0,35,0.35); color:#ff006e; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); text-shadow:0 0 12px rgba(255,0,110,0.6); }
+    /* ══ SEQ MODE ═══════════════════════════════════════ */
+    #seqModeBtn{ display:block; width:94vw; margin:6px 3vw 0; padding:11px; border-radius:10px; border:1.5px solid rgba(80,180,255,0.5); font-weight:900; font-size:10px; letter-spacing:4px; cursor:pointer; background:rgba(0,40,80,0.35); color:#50b4ff; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); text-shadow:0 0 12px rgba(80,180,255,0.6); }
+    #seqMode{ position:fixed; inset:0; z-index:8000; display:none; overflow-y:auto; background:rgba(5,3,12,0.97); padding:10px; -webkit-overflow-scrolling:touch; }
+    #seqMode.active{ display:block; }
+    .sm-top{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); }
+    .sm-bar-lbl{ font-size:11px; font-weight:900; letter-spacing:3px; color:rgba(255,255,255,0.8); min-width:82px; text-align:center; }
+    .sm-nav{ font-size:14px; font-weight:900; width:34px; height:34px; border-radius:50%; display:flex;align-items:center;justify-content:center; cursor:pointer; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#fff; }
+    .sm-nav:disabled{ opacity:0.25; cursor:default; }
+    .sm-ctrl{ font-size:8px; font-weight:900; letter-spacing:0.8px; padding:7px 10px; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); }
+    .sm-ctrl:disabled{ opacity:0.3; cursor:default; }
+    .sm-rec-btn{ font-size:8px; font-weight:900; letter-spacing:1px; padding:7px 12px; border-radius:6px; cursor:pointer; background:rgba(180,0,50,0.15); border:1px solid rgba(255,0,80,0.3); color:rgba(255,60,100,0.6); }
+    .sm-rec-btn.active{ background:rgba(180,0,50,0.35); border-color:rgba(255,0,80,0.9); color:#ff1a5e; box-shadow:0 0 10px rgba(255,0,80,0.35); }
+    .sm-close-btn{ font-size:16px; padding:5px 10px; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:rgba(255,255,255,0.5); margin-left:auto; }
+    .sm-row{ display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+    .sm-lbl{ width:72px; flex-shrink:0; display:flex; flex-direction:column; gap:3px; }
+    .sm-lbl-name{ font-size:8px; font-weight:900; letter-spacing:1.5px; display:flex; align-items:center; gap:4px; }
+    .sm-dot{ font-size:9px; opacity:0.18; transition:opacity 0.15s, text-shadow 0.15s; }
+    .sm-dot.active{ opacity:1; text-shadow:0 0 6px currentColor; }
+    .sm-cmds{ display:flex; gap:3px; }
+    .sm-cmd{ font-size:7px; font-weight:900; padding:3px 6px; border-radius:3px; cursor:pointer; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.45); letter-spacing:0.3px; }
+    .sm-grid{ flex:1; display:grid; grid-template-columns:repeat(4,1fr) 3px repeat(4,1fr) 3px repeat(4,1fr) 3px repeat(4,1fr); gap:2px; align-items:stretch; }
+    .sm-divider{ background:rgba(255,255,255,0.08); border-radius:1px; }
+    .sm-step{ height:34px; border-radius:3px; background:rgba(0,0,0,0.45); border:1px solid rgba(255,255,255,0.08); cursor:pointer; transition:transform .05s; }
+    .sm-step.playing{ border:2px solid rgba(255,255,255,0.9)!important; transform:scaleY(1.1); box-shadow:0 0 8px rgba(255,255,255,0.5); }
     .arp-div-row{ display:flex; gap:4px; margin-bottom:10px; }
     .arp-div{ flex:1; padding:9px 2px; border-radius:6px; border:1px solid rgba(255,0,110,0.3); background:rgba(255,0,110,0.08); color:rgba(255,0,110,0.65); font-size:8px; font-weight:900; cursor:pointer; text-align:center; letter-spacing:0.5px; }
     .arp-div.on{ background:var(--arp); color:#000; border-color:var(--arp); box-shadow:0 0 10px var(--arp); }
@@ -319,7 +332,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <button id="kill"    class="m-btn" onclick="location.reload()">HARD RESET</button>
     <button id="silence" class="m-btn" onclick="clearSeq()">CLEAR STEPS</button>
   </div>
-  <button id="omniBtn" onclick="enterOmniMode()">✦ OMNIMODE</button>
+  <button id="seqModeBtn" onclick="enterSeqMode()">⊞ SEQ MODE</button>
 
   <div class="bpm-bar">
     <label>BPM</label>
@@ -1280,10 +1293,18 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   </div><!-- .main -->
 </div><!-- #ui -->
 
-<div id="omniMode">
-  <div id="omniBg"></div>
-  <canvas id="omniCanvas"></canvas>
-  <button id="omniExit" onclick="exitOmniMode()">✕</button>
+<div id="seqMode">
+  <div class="sm-top">
+    <button class="sm-nav" id="sm-bar-prev" onclick="smNavBar(-1)" disabled>◀</button>
+    <span class="sm-bar-lbl" id="sm-bar-lbl">BAR 1 / 1</span>
+    <button class="sm-nav" id="sm-bar-next" onclick="smNavBar(1)" disabled>▶</button>
+    <button class="sm-ctrl" id="sm-add-bar" onclick="smAddBar()">+ BAR</button>
+    <button class="sm-ctrl" id="sm-rem-bar" onclick="smRemBar()" disabled>− BAR</button>
+    <button class="sm-ctrl" id="sm-cpy-bar" onclick="smCopyBar()">CPY BAR →</button>
+    <button class="sm-rec-btn" id="sm-rec-btn" onclick="smRecToggle()">⊙ REC</button>
+    <button class="sm-close-btn" onclick="exitSeqMode()">✕</button>
+  </div>
+  <div id="sm-tracks"></div>
 </div>
 
 <script>
@@ -1309,6 +1330,9 @@ let holoDelNode=null, holoDelFb=null, holoDelWet=null;
 
 // ── MUTE STATE ────────────────────────────────────
 const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:true,SMP:false};
+let seqBarCount=1; // 1–4: how many bars the loop cycles through
+let seqViewBar=0;  // 0–3: which bar is shown in SEQ MODE editor
+let seqModeActive=false;
 let omniRandT=0;
 
 // ── AUDIO REACTIVITY ──────────────────────────────
@@ -1325,8 +1349,8 @@ const MOODS=[
   {h:340, s:1.6, name:'BLOOM'},   // deep burgundy
 ];
 let moodIdx=0, moodT=0;
-const bS=Array(16).fill(0), dS=Array(16).fill(0), hS=Array(16).fill(0), drS=Array(16).fill(0);
-const kS=Array(16).fill(0), snS=Array(16).fill(0);
+const bS=Array(64).fill(0), dS=Array(64).fill(0), hS=Array(64).fill(0), drS=Array(64).fill(0);
+const kS=Array(64).fill(0), snS=Array(64).fill(0);
 
 // ── CHORD SEQUENCE ─────────────────────────────────
 let currentChordIdx=0, chordSeqStep=0, chordBarCount=0, bassChordStep=0;
@@ -1744,8 +1768,10 @@ let seqRecActive=false;
 function seqRecToggle(){
   seqRecActive=!seqRecActive;
   const btn=document.getElementById('seqrec-btn');
-  btn.classList.toggle('active',seqRecActive);
-  btn.textContent=seqRecActive?'⊙ RECORDING...':'⊙ SEQ REC';
+  if(btn){ btn.classList.toggle('active',seqRecActive); btn.textContent=seqRecActive?'⊙ RECORDING...':'⊙ SEQ REC'; }
+  // Keep SEQ MODE REC button in sync
+  const smBtn=document.getElementById('sm-rec-btn');
+  if(smBtn) smBtn.classList.toggle('active',seqRecActive);
 }
 
 function seqRecTapAndPlay(inst){
@@ -1757,13 +1783,21 @@ function seqRecTapAndPlay(inst){
 
 function seqRecTap(inst){
   if(!seqRecActive) return;
-  const step=isPlaying?seqStep:0;
+  // When playing, stamp on the current global step; when stopped, stamp bar 0 step 0
+  const step=isPlaying?seqStep:seqViewBar*16;
   const grids=INST_CFG[inst]; if(!grids) return;
   grids.forEach(({s,cls,gid})=>{
     s[step]=1;
-    const grid=document.getElementById(gid); if(!grid) return;
-    const el=grid.querySelector('.s-'+step); if(el) el.classList.add(cls);
+    // Update drawer grid if step is in bar 0 range
+    if(step<16){
+      const grid=document.getElementById(gid); if(!grid) return;
+      const el=grid.querySelector('.s-'+step); if(el) el.classList.add(cls);
+    }
   });
+  // Update SEQ MODE track dot
+  smUpdateDot(inst);
+  // Update SEQ MODE grid cell if visible
+  if(seqModeActive){ const localStep=step%16; const bar=Math.floor(step/16); if(bar===seqViewBar) smRefreshTrack(inst); }
 }
 
 // ═══ INSTRUMENT CIRCLES ═══════════════════════════
@@ -3933,6 +3967,13 @@ function loop(){
       // Global playhead — exclude smp-step (has its own beat-based playhead)
       document.querySelectorAll('.step:not(.smp-step)').forEach(e=>e.classList.remove('playing'));
       document.querySelectorAll(`.s-${seqStep}:not(.smp-step)`).forEach(e=>e.classList.add('playing'));
+      // SEQ MODE playhead — auto-follow playing bar, highlight local step
+      if(seqModeActive){
+        const playBar=Math.floor(seqStep/16), localStep=seqStep%16;
+        if(playBar!==seqViewBar){ seqViewBar=playBar; smRefreshGrid(); smRefreshBarLabel(); }
+        document.querySelectorAll('#seqMode .sm-step.playing').forEach(e=>e.classList.remove('playing'));
+        document.querySelectorAll(`#seqMode .sm-step-${localStep}`).forEach(e=>e.classList.add('playing'));
+      }
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
       if(drS[seqStep]) playDR(nextT+swOff);
       if(bS[seqStep]){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
@@ -3949,8 +3990,8 @@ function loop(){
         smpBeatCount=(smpBeatCount+1)%16;
       }
       nextT+=sl;
-      const wasLast=(seqStep===15);
-      seqStep=(seqStep+1)%16;
+      const wasLast=(seqStep===seqBarCount*16-1);
+      seqStep=(seqStep+1)%(seqBarCount*16);
       if(wasLast){
         nextBarTime=nextT; // looper uses this to snap recording to bar boundary
         chordBarCount++;
@@ -4132,220 +4173,185 @@ function padPos(e){
   padY=Math.max(0,Math.min(1,(t.clientY-br.top)/br.height));
 }
 
-// ═══ OMNIMODE ═════════════════════════════════════
-let omniActive=false, omniCanvas2=null, omniCtx2D=null, omniAnimId=null;
-const OMN_ORBS=[
-  {id:'reverb',    lbl:'REVERB',    sub:'X: size  ·  Y: wet mix',          col:'#4466ff', nx:0.18, ny:0.25},
-  {id:'chords',    lbl:'CHORDS',    sub:'X: now  ·  Y: next chord',         col:'#ff88cc', nx:0.50, ny:0.25},
-  {id:'delay',     lbl:'DELAY',     sub:'X: time  ·  Y: feedback',          col:'#00e8ff', nx:0.82, ny:0.25},
-  {id:'octaves',   lbl:'OCTAVES',   sub:'X: arp range+oct  ·  Y: bass oct', col:'#ff006e', nx:0.18, ny:0.75},
-  {id:'groove',    lbl:'GROOVE',    sub:'X: density  ·  Y: swing',          col:'#ff6600', nx:0.50, ny:0.75},
-  {id:'randomize', lbl:'RANDOMIZE', sub:'X: drums  ·  Y: synths',           col:'#aa44ff', nx:0.82, ny:0.75},
+// ═══ SEQ MODE ═════════════════════════════════════
+// Track definitions for SEQ MODE
+const SM_TRACKS=[
+  {id:'K',  label:'KICK',   state:kS,  cls:'k-on',  color:'var(--kick)'},
+  {id:'SN', label:'SNARE',  state:snS, cls:'sn-on', color:'var(--snare)'},
+  {id:'D',  label:'BONGO',  state:dS,  cls:'d-on',  color:'var(--drum)'},
+  {id:'H',  label:'HI-HAT', state:hS,  cls:'h-on',  color:'var(--hihat)'},
+  {id:'B',  label:'BASS',   state:bS,  cls:'b-on',  color:'var(--bass)'},
+  {id:'DR', label:'DRONE',  state:drS, cls:'dr-on', color:'var(--drone)'},
 ];
 
-// Generate a musically sensible random pattern based on complexity (0=sparse/simple, 1=dense/complex)
-function omniPattern(state, cls, complexity, gridId){
-  state.fill(0);
-  for(let i=0;i<16;i++){
-    // Weight by rhythmic position: downbeats always likely, subdivisions scale with complexity
-    let p;
-    if(i===0)           p=0.85+complexity*0.14;   // beat 1 — almost always
-    else if(i%8===0)    p=0.55+complexity*0.38;   // beat 3
-    else if(i%4===0)    p=0.15+complexity*0.65;   // beats 2,4
-    else if(i%2===0)    p=complexity*0.55;        // 8th-note offbeats
-    else                p=complexity*0.28;        // 16th syncopation
-    if(Math.random()<p) state[i]=1;
-  }
-  // Ensure at least one step is on (minimum: beat 1)
-  if(!state.some(Boolean)) state[0]=1;
-  const grid=document.getElementById(gridId);
-  if(grid) grid.querySelectorAll('.step').forEach((el,i)=>el.classList.toggle(cls,!!state[i]));
-}
-
-function applyOrbParams(id,nx,ny){
-  if(!ctx) return;
-  function setSlider(sid,val){
-    const el=document.getElementById(sid); if(!el) return;
-    el.value=Math.round(Math.max(0,Math.min(100,val)));
-    const dv=document.getElementById(sid+'-v'); if(dv) dv.textContent=Math.round(el.value);
-  }
-  switch(id){
-
-    case 'reverb':{
-      // X = room size + decay, Y = wet mix
-      buildReverb(0.3+nx*9, 0.2+nx*0.85);
-      revWet.gain.setTargetAtTime(0.02+ny*0.93, ctx.currentTime, 0.1);
-      setSlider('FX-RevSize',  nx*100);
-      setSlider('FX-RevDecay', nx*100);
-      setSlider('FX-RevMix',   ny*100);
-      break;
-    }
-
-    case 'delay':{
-      // X = delay time (short echo → long slap), Y = feedback amount + mix
-      const dlyTime=0.03+nx*1.7;
-      delNode.delayTime.setTargetAtTime(dlyTime, ctx.currentTime, 0.05);
-      setSlider('FX-DlyTime', nx*100);
-      delFb.gain.setTargetAtTime(ny*0.92, ctx.currentTime, 0.05);
-      delWet.gain.setTargetAtTime(0.04+ny*0.8, ctx.currentTime, 0.05);
-      setSlider('FX-DlyFb',  ny*92);
-      setSlider('FX-DlyMix', 4+ny*80);
-      break;
-    }
-
-    case 'octaves':{
-      // X = arp octave range (1–3) + arp pitch shift
-      setSlider('ARP-Octaves', nx*100);
-      setSlider('ARP-Oct',     nx*100);
-      // Y = bass octave shift (low → high)
-      setSlider('BA-Oct',     ny*100);
-      setSlider('BA-Octaves', ny*100);
-      break;
-    }
-
-    case 'chords':{
-      // X = select current chord from all available chords
-      const chordI=Math.min(ARP_CHORDS.length-1, Math.round(nx*(ARP_CHORDS.length-1)));
-      currentChordIdx=chordI;
-      CHORD_SEQ_DATA[chordSeqStep]=chordI;
-      // Y = set the NEXT chord slot to a different chord — evolves the sequence
-      const nextSlot=(chordSeqStep+1)%chordSeqLen;
-      const nextChord=Math.min(ARP_CHORDS.length-1, Math.round(ny*(ARP_CHORDS.length-1)));
-      CHORD_SEQ_DATA[nextSlot]=nextChord;
-      const nb=document.getElementById('chs-'+nextSlot);
-      if(nb) nb.textContent=ARP_CHORDS[nextChord].name;
-      updateChordUI();
-      break;
-    }
-
-    case 'groove':{
-      // X = rhythmic density — regenerates patterns on the fly
-      omniPattern(kS,'k-on',  nx*0.65,'gK');
-      omniPattern(snS,'sn-on',nx*0.5, 'gSN');
-      omniPattern(dS,'d-on',  nx,     'gD');
-      omniPattern(hS,'h-on',  nx,     'gH');
-      // Y = swing
-      swingAmount=ny;
-      break;
-    }
-
-    case 'randomize':{
-      // Throttled: only fire every 200ms while dragging so it nudges, not floods
-      const now=Date.now();
-      if(now-omniRandT<200) break;
-      omniRandT=now;
-      // X = drum pattern scatter (flip steps probabilistically)
-      const drumAmt=nx;
-      [{s:kS,cls:'k-on',gid:'gK'},{s:snS,cls:'sn-on',gid:'gSN'},
-       {s:dS,cls:'d-on',gid:'gD'},{s:hS,cls:'h-on',gid:'gH'}].forEach(({s,cls,gid})=>{
-        let changed=false;
-        for(let i=0;i<16;i++) if(Math.random()<drumAmt*0.14){ s[i]=s[i]?0:1; changed=true; }
-        if(!s.some(Boolean)) s[0]=1;
-        if(changed) refreshGrid(gid,cls,s);
-      });
-      // Y = synth parameter micro-drift (keeps the sound alive and evolving)
-      if(ny>0.04){
-        function nudge(id,range){
-          const el=document.getElementById(id); if(!el) return;
-          el.value=Math.max(0,Math.min(100,parseFloat(el.value)+(Math.random()-0.5)*range*ny));
-          const dv=document.getElementById(id+'-v'); if(dv) dv.textContent=Math.round(el.value);
-        }
-        nudge('ARP-Dcy',18); nudge('ARP-Cut',14); nudge('ARP-Res',10); nudge('ARP-FEnv',12);
-        nudge('BA-Dcy',18);  nudge('BA-Cut',14);  nudge('BA-Res',8);   nudge('BA-FEnv',12);
+function buildSeqMode(){
+  const wrap=document.getElementById('sm-tracks'); if(!wrap) return;
+  wrap.innerHTML='';
+  SM_TRACKS.forEach(t=>{
+    const row=document.createElement('div'); row.className='sm-row';
+    // Label column
+    const lbl=document.createElement('div'); lbl.className='sm-lbl';
+    lbl.innerHTML=
+      `<div class="sm-lbl-name"><span class="sm-dot" id="sm-dot-${t.id}" style="color:${t.color}">●</span>`+
+      `<span style="color:${t.color}">${t.label}</span></div>`+
+      `<div class="sm-cmds">`+
+      `<button class="sm-cmd" onclick="smClearBar('${t.id}')">CLR</button>`+
+      `<button class="sm-cmd" onclick="smRndBar('${t.id}')">RND</button></div>`;
+    row.appendChild(lbl);
+    // Step grid — 16 steps with beat-group dividers
+    const grid=document.createElement('div'); grid.className='sm-grid'; grid.id=`sm-grid-${t.id}`;
+    for(let i=0;i<16;i++){
+      if(i>0 && i%4===0){
+        const div=document.createElement('div'); div.className='sm-divider'; grid.appendChild(div);
       }
-      break;
+      const step=document.createElement('div');
+      step.className=`sm-step sm-step-${i}`;
+      step.style.background=t.state[seqViewBar*16+i]?t.color:'rgba(0,0,0,0.45)';
+      if(t.state[seqViewBar*16+i]) step.style.boxShadow=`0 0 8px ${t.color}`;
+      step.addEventListener('click',()=>{
+        const gi=seqViewBar*16+i;
+        t.state[gi]=t.state[gi]?0:1;
+        step.style.background=t.state[gi]?t.color:'rgba(0,0,0,0.45)';
+        step.style.boxShadow=t.state[gi]?`0 0 8px ${t.color}`:'';
+        smUpdateDot(t.id);
+        // Sync to drawer grid if editing bar 0
+        if(seqViewBar===0) refreshGrid(INST_CFG[t.id]?.[0]?.gid, t.cls, t.state);
+      });
+      grid.appendChild(step);
     }
-  }
+    row.appendChild(grid);
+    wrap.appendChild(row);
+  });
+  smUpdateAllDots();
 }
 
-function buildOmniOrbs(){
-  const wrap=document.getElementById('omniMode');
-  OMN_ORBS.forEach(orb=>{
-    const el=document.createElement('div');
-    el.className='omni-orb'; el.id='orb-'+orb.id;
-    el.innerHTML=
-      `<span class="omni-orb-lbl" style="color:${orb.col}">${orb.lbl}</span>`+
-      `<div class="omni-orb-inner" style="background:radial-gradient(circle at 38% 35%,rgba(255,255,255,0.6) 0%,${orb.col} 50%,rgba(0,0,0,0.65) 100%);box-shadow:0 0 28px ${orb.col},0 0 60px ${orb.col}44;"></div>`+
-      `<span class="omni-orb-sub">${orb.sub}</span>`;
-    el.addEventListener('pointerdown',e=>{ el.setPointerCapture(e.pointerId); e.preventDefault(); });
-    el.addEventListener('pointermove',e=>{
-      if(!el.hasPointerCapture(e.pointerId)) return;
-      const om=document.getElementById('omniMode');
-      const bw=om.clientWidth, bh=om.clientHeight;
-      const hw=el.offsetWidth/2, hh=el.offsetHeight/2;
-      let lx=e.clientX-hw, ly=e.clientY-hh;
-      lx=Math.max(0,Math.min(bw-el.offsetWidth,lx));
-      ly=Math.max(0,Math.min(bh-el.offsetHeight,ly));
-      el.style.left=lx+'px'; el.style.top=ly+'px';
-      orb.nx=(lx+hw)/bw; orb.ny=(ly+hh)/bh;
-      applyOrbParams(orb.id,orb.nx,orb.ny);
+function smRefreshGrid(){
+  SM_TRACKS.forEach(t=>{
+    const grid=document.getElementById(`sm-grid-${t.id}`); if(!grid) return;
+    let si=0;
+    grid.querySelectorAll('.sm-step').forEach(el=>{
+      const gi=seqViewBar*16+si;
+      el.style.background=t.state[gi]?t.color:'rgba(0,0,0,0.45)';
+      el.style.boxShadow=t.state[gi]?`0 0 8px ${t.color}`:'';
+      si++;
     });
-    wrap.appendChild(el);
   });
 }
 
-function placeOmniOrbs(){
-  const om=document.getElementById('omniMode');
-  const bw=om.clientWidth, bh=om.clientHeight;
-  OMN_ORBS.forEach(orb=>{
-    const el=document.getElementById('orb-'+orb.id); if(!el) return;
-    el.style.left=(orb.nx*bw-el.offsetWidth/2)+'px';
-    el.style.top=(orb.ny*bh-el.offsetHeight/2)+'px';
+function smRefreshTrack(id){
+  const t=SM_TRACKS.find(x=>x.id===id); if(!t) return;
+  const grid=document.getElementById(`sm-grid-${t.id}`); if(!grid) return;
+  let si=0;
+  grid.querySelectorAll('.sm-step').forEach(el=>{
+    const gi=seqViewBar*16+si;
+    el.style.background=t.state[gi]?t.color:'rgba(0,0,0,0.45)';
+    el.style.boxShadow=t.state[gi]?`0 0 8px ${t.color}`:'';
+    si++;
   });
 }
 
-function omniAnimLoop(){
-  if(!omniActive) return;
-  omniAnimId=requestAnimationFrame(omniAnimLoop);
-  // Mirror the main bg filter onto omniBg — same reactive animation
-  const mainBg=document.getElementById('bg');
-  const omniBg=document.getElementById('omniBg');
-  if(mainBg&&omniBg){
-    omniBg.style.filter=mainBg.style.filter;
-    omniBg.style.transform=mainBg.style.transform;
+function smRefreshBarLabel(){
+  const lbl=document.getElementById('sm-bar-lbl');
+  if(lbl) lbl.textContent=`BAR ${seqViewBar+1} / ${seqBarCount}`;
+  const prev=document.getElementById('sm-bar-prev'), next=document.getElementById('sm-bar-next');
+  if(prev) prev.disabled=seqViewBar===0;
+  if(next) next.disabled=seqViewBar>=seqBarCount-1;
+  const rem=document.getElementById('sm-rem-bar');
+  if(rem) rem.disabled=seqBarCount<=1;
+  const cpy=document.getElementById('sm-cpy-bar');
+  if(cpy) cpy.disabled=seqViewBar>=seqBarCount-1;
+}
+
+function smUpdateDot(id){
+  const t=SM_TRACKS.find(x=>x.id===id); if(!t) return;
+  const dot=document.getElementById('sm-dot-'+id); if(!dot) return;
+  // Light up if current view bar has any active steps
+  const off=seqViewBar*16;
+  dot.classList.toggle('active', t.state.slice(off,off+16).some(Boolean));
+}
+
+function smUpdateAllDots(){ SM_TRACKS.forEach(t=>smUpdateDot(t.id)); }
+
+function smNavBar(dir){
+  seqViewBar=Math.max(0,Math.min(seqBarCount-1,seqViewBar+dir));
+  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots();
+}
+
+function smAddBar(){
+  if(seqBarCount>=4) return;
+  seqBarCount++;
+  seqViewBar=seqBarCount-1;
+  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots();
+}
+
+function smRemBar(){
+  if(seqBarCount<=1) return;
+  // Clear last bar content
+  SM_TRACKS.forEach(t=>{ const off=(seqBarCount-1)*16; for(let i=0;i<16;i++) t.state[off+i]=0; });
+  seqBarCount--;
+  if(seqViewBar>=seqBarCount) seqViewBar=seqBarCount-1;
+  // Reset seqStep if it's now out of range
+  if(seqStep>=seqBarCount*16) seqStep=0;
+  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots();
+}
+
+function smCopyBar(){
+  // Copy current view bar to the next bar
+  if(seqViewBar>=seqBarCount-1) return;
+  const to=seqViewBar+1;
+  SM_TRACKS.forEach(t=>{
+    for(let i=0;i<16;i++) t.state[to*16+i]=t.state[seqViewBar*16+i];
+  });
+  seqViewBar=to;
+  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots();
+}
+
+function smClearBar(id){
+  const t=SM_TRACKS.find(x=>x.id===id); if(!t) return;
+  const off=seqViewBar*16;
+  for(let i=0;i<16;i++) t.state[off+i]=0;
+  smRefreshTrack(id); smUpdateDot(id);
+  if(seqViewBar===0) refreshGrid(INST_CFG[t.id]?.[0]?.gid, t.cls, t.state);
+}
+
+function smRndBar(id){
+  const t=SM_TRACKS.find(x=>x.id===id); if(!t) return;
+  const density={K:0.55,SN:0.45,D:0.6,H:0.7,B:0.5,DR:0.4}[id]||0.5;
+  const off=seqViewBar*16;
+  for(let i=0;i<16;i++){
+    let p;
+    if(i===0)        p=0.82+density*0.17;
+    else if(i%8===0) p=0.45+density*0.42;
+    else if(i%4===0) p=0.1+density*0.7;
+    else if(i%2===0) p=density*0.55;
+    else             p=density*0.28;
+    t.state[off+i]=Math.random()<p?1:0;
   }
-  // Canvas: orb halos + beat flash only
-  const c=omniCanvas2, oc=omniCtx2D; if(!c||!oc) return;
-  const w=c.width, h=c.height;
-  oc.clearRect(0,0,w,h);
-  // Dark scrim
-  oc.fillStyle=`rgba(0,0,0,${(0.22-energy*0.1).toFixed(2)})`; oc.fillRect(0,0,w,h);
-  // Orb glow halos
-  const omr=document.getElementById('omniMode').getBoundingClientRect();
-  OMN_ORBS.forEach(orb=>{
-    const el=document.getElementById('orb-'+orb.id); if(!el) return;
-    const or=el.getBoundingClientRect();
-    const ox=or.left-omr.left+or.width/2, oy=or.top-omr.top+or.height/2;
-    const rad=110+energy*110+beatFlash*55;
-    const g=oc.createRadialGradient(ox,oy,0,ox,oy,rad);
-    g.addColorStop(0,orb.col+'55'); g.addColorStop(1,'rgba(0,0,0,0)');
-    oc.fillStyle=g; oc.fillRect(ox-rad,oy-rad,rad*2,rad*2);
-  });
-  // Beat flash burst
-  if(beatFlash>0.05){
-    const gf=oc.createRadialGradient(w/2,h/2,0,w/2,h/2,w*0.7);
-    gf.addColorStop(0,`rgba(255,255,255,${(beatFlash*0.12).toFixed(2)})`);
-    gf.addColorStop(1,'rgba(0,0,0,0)');
-    oc.fillStyle=gf; oc.fillRect(0,0,w,h);
-  }
+  if(!t.state.slice(off,off+16).some(Boolean)) t.state[off]=1;
+  smRefreshTrack(id); smUpdateDot(id);
+  if(seqViewBar===0) refreshGrid(INST_CFG[t.id]?.[0]?.gid, t.cls, t.state);
 }
 
-function enterOmniMode(){
+function smRecToggle(){
+  seqRecActive=!seqRecActive;
+  const btn=document.getElementById('sm-rec-btn');
+  if(btn) btn.classList.toggle('active',seqRecActive);
+  // Keep the top-bar SEQ REC button in sync
+  const topBtn=document.getElementById('seqrec-btn');
+  if(topBtn){ topBtn.classList.toggle('active',seqRecActive); topBtn.textContent=seqRecActive?'⊙ RECORDING...':'⊙ SEQ REC'; }
+}
+
+function enterSeqMode(){
   if(!ctx) return;
-  omniActive=true;
-  const om=document.getElementById('omniMode');
-  om.style.display='block';
-  omniCanvas2=document.getElementById('omniCanvas');
-  omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight;
-  omniCtx2D=omniCanvas2.getContext('2d');
-  placeOmniOrbs();
-  omniAnimLoop();
+  seqModeActive=true;
+  document.getElementById('seqMode').classList.add('active');
+  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots();
 }
 
-function exitOmniMode(){
-  omniActive=false;
-  document.getElementById('omniMode').style.display='none';
-  if(omniAnimId){ cancelAnimationFrame(omniAnimId); omniAnimId=null; }
+function exitSeqMode(){
+  seqModeActive=false;
+  document.getElementById('seqMode').classList.remove('active');
+  document.querySelectorAll('#seqMode .sm-step.playing').forEach(e=>e.classList.remove('playing'));
 }
 
 // ═══ BOOT ══════════════════════════════════════════
@@ -4370,11 +4376,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   pad.addEventListener('mouseup',   ()=>{ padEnd(); });
   window.addEventListener('resize',()=>{
     if(canvas){ const p=document.getElementById('xPad'); canvas.width=padW=p.offsetWidth; canvas.height=padH=p.offsetHeight; }
-    if(omniCanvas2){ omniCanvas2.width=window.innerWidth; omniCanvas2.height=window.innerHeight; placeOmniOrbs(); }
   });
 
   buildChordSeq();
-  buildOmniOrbs();
+  buildSeqMode();
 
   document.getElementById('boot').addEventListener('click',e=>{
     init();
