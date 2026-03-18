@@ -1468,82 +1468,112 @@ function currentZoneName(px){
 const activePre={DR:0,B:0,D:0,H:0,K:0,SN:0};
 const instDeep={X:false,DR:false,B:false,D:false,H:false};
 
-// ═══ XS LOOPER (audio capture — side-tap, no latency in live path) ══
-// xsBus is a PARALLEL tap: XS instruments connect to both masterEQ (live) and xsBus (capture).
-// xsCapProc captures from xsBus; its output is silenced so it never enters the audio path.
-// Playback uses AudioBufferSourceNode → masterEQ so there's no ScriptProcessor in the loop.
-let xsBus=null, xsCapProc=null, xsCapOut=null;
-let xsBuf=null, xsBufLen=0;
-let xsRec=false, xsPlay=false, xsOverdub=false, xsFinz=false;
-let xsRecStart=0, xsTargetLen=0, xsChunks=[], xsBars=1;
-let xsPlaySrc=null; // AudioBufferSourceNode for loop playback
-let xsPlayGain=null; // GainNode for loop playback volume
-let nextBarTime=0;  // set by sequencer each bar
+// ═══ XS LOOPER ═══════════════════════════════════════════════════════
+// All 3 touchpad instruments (Nebula, Samplerizer, Hologram) route through
+// a dedicated XS group bus that has its own reverb+delay chain. MediaRecorder
+// records the full wet output into a Blob, decoded to AudioBuffer for looping.
+//
+//  XS instruments → xsDryBus ──────────────────────────► xsOutBus → masterEQ (live)
+//                           └─► xsRevPre → xsRevNode → xsRevWet ┘
+//                   xsDlyIn → xsDlyNode ⟳ xsDlyFb      xsDlyWet ┘
+//                   xsOutBus → xsCapDest → MediaRecorder (capture)
+let xsDryBus=null, xsRevPre=null, xsRevNode=null, xsRevWet=null;
+let xsDlyIn=null, xsDlyNode=null, xsDlyFb=null, xsDlyWet=null;
+let xsOutBus=null, xsCapDest=null, xsMediaRec=null;
+let xsAudioBuf=null;        // AudioBuffer — the current loop
+let xsBlobChunks=[];        // MediaRecorder data chunks during recording
+let xsRecTimerId=null;      // setTimeout ID for auto-stop
+let xsRec=false, xsPlay=false, xsOverdub=false;
+let xsBars=1;
+let xsPlaySrc=null;         // AudioBufferSourceNode for playback
+let xsPlayGain=null;        // GainNode for playback volume
+let nextBarTime=0;          // set by sequencer each bar
 
-function xsLoopProcess(e){
-  // This ScriptProcessor is a SIDE TAP — output is always silent.
-  // It only captures audio from xsBus during recording.
-  e.outputBuffer.getChannelData(0).fill(0);
-  if(!xsRec||!ctx||ctx.currentTime<xsRecStart) return;
-  xsChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-  const total=xsChunks.reduce((s,c)=>s+c.length,0);
-  if(!xsOverdub && xsTargetLen>0 && total>=xsTargetLen && !xsFinz){ xsFinz=true; setTimeout(xsFinalize,0); }
+// Called from init() after xsCapDest is created
+function xsSetupMediaRec(){
+  if(!xsCapDest) return;
+  xsMediaRec = new MediaRecorder(xsCapDest.stream);
+  xsBlobChunks = [];
+  xsMediaRec.ondataavailable = e => { if(e.data && e.data.size > 0) xsBlobChunks.push(e.data); };
+  xsMediaRec.onstop = xsDecodeAndFinalize;
 }
-function xsFinalize(){
-  xsFinz=false; xsRec=false;
-  const total=xsChunks.reduce((s,c)=>s+c.length,0);
-  if(total>0){
-    const newBuf=new Float32Array(total);
-    let off=0; xsChunks.forEach(c=>{newBuf.set(c,off);off+=c.length;});
-    if(xsOverdub && xsBuf){
-      const el=document.getElementById('loop-decay');
-      const retain=el?0.15+(parseFloat(el.value)/100)*0.85:0.75;
-      for(let i=0;i<xsBufLen;i++) xsBuf[i]=xsBuf[i]*retain+(i<newBuf.length?newBuf[i]:0);
-    } else {
-      xsBuf=newBuf; xsBufLen=total;
-    }
-    xsPlay=true; xsOverdub=false;
-    xsStartPlayback();
+async function xsDecodeAndFinalize(){
+  if(!xsBlobChunks.length){ xsRec=false; updateLoopUI(); return; }
+  const blob = new Blob(xsBlobChunks, {type: xsMediaRec.mimeType||'audio/ogg'});
+  xsBlobChunks = [];
+  let newBuf;
+  try {
+    const ab = await blob.arrayBuffer();
+    newBuf = await ctx.decodeAudioData(ab);
+  } catch(e){ console.warn('XS loop decode error', e); xsRec=false; updateLoopUI(); return; }
+  if(xsOverdub && xsAudioBuf){
+    const el = document.getElementById('loop-decay');
+    const retain = el ? 0.15+(parseFloat(el.value)/100)*0.85 : 0.75;
+    const len = Math.max(xsAudioBuf.length, newBuf.length);
+    const nch = Math.max(xsAudioBuf.numberOfChannels, newBuf.numberOfChannels);
+    try {
+      const offCtx = new OfflineAudioContext(nch, len, ctx.sampleRate);
+      const s1 = offCtx.createBufferSource(); s1.buffer = xsAudioBuf;
+      const g1 = offCtx.createGain(); g1.gain.value = retain;
+      s1.connect(g1); g1.connect(offCtx.destination); s1.start(0);
+      const s2 = offCtx.createBufferSource(); s2.buffer = newBuf;
+      s2.connect(offCtx.destination); s2.start(0);
+      xsAudioBuf = await offCtx.startRendering();
+    } catch(e){ console.warn('XS overdub mix error', e); xsAudioBuf = newBuf; }
+  } else {
+    xsAudioBuf = newBuf;
   }
-  xsChunks=[];
+  xsOverdub = false; xsRec = false; xsPlay = true;
+  xsStartPlayback();
   updateLoopUI();
 }
 function xsStartPlayback(){
   if(xsPlaySrc){try{xsPlaySrc.stop();}catch(e){} xsPlaySrc=null;}
-  if(!xsBufLen||!ctx) return;
+  if(!xsAudioBuf||!ctx) return;
   if(!xsPlayGain){ xsPlayGain=ctx.createGain(); xsPlayGain.gain.value=0.85; xsPlayGain.connect(masterEQ); }
-  const ab=ctx.createBuffer(1,xsBufLen,ctx.sampleRate);
-  ab.copyToChannel(xsBuf,0);
-  xsPlaySrc=ctx.createBufferSource();
-  xsPlaySrc.buffer=ab; xsPlaySrc.loop=true;
+  xsPlaySrc = ctx.createBufferSource();
+  xsPlaySrc.buffer = xsAudioBuf; xsPlaySrc.loop = true;
   xsPlaySrc.connect(xsPlayGain);
   xsPlaySrc.start();
 }
 function loopRecord(){
   if(!ctx) init();
-  if(xsRec){ xsFinalize(); return; }
-  if(xsPlay && xsBufLen>0){
-    xsChunks=[]; xsOverdub=true; xsRec=true; xsFinz=false;
-    xsRecStart=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
-    xsTargetLen=xsBufLen; updateLoopUI(); return;
+  if(xsRec){
+    // Manual stop
+    clearTimeout(xsRecTimerId);
+    if(xsMediaRec && xsMediaRec.state==='recording') xsMediaRec.stop();
+    return;
   }
-  xsChunks=[]; xsBuf=null; xsBufLen=0;
-  xsPlay=false; xsOverdub=false; xsFinz=false; xsRec=true;
-  if(xsPlaySrc){try{xsPlaySrc.stop();}catch(e){} xsPlaySrc=null;}
-  xsRecStart=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
-  xsTargetLen=Math.round(xsBars*4*(60/bpm)*ctx.sampleRate);
+  if(!xsMediaRec){ console.warn('MediaRecorder not ready'); return; }
+  xsBlobChunks = [];
+  if(xsPlay && xsAudioBuf){
+    xsOverdub = true; // will mix with existing on finalize
+  } else {
+    xsAudioBuf = null; xsPlay = false; xsOverdub = false;
+    if(xsPlaySrc){try{xsPlaySrc.stop();}catch(e){} xsPlaySrc=null;}
+  }
+  xsRec = true;
+  xsMediaRec.start();
+  const ms = Math.round(xsBars * 4 * (60/bpm) * 1000);
+  xsRecTimerId = setTimeout(()=>{
+    if(xsMediaRec && xsMediaRec.state==='recording') xsMediaRec.stop();
+  }, ms);
   updateLoopUI();
 }
 function loopToggle(){
-  if(!xsBufLen) return;
-  xsPlay=!xsPlay;
+  if(!xsAudioBuf) return;
+  xsPlay = !xsPlay;
   if(xsPlay) xsStartPlayback();
   else{ if(xsPlaySrc){try{xsPlaySrc.stop();}catch(e){} xsPlaySrc=null;} }
   updateLoopUI();
 }
 function loopClear(){
+  clearTimeout(xsRecTimerId);
+  if(xsMediaRec && xsMediaRec.state==='recording') xsMediaRec.stop();
   if(xsPlaySrc){try{xsPlaySrc.stop();}catch(e){} xsPlaySrc=null;}
-  xsBuf=null; xsBufLen=0; xsRec=false; xsPlay=false; xsOverdub=false; xsChunks=[];
+  xsAudioBuf=null; xsRec=false; xsPlay=false; xsOverdub=false; xsBlobChunks=[];
+  // Rebuild MediaRecorder so it's ready for the next recording
+  if(xsCapDest) xsSetupMediaRec();
   updateLoopUI();
 }
 function setLoopBars(bars,btn){
@@ -1554,12 +1584,12 @@ function updateLoopUI(){
   const recBtn=document.getElementById('loop-rec');
   const playBtn=document.getElementById('loop-play');
   if(recBtn) recBtn.classList.toggle('active',xsRec);
-  if(playBtn){ playBtn.classList.toggle('active',xsPlay); playBtn.disabled=xsBufLen===0; }
+  if(playBtn){ playBtn.classList.toggle('active',xsPlay); playBtn.disabled=!xsAudioBuf; }
   const clearBtn=document.getElementById('loop-clear');
-  if(clearBtn) clearBtn.disabled=xsBufLen===0&&!xsRec;
-  const sec=xsBufLen>0&&ctx?(xsBufLen/ctx.sampleRate).toFixed(1)+'s':'';
+  if(clearBtn) clearBtn.disabled=!xsAudioBuf&&!xsRec;
+  const sec=xsAudioBuf&&ctx?xsAudioBuf.duration.toFixed(1)+'s':'';
   const statusEl=document.getElementById('loop-status');
-  if(statusEl) statusEl.textContent=xsOverdub?'◉ OVERDUB':xsRec?'● RECORDING...':(xsPlay?`▶ LOOPING ${sec}`:(xsBufLen>0?`READY ${sec}`:'EMPTY'));
+  if(statusEl) statusEl.textContent=xsOverdub?'◉ OVERDUB':xsRec?'● RECORDING...':(xsPlay?`▶ LOOPING ${sec}`:(xsAudioBuf?`READY ${sec}`:'EMPTY'));
   const ring=document.getElementById('cring-LOOP');
   if(ring){ ring.style.borderColor=xsRec?'#ff4444':xsPlay?'#50ffa0':'rgba(80,255,160,0.4)'; ring.style.boxShadow=xsRec?'0 0 12px #ff4444':xsPlay?'0 0 12px #50ffa0':'none'; }
   const nameEl=document.getElementById('loopCircName');
@@ -2193,14 +2223,31 @@ function init(){
   holoDelNode.connect(holoDelFb); holoDelFb.connect(holoDelNode);
   holoDelNode.connect(holoDelWet); holoDelWet.connect(masterEQ);
 
-  // XS capture bus — side tap only (NOT in the signal path).
-  // XS instruments connect to both masterEQ (live) AND xsBus (capture).
-  // xsCapProc output is silenced so captured audio never doubles into the mix.
-  xsBus=ctx.createGain(); xsBus.gain.value=1.0;
-  xsCapProc=ctx.createScriptProcessor(4096,1,1);
-  xsCapOut=ctx.createGain(); xsCapOut.gain.value=0;
-  xsBus.connect(xsCapProc); xsCapProc.connect(xsCapOut); xsCapOut.connect(ctx.destination);
-  xsCapProc.onaudioprocess=xsLoopProcess;
+  // XS GROUP BUS — dedicated effects chain for the 3 touchpad instruments.
+  // All XS audio routes here instead of masterEQ directly.
+  // MediaRecorder captures xsOutBus → full wet signal (dry + reverb + delay).
+  xsDryBus=ctx.createGain(); xsDryBus.gain.value=1.0;
+  xsRevPre=ctx.createGain(); xsRevPre.gain.value=1.0;
+  xsRevNode=ctx.createConvolver(); xsRevNode.buffer=buildReverbIR(2.5,0.65,null);
+  xsRevWet=ctx.createGain(); xsRevWet.gain.value=0.38;
+  xsDlyIn=ctx.createGain(); xsDlyIn.gain.value=1.0;
+  xsDlyNode=ctx.createDelay(2.0); xsDlyNode.delayTime.value=60/bpm/2;
+  xsDlyFb=ctx.createGain(); xsDlyFb.gain.value=0.42;
+  xsDlyWet=ctx.createGain(); xsDlyWet.gain.value=0.22;
+  xsOutBus=ctx.createGain(); xsOutBus.gain.value=1.0;
+  // Wire: dry pass + reverb + delay → xsOutBus → masterEQ
+  xsDryBus.connect(xsOutBus);
+  xsRevPre.connect(xsRevNode); xsRevNode.connect(xsRevWet); xsRevWet.connect(xsOutBus);
+  xsDlyIn.connect(xsDlyNode); xsDlyNode.connect(xsDlyFb); xsDlyFb.connect(xsDlyIn);
+  xsDlyNode.connect(xsDlyWet); xsDlyWet.connect(xsOutBus);
+  xsOutBus.connect(masterEQ);
+  // Hologram has its own BPM-synced delay (holoDelNode → holoDelWet).
+  // Also route holoDelWet into xsOutBus so the delay tail is captured by the looper.
+  if(holoDelWet) holoDelWet.connect(xsOutBus);
+  // Capture: MediaRecorder on xsOutBus stream
+  xsCapDest=ctx.createMediaStreamDestination();
+  xsOutBus.connect(xsCapDest);
+  xsSetupMediaRec();
 
   // Waveshaper
   waveshaper=ctx.createWaveShaper(); waveshaper.oversample='4x';
@@ -2453,8 +2500,16 @@ function drawBg(){
 function send(src,toRev,toDly,bus){
   if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; src.connect(g); g.connect(revPre); }
   if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; src.connect(g); g.connect(delNode); }
-  src.connect(masterEQ);                        // always live
-  if(bus && bus!==masterEQ) src.connect(bus);   // also to capture bus if provided
+  src.connect(masterEQ);
+  if(bus && bus!==masterEQ) src.connect(bus);
+  src.connect(waveshaper);
+}
+// XS instruments use this instead of send() — routes through dedicated XS group bus
+// so the looper captures the full wet signal.
+function sendXS(src,toRev,toDly){
+  if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; src.connect(g); g.connect(xsRevPre); }
+  if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; src.connect(g); g.connect(xsDlyIn); }
+  src.connect(xsDryBus);
   src.connect(waveshaper);
 }
 
@@ -2664,19 +2719,19 @@ function samplerStart(px,py){
     const eD=ctx.createDelay(2.0); eD.delayTime.value=_smpEchoTimeVal(px);
     const eFb=ctx.createGain(); eFb.gain.value=_smpEchoFbVal(py);
     const eOut=ctx.createGain(); eOut.gain.value=0.65;
-    eD.connect(eFb); eFb.connect(eD); eD.connect(eOut); eOut.connect(masterEQ);
-    const eRv=ctx.createGain(); eRv.gain.value=0.40; eOut.connect(eRv); eRv.connect(revPre);
+    eD.connect(eFb); eFb.connect(eD); eD.connect(eOut); eOut.connect(xsDryBus);
+    const eRv=ctx.createGain(); eRv.gain.value=0.40; eOut.connect(eRv); eRv.connect(xsRevPre);
     mg.connect(eD);
     samplerEchoDelay=eD; samplerEchoFbGain=eFb;
   } else { // pitch — Y = extra reverb send
     src.connect(mg);
-    const rvS=ctx.createGain(); rvS.gain.value=py*0.90; mg.connect(rvS); rvS.connect(revPre);
+    const rvS=ctx.createGain(); rvS.gain.value=py*0.90; mg.connect(rvS); rvS.connect(xsRevPre);
     samplerRevSend=rvS;
   }
-  mg.connect(masterEQ); if(xsBus) mg.connect(xsBus);
-  const rv0=ctx.createGain(); rv0.gain.value=r('SMP-Rev')/100; mg.connect(rv0); rv0.connect(revPre);
+  mg.connect(xsDryBus);
+  const rv0=ctx.createGain(); rv0.gain.value=r('SMP-Rev')/100; mg.connect(rv0); rv0.connect(xsRevPre);
   samplerRevSend=rv0;
-  if(smpPadPreset!=='echo'){ const dl0=ctx.createGain(); dl0.gain.value=r('SMP-Dly')/100; mg.connect(dl0); dl0.connect(delNode); }
+  if(smpPadPreset!=='echo'){ const dl0=ctx.createGain(); dl0.gain.value=r('SMP-Dly')/100; mg.connect(dl0); dl0.connect(xsDlyIn); }
   src.start(0, offset);
   samplerSrc=src;
   _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85, null, smpPadPreset==='speed'?py:null);
@@ -2697,9 +2752,9 @@ function samplerSpawnAt(px,py,schedT,volMult){
   const mg=ctx.createGain();
   mg.gain.setValueAtTime((r('SMP-Vol')/100)*volMult, schedT);
   mg.gain.exponentialRampToValueAtTime(0.0001, schedT+capDur*0.90);
-  src.connect(filt); filt.connect(mg); mg.connect(masterEQ);
-  const rv0=ctx.createGain(); rv0.gain.value=(r('SMP-Rev')/100)*volMult; mg.connect(rv0); rv0.connect(revPre);
-  const dl0=ctx.createGain(); dl0.gain.value=(r('SMP-Dly')/100)*volMult; mg.connect(dl0); dl0.connect(delNode);
+  src.connect(filt); filt.connect(mg); mg.connect(xsDryBus);
+  const rv0=ctx.createGain(); rv0.gain.value=(r('SMP-Rev')/100)*volMult; mg.connect(rv0); rv0.connect(xsRevPre);
+  const dl0=ctx.createGain(); dl0.gain.value=(r('SMP-Dly')/100)*volMult; mg.connect(dl0); dl0.connect(xsDlyIn);
   src.start(schedT, offset, capDur);
   _spawnPsychoLayers(samplerBuf, pitchRate, offset, schedT, 0.85*volMult, capDur, py);
   triggerEnergy(0.3*volMult);
@@ -2734,10 +2789,10 @@ function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur, fil
     g.gain.exponentialRampToValueAtTime(0.0001, schedT+dur*0.88); // fade out before cap
     // Filter each layer with the same cutoff as the main voice
     const lf=ctx.createBiquadFilter(); lf.type='lowpass'; lf.frequency.value=Math.min(cutoff*(0.7+st/60),18000); lf.Q.value=0.8;
-    s.connect(lf); lf.connect(g); g.connect(masterEQ); if(xsBus) g.connect(xsBus);
+    s.connect(lf); lf.connect(g); g.connect(xsDryBus);
     // Scale rev/dly by vol so generation decay also reduces the reverb feed
-    const rv2=ctx.createGain(); rv2.gain.value=revAmt*Math.min(1,vol*1.4); g.connect(rv2); rv2.connect(revPre);
-    const dl2=ctx.createGain(); dl2.gain.value=dlyAmt*Math.min(1,vol*1.4); g.connect(dl2); dl2.connect(delNode);
+    const rv2=ctx.createGain(); rv2.gain.value=revAmt*Math.min(1,vol*1.4); g.connect(rv2); rv2.connect(xsRevPre);
+    const dl2=ctx.createGain(); dl2.gain.value=dlyAmt*Math.min(1,vol*1.4); g.connect(dl2); dl2.connect(xsDlyIn);
     s.start(schedT, offset, Math.max(0.01, dur));
     lfo.start(schedT); lfo.stop(schedT+dur+0.1);
   });
@@ -2836,8 +2891,8 @@ function _holoSpawnCore(p, px, py, schedT, vol){
     env.gain.setValueAtTime(0,t);
     env.gain.linearRampToValueAtTime(vol*volMult,t+atkT);
     env.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(atkT+0.002,playDur*(p.atk+p.rel)));
-    src.connect(env); env.connect(masterEQ); if(xsBus) env.connect(xsBus);
-    if(p.revAmt>0.01){const rv=ctx.createGain();rv.gain.value=p.revAmt*holoRevWet;env.connect(rv);rv.connect(revPre);}
+    src.connect(env); env.connect(xsDryBus);
+    if(p.revAmt>0.01){const rv=ctx.createGain();rv.gain.value=p.revAmt*holoRevWet;env.connect(rv);rv.connect(xsRevPre);}
     if(p.dlyAmt>0.01&&holoDelNode){const dl=ctx.createGain();dl.gain.value=p.dlyAmt;env.connect(dl);dl.connect(holoDelNode);}
     src.start(t,offset,Math.max(0.001,playDur));
     triggerEnergy(vol*volMult*0.1);
@@ -2985,7 +3040,7 @@ function startPadVoice(px,py){
   env.gain.value=0;
   env.gain.linearRampToValueAtTime(vol*0.44, ctx.currentTime+0.09); // smooth attack
   o1.connect(filt); o2.connect(g2); g2.connect(filt); filt.connect(env);
-  send(env, Math.min(1,n('X-Rev')*1.2), n('X-Dly')*0.5);
+  sendXS(env, Math.min(1,n('X-Rev')*1.2), n('X-Dly')*0.5);
   o1.start(); o2.start();
   padVoice={o1,o2,g2,filt,env,px};
 }
@@ -3028,7 +3083,7 @@ function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly, bus){
   env.gain.exponentialRampToValueAtTime(0.0001,t+atk+Math.max(0.01,rel));
   pan.pan.value=Math.max(-1,Math.min(1,panVal));
   osc.connect(env); env.connect(pan);
-  send(pan, toRev, toDly, bus);
+  if(bus==='xs') sendXS(pan,toRev,toDly); else send(pan,toRev,toDly,bus);
   osc.start(t); osc.stop(t+atk+rel+0.15);
 }
 
@@ -3078,12 +3133,12 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.22));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.22)+rel);
         vp.pan.value=panV; vo.connect(ve); ve.connect(vp);
-        send(vp,toRev*1.3,toDly*0.2,xsBus);
+        sendXS(vp,toRev*1.3,toDly*0.2);
         const sT=schedT+atk+(v*0.22)+rel+0.4;
         vo.start(schedT); vo.stop(sT); trem.start(schedT); trem.stop(sT);
       }
       // Octave harmonic ghost — very quiet
-      if(shim>0.08) makeVoice(baseFreq*2,'sine',atk+0.4,rel+0.8,amp*shim*0.18,schedT,(Math.random()-0.5)*spread*0.8,toRev*1.6,0,xsBus);
+      if(shim>0.08) makeVoice(baseFreq*2,'sine',atk+0.4,rel+0.8,amp*shim*0.18,schedT,(Math.random()-0.5)*spread*0.8,toRev*1.6,0,'xs');
       break;
     }
 
@@ -3101,14 +3156,14 @@ function spawnGrainAt(px, py, schedT, volMult=1){
       wob1.connect(wg1); wg1.connect(vo1.frequency);
       ve1.gain.setValueAtTime(0,schedT); ve1.gain.linearRampToValueAtTime(amp*0.72,schedT+atk);
       ve1.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel);
-      vo1.connect(ve1); send(ve1,toRev*1.5,toDly*0.4,xsBus);
+      vo1.connect(ve1); sendXS(ve1,toRev*1.5,toDly*0.4);
       vo1.start(schedT); wob1.start(schedT); vo1.stop(schedT+atk+rel+0.5); wob1.stop(schedT+atk+rel+0.5);
       // Sub-sub ghost — barely perceptible pressure
       const vo2=ctx.createOscillator(), ve2=ctx.createGain();
       vo2.type='sine'; vo2.frequency.value=Math.max(10,baseFreq*0.25);
       ve2.gain.setValueAtTime(0,schedT); ve2.gain.linearRampToValueAtTime(amp*0.42,schedT+atk+0.5);
       ve2.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel*1.2);
-      vo2.connect(ve2); send(ve2,toRev,0,xsBus);
+      vo2.connect(ve2); sendXS(ve2,toRev,0);
       vo2.start(schedT); vo2.stop(schedT+atk+rel*1.2+0.6);
       // Mid ghost — surface shimmer from deep below
       if(shim>0.05){
@@ -3119,7 +3174,7 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         wob3.connect(wg3); wg3.connect(vo3.frequency);
         ve3.gain.setValueAtTime(0,schedT); ve3.gain.linearRampToValueAtTime(amp*shim*0.22,schedT+atk+1.0);
         ve3.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel+1.2);
-        vo3.connect(ve3); send(ve3,toRev*1.9,0,xsBus);
+        vo3.connect(ve3); sendXS(ve3,toRev*1.9,0);
         vo3.start(schedT); wob3.start(schedT); vo3.stop(schedT+atk+rel+1.4); wob3.stop(schedT+atk+rel+1.4);
       }
       break;
@@ -3149,7 +3204,7 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,onset); ve.gain.linearRampToValueAtTime(aV,onset+atk);
         ve.gain.exponentialRampToValueAtTime(0.0001,onset+atk+rel);
         vp.pan.value=(v-1)*spread*0.9; vo.connect(ve); ve.connect(vp);
-        send(vp,toRev*(1+v*0.25),v===0?toDly:0,xsBus);
+        sendXS(vp,toRev*(1+v*0.25),v===0?toDly:0);
         const sT=onset+atk+rel+0.3;
         vo.start(onset); vo.stop(sT); dL.start(onset); dL.stop(sT); tL.start(onset); tL.stop(sT);
       }
@@ -3175,11 +3230,11 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.12));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.12)+rel);
         vp.pan.value=panV; vo.connect(ve); ve.connect(vp);
-        send(vp,toRev*1.2,v===0?toDly:0,xsBus);
+        sendXS(vp,toRev*1.2,v===0?toDly:0);
         const sT=schedT+atk+(v*0.12)+rel+0.4;
         vo.start(schedT); vo.stop(sT); sw.start(schedT); sw.stop(sT);
       }
-      if(shim>0.08) makeVoice(baseFreq*2+(Math.random()-0.5)*10,'sine',atk+0.5,rel+1,amp*shim*0.18,schedT,0,toRev*1.5,0,xsBus);
+      if(shim>0.08) makeVoice(baseFreq*2+(Math.random()-0.5)*10,'sine',atk+0.5,rel+1,amp*shim*0.18,schedT,0,toRev*1.5,0,'xs');
       break;
     }
 
@@ -3189,9 +3244,9 @@ function spawnGrainAt(px, py, schedT, volMult=1){
       const atk = 0.04+n('X-Atk')*dur*0.5;
       const rel = 0.12+n('X-Rel')*dur+smear*0.5;
       const ch  = (Math.random()-0.5)*jitter*0.4;
-      makeVoice(baseFreq+ch,'sine',atk,rel,amp*0.52,schedT,(Math.random()-0.5)*spread,toRev*1.2,toDly*0.8,xsBus);
-      if(shim>0.08) makeVoice((baseFreq+ch)*2,'sine',atk+0.04,rel+0.1,amp*shim*0.28,schedT,(Math.random()-0.5)*spread*0.6,toRev*1.4,0,xsBus);
-      if(n('X-Harm')>0.2) makeVoice((baseFreq+ch)*1.5,'sine',atk+0.02,rel*0.7,amp*0.18,schedT,(Math.random()-0.5)*spread,toRev,0,xsBus);
+      makeVoice(baseFreq+ch,'sine',atk,rel,amp*0.52,schedT,(Math.random()-0.5)*spread,toRev*1.2,toDly*0.8,'xs');
+      if(shim>0.08) makeVoice((baseFreq+ch)*2,'sine',atk+0.04,rel+0.1,amp*shim*0.28,schedT,(Math.random()-0.5)*spread*0.6,toRev*1.4,0,'xs');
+      if(n('X-Harm')>0.2) makeVoice((baseFreq+ch)*1.5,'sine',atk+0.02,rel*0.7,amp*0.18,schedT,(Math.random()-0.5)*spread,toRev,0,'xs');
       break;
     }
   }
