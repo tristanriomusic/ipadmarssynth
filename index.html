@@ -1577,6 +1577,8 @@ let micInputGain=null;    // In Level  — how hot the signal going into the loo
 let micMonitorGain=null;  // Monitor   — how loud you hear yourself live (direct, no latency)
 let micInputLatency=0.05; // estimated hardware mic→Web Audio input latency (seconds)
 let gloopLatTrim=0.05;    // COMP slider value in seconds — shifts recording threshold
+let gloopSource=null;     // AudioBufferSourceNode — handles loop playback with perfect clock sync
+let gloopPlayStartTime=0; // ctx time when current loop started playing (for overdub pos sync)
 
 // ═══ TOUCHPAD LOOPER STATE ════════════════════════
 // Buffer/position/chunk state lives inside the AudioWorklet — not on main thread
@@ -1947,59 +1949,77 @@ function gloopProcess(e){
 
   if(gloopRec&&!gloopPlay){
     // ── First pass: recording ──
-    // Record from gloopRecStart (bar boundary in output time). inp[0] contains audio
-    // captured inputLatency seconds before e.playbackTime, so beat-1 audio lands at
-    // position latSamples (= gloopLatTrim * sr) inside the buffer. Playback then
-    // starts from that offset so beat 1 aligns to the bar boundary on output.
     if(t+count/ctx.sampleRate<=gloopRecStart){ out.fill(0); return; }
-    const skipSamples=(t<gloopRecStart) ? Math.max(0,Math.round((gloopRecStart-t)*ctx.sampleRate)) : 0;
-    // Only record up to exactly gloopTargetLen total samples
+    const skipSamples=(t<gloopRecStart)?Math.max(0,Math.round((gloopRecStart-t)*ctx.sampleRate)):0;
     const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
     const remaining=gloopTargetLen-recorded;
-    const toRecord=Math.min(count-skipSamples, remaining);
+    const toRecord=Math.min(count-skipSamples,remaining);
     if(toRecord>0){
       const chunk=new Float32Array(toRecord);
       for(let i=0;i<toRecord;i++) chunk[i]=inp[skipSamples+i]*inLvl;
       gloopSamples.push(chunk);
     }
     if(recorded+toRecord>=gloopTargetLen){
-      // Finalize synchronously — zero setTimeout latency on loop start
+      // ── Finalize: build buffer and hand off to AudioBufferSourceNode ──
       const total=gloopSamples.reduce((s,c)=>s+c.length,0);
       if(total>0){
         gloopBuffer=new Float32Array(total);
         let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
-        gloopLen=total;
-        // Start playback from the beat-1 position (latSamples into the buffer).
-        // inp[0] at e.playbackTime=gloopRecStart captured audio from gloopRecStart-inputLatency,
-        // so beat-1 audio sits at position latSamples = inputLatency * sr.
-        // Playing from there makes beat 1 hit exactly at the bar boundary on output.
-        const latSamples=Math.min(Math.round(gloopLatTrim*ctx.sampleRate), total-1);
-        gloopPos=latSamples; gloopPlay=true;
+        gloopLen=total; gloopPos=0;
+        // Schedule an AudioBufferSourceNode to start EXACTLY at the bar boundary.
+        // This hands timing to the Web Audio scheduler — loop period is sample-accurate.
+        const abuf=ctx.createBuffer(1,total,ctx.sampleRate);
+        abuf.getChannelData(0).set(gloopBuffer);
+        if(gloopSource){try{gloopSource.stop(0);}catch(e){}try{gloopSource.disconnect();}catch(e){} gloopSource=null;}
+        const src=ctx.createBufferSource();
+        src.buffer=abuf; src.loop=true; src.loopStart=0; src.loopEnd=total/ctx.sampleRate;
+        src.connect(gloopOutGain);
+        gloopPlayStartTime=gloopRecStart+gloopTargetLen/ctx.sampleRate; // bar boundary
+        src.start(gloopPlayStartTime);
+        gloopSource=src; gloopPlay=true;
       }
       gloopSamples=[]; gloopRec=false; gloopFinalizing=false;
       setTimeout(updateGloopUI,0);
-      // Play the loop immediately for the tail of this same buffer
-      const playStart=skipSamples+toRecord;
-      for(let i=playStart;i<count;i++){
-        out[i]=gloopBuffer[gloopPos];
-        gloopPos=(gloopPos+1)%gloopLen;
-      }
-      if(playStart>0) for(let i=0;i<playStart;i++) out[i]=0;
+      out.fill(0); // AudioBufferSourceNode handles audio from here
       return;
     }
     out.fill(0);
   } else if(gloopPlay){
-    // ── Playback / overdub ──
-    const retain=0.1+(r('gloop-decay')/100)*0.9;
-    for(let i=0;i<count;i++){
-      if(gloopOverdub&&gloopRec)
-        gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain+inp[i]*inLvl;
-      out[i]=gloopBuffer[gloopPos];
-      gloopPos=gloopReverse?(gloopPos-1+gloopLen)%gloopLen:(gloopPos+1)%gloopLen;
+    // ── Playback ──
+    // Normal playback: AudioBufferSourceNode handles audio; ScriptProcessor outputs silence.
+    // Overdub / reverse: ScriptProcessor mixes live input into gloopBuffer and outputs.
+    if((gloopOverdub&&gloopRec)||gloopReverse){
+      const retain=0.1+(r('gloop-decay')/100)*0.9;
+      for(let i=0;i<count;i++){
+        if(gloopOverdub&&gloopRec) gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain+inp[i]*inLvl;
+        out[i]=gloopBuffer[gloopPos];
+        gloopPos=gloopReverse?(gloopPos-1+gloopLen)%gloopLen:(gloopPos+1)%gloopLen;
+      }
+    } else {
+      out.fill(0);
     }
   } else {
     out.fill(0);
   }
+}
+
+function _gloopStopSrc(){
+  if(gloopSource){try{gloopSource.stop(0);}catch(e){}try{gloopSource.disconnect();}catch(e){} gloopSource=null;}
+}
+function _gloopMakeSrc(startTime){
+  const abuf=ctx.createBuffer(1,gloopLen,ctx.sampleRate);
+  abuf.getChannelData(0).set(gloopBuffer);
+  const src=ctx.createBufferSource();
+  src.buffer=abuf; src.loop=true; src.loopStart=0; src.loopEnd=gloopLen/ctx.sampleRate;
+  src.connect(gloopOutGain); src.start(startTime);
+  gloopSource=src;
+}
+function _gloopSyncPos(){
+  // Compute gloopPos from elapsed time since loop start (for overdub/reverse sync)
+  if(!gloopPlayStartTime||!gloopLen) return;
+  const loopDur=gloopLen/ctx.sampleRate;
+  const elapsed=ctx.currentTime-gloopPlayStartTime;
+  gloopPos=Math.round(((elapsed%loopDur+loopDur)%loopDur)*ctx.sampleRate)%gloopLen;
 }
 
 function gloopFinalize(){
@@ -2010,34 +2030,58 @@ function gloopFinalize(){
   if(total>0){
     gloopBuffer=new Float32Array(total);
     let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
-    gloopLen=total;
-    const latSamples=Math.min(Math.round(gloopLatTrim*ctx.sampleRate), total-1);
-    gloopPos=latSamples; gloopPlay=true;
+    gloopLen=total; gloopPos=0;
+    _gloopStopSrc();
+    gloopPlayStartTime=ctx.currentTime;
+    _gloopMakeSrc(gloopPlayStartTime);
+    gloopPlay=true;
   }
-  gloopSamples=[];
-  updateGloopUI();
+  gloopSamples=[]; updateGloopUI();
 }
 
 function gloopRecord(){
-  if(gloopRec && !gloopOverdub){ gloopFinalize(); return; }
-  if(gloopOverdub){ gloopRec=false; gloopOverdub=false; updateGloopUI(); return; }
-  if(gloopPlay && gloopLen>0){ gloopOverdub=true; gloopRec=true; updateGloopUI(); return; }
+  if(gloopRec&&!gloopOverdub){ gloopFinalize(); return; }
+  if(gloopOverdub){
+    // End overdub — rebuild AudioBuffer with modified content and restart source
+    gloopRec=false; gloopOverdub=false;
+    if(gloopBuffer&&gloopLen>0){
+      _gloopStopSrc();
+      gloopPlayStartTime=ctx.currentTime;
+      _gloopMakeSrc(gloopPlayStartTime);
+    }
+    updateGloopUI(); return;
+  }
+  if(gloopPlay&&gloopLen>0){
+    // Start overdub — stop AudioBufferSourceNode, ScriptProcessor takes over
+    _gloopStopSrc();
+    _gloopSyncPos(); // sync gloopPos to current playback position
+    gloopOverdub=true; gloopRec=true; updateGloopUI(); return;
+  }
   if(!micSource){ document.getElementById('gloop-status').textContent='NO INPUT'; return; }
   // Fresh record — snap start to next bar boundary when sequencer is running
+  _gloopStopSrc();
   gloopSamples=[]; gloopBuffer=null; gloopLen=0; gloopPos=0;
   gloopPlay=false; gloopOverdub=false; gloopFinalizing=false; gloopRec=true;
-  gloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
-  gloopTargetLen=gloopBars*Math.round(16*(60/bpm/4)*ctx.sampleRate); // per-bar rounding, matches sequencer
+  gloopRecStart=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
+  gloopTargetLen=gloopBars*Math.round(16*(60/bpm/4)*ctx.sampleRate);
   updateGloopUI();
 }
 function gloopToggle(){
   if(!gloopLen) return;
   gloopPlay=!gloopPlay;
-  if(gloopPlay){ const lat=Math.min(Math.round(gloopLatTrim*ctx.sampleRate),gloopLen-1); gloopPos=lat; }
+  if(gloopPlay){
+    _gloopStopSrc();
+    const t=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
+    gloopPlayStartTime=t;
+    _gloopMakeSrc(t);
+  } else {
+    _gloopStopSrc();
+  }
   updateGloopUI();
 }
 function gloopClear(){
-  gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false;
+  _gloopStopSrc();
+  gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false; gloopPlayStartTime=0;
   gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
   if(gloopOutGain) gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   updateGloopUI();
@@ -2045,16 +2089,26 @@ function gloopClear(){
 function gloopRevToggle(){
   gloopReverse=!gloopReverse;
   document.getElementById('gloop-rev').classList.toggle('active',gloopReverse);
+  if(!gloopPlay||!gloopLen) return;
+  if(gloopReverse){
+    // Reverse: stop AudioBufferSourceNode, ScriptProcessor handles reversed playback
+    _gloopStopSrc();
+    _gloopSyncPos();
+  } else {
+    // Forward: restart AudioBufferSourceNode
+    const t=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
+    gloopPlayStartTime=t;
+    _gloopMakeSrc(t);
+  }
 }
 function gloopDisconnect(){
-  // Tear down mic, restore original master gain
+  _gloopStopSrc();
   if(gloopNode){ try{gloopNode.disconnect();}catch(e){} gloopNode=null; }
   if(micMonitorGain){ try{micMonitorGain.disconnect();}catch(e){} micMonitorGain=null; }
   if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
   if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
   if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
-  if(master) master.gain.setTargetAtTime(0.75, ctx.currentTime, 0.1); // restore default
-  // Show connect prompt again
+  if(master) master.gain.setTargetAtTime(0.75, ctx.currentTime, 0.1);
   const cr=document.getElementById('gloop-connect-row'), gc=document.getElementById('gloop-controls');
   if(cr){ cr.style.display='flex'; cr.querySelector('button').textContent='⚡ TAP TO USE MIC'; }
   if(gc) gc.style.display='none';
