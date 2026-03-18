@@ -355,12 +355,12 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   <!-- INSTRUMENT CIRCLES -->
   <div id="circles-grid">
     <!-- ROW 1: LOOPERS + ARPEGGIATORS -->
-    <!-- XS LOOP -->
+    <!-- XS NEBULA -->
     <div class="inst-circle" id="circ-X">
       <div class="circ-inner-row">
         <div class="circ-body" style="background:rgba(0,242,255,0.2);border:2px solid rgba(0,242,255,0.65);box-shadow:0 0 16px rgba(0,242,255,0.2),inset 0 0 20px rgba(0,242,255,0.1)" onclick="openCirclePopup('drX',event,'X')">
           <div class="circ-ring" id="cring-X" style="border-color:#00f2ff"></div>
-          <div class="circ-name">XS LOOP</div>
+          <div class="circ-name">XS NEBULA</div>
           <button class="circ-mute-btn" id="cmute-X" onclick="instMute('X',this);event.stopPropagation()">MUTE</button>
         </div>
         <div class="circ-y-wrap">
@@ -2050,7 +2050,7 @@ function init(){
   delNode=ctx.createDelay(5.0); delNode.delayTime.value=60/bpm/2;
   delFb=ctx.createGain(); delFb.gain.value=0.5;
   delDamp=ctx.createBiquadFilter(); delDamp.type='lowpass';  delDamp.frequency.value=3200; // warm default
-  delHP=ctx.createBiquadFilter();   delHP.type='highpass';   delHP.frequency.value=90;    // prevent bass mud
+  delHP=ctx.createBiquadFilter();   delHP.type='highpass';   delHP.frequency.value=90;  delHP.Q.value=0.707;  // prevent bass mud + no resonance peak
   delSat=ctx.createWaveShaper();    delSat.curve=makeDelSatCurve(); delSat.oversample='2x'; // analog warmth
   delWet=ctx.createGain(); delWet.gain.value=0.28;
   delNode.connect(delDamp); delDamp.connect(delHP); delHP.connect(delSat); delSat.connect(delFb); delFb.connect(delNode);
@@ -2209,10 +2209,11 @@ function makeDistCurve(amount){
   for(let i=0;i<s;i++){ const x=(i*2)/s-1; c[i]=k<0.01?x:((Math.PI+k)*x)/(Math.PI+k*Math.abs(x)); }
   return c;
 }
-// Gentle tanh saturation for analog delay warmth — soft knee, no harsh clipping
+// Gentle tanh saturation for analog delay warmth — normalized by derivative at 0
+// so small signals pass at unity gain (slope=1), preventing feedback buildup.
 function makeDelSatCurve(){
   const s=512,c=new Float32Array(s);
-  for(let i=0;i<s;i++){ const x=(i*2)/s-1; c[i]=Math.tanh(x*1.6)/Math.tanh(1.6); }
+  for(let i=0;i<s;i++){ const x=(i*2)/s-1; c[i]=Math.tanh(x*1.6)/1.6; }
   return c;
 }
 function triggerEnergy(amt){ energy=Math.min(1,energy+amt); beatFlash=Math.min(1,beatFlash+amt*1.5); }
