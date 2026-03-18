@@ -666,6 +666,13 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
             </div>
           </div>
 
+          <!-- Latency compensation — shift recording start to align with bar boundary -->
+          <div class="ctrl" style="border-color:rgba(255,153,68,0.25);margin-bottom:8px">
+            <label style="color:rgba(255,153,68,0.7)" title="Shifts recording start to compensate for hardware mic input latency. Raise if loop plays back late.">COMP ms</label>
+            <input type="range" id="gloop-comp" min="0" max="200" step="5" value="50" oninput="gloopLatTrim=this.value/1000; document.getElementById('gloop-comp-v').textContent=this.value;">
+            <div class="dv" id="gloop-comp-v">50</div>
+          </div>
+
           <!-- Transport -->
           <div class="looper-btns" style="margin-top:8px">
             <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
@@ -1568,6 +1575,8 @@ let micStream=null;
 let micSource=null;
 let micInputGain=null;    // In Level  — how hot the signal going into the loop is
 let micMonitorGain=null;  // Monitor   — how loud you hear yourself live (direct, no latency)
+let micInputLatency=0.05; // estimated hardware mic→Web Audio input latency (seconds)
+let gloopLatTrim=0.05;    // COMP slider value in seconds — shifts recording threshold
 
 // ═══ TOUCHPAD LOOPER STATE ════════════════════════
 // Buffer/position/chunk state lives inside the AudioWorklet — not on main thread
@@ -1882,6 +1891,13 @@ async function gloopConnectDevice(deviceId){
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
     }});
     micSource=ctx.createMediaStreamSource(micStream);
+    // Auto-detect input latency: device ADC latency reported by browser
+    const _trk=micStream.getAudioTracks()[0];
+    const _tset=_trk?.getSettings?.()||{};
+    micInputLatency=Math.max(0.01, Math.min(0.2, (_tset.latency||0.05)));
+    gloopLatTrim=micInputLatency;
+    const _cs=document.getElementById('gloop-comp');
+    if(_cs){ _cs.value=Math.round(micInputLatency*1000); document.getElementById('gloop-comp-v').textContent=Math.round(micInputLatency*1000); }
 
     // VU taps raw mic signal
     micSource.connect(gloopAnalyser);
@@ -1931,10 +1947,12 @@ function gloopProcess(e){
 
   if(gloopRec&&!gloopPlay){
     // ── First pass: recording ──
-    // Skip entire buffer if it ends before the bar boundary
-    if(t+count/ctx.sampleRate<=gloopRecStart){ out.fill(0); return; }
-    // Sub-buffer precision: skip samples that are before the bar start
-    const skipSamples=(t<gloopRecStart) ? Math.max(0,Math.round((gloopRecStart-t)*ctx.sampleRate)) : 0;
+    // e.playbackTime is the OUTPUT timeline. inp[] was captured inputLatency seconds
+    // BEFORE e.playbackTime, so we shift the threshold forward by gloopLatTrim so
+    // that we only start capturing audio that actually corresponds to gloopRecStart.
+    const adjStart=gloopRecStart+gloopLatTrim;
+    if(t+count/ctx.sampleRate<=adjStart){ out.fill(0); return; }
+    const skipSamples=(t<adjStart) ? Math.max(0,Math.round((adjStart-t)*ctx.sampleRate)) : 0;
     // Only record up to exactly gloopTargetLen total samples
     const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
     const remaining=gloopTargetLen-recorded;
