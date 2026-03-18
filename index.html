@@ -684,7 +684,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           </div>
           <div class="ctrl">
             <label>Decay</label>
-            <input type="range" id="padloop-decay" min="0" max="100" value="100" oninput="document.getElementById('padloop-decay-v').textContent=this.value">
+            <input type="range" id="padloop-decay" min="0" max="100" value="100" oninput="document.getElementById('padloop-decay-v').textContent=this.value; if(padloopWorklet&&padloopOverdub) padloopWorklet.port.postMessage({cmd:'set_decay',decay:0.1+(this.value/100)*0.9})">
             <div class="dv" id="padloop-decay-v">100</div>
           </div>
         </div>
@@ -1537,19 +1537,16 @@ let micInputGain=null;    // In Level  — how hot the signal going into the loo
 let micMonitorGain=null;  // Monitor   — how loud you hear yourself live (direct, no latency)
 
 // ═══ TOUCHPAD LOOPER STATE ════════════════════════
-let padloopBuffer=null;       // Float32Array — the loop
-let padloopLen=0;             // loop length in samples
-let padloopPos=0;             // playhead
+// Buffer/position/chunk state lives inside the AudioWorklet — not on main thread
+let padloopLen=0;             // loop length in samples (set from worklet 'done' message)
 let padloopRec=false;
 let padloopPlay=false;
 let padloopOverdub=false;
-let padloopFinalizing=false;
-let padloopSamples=[];        // chunk array during first-pass record
 let padloopTargetLen=0;       // target sample count
 let padloopRecStart=0;        // ctx.currentTime to start recording
 let padloopBars=2;            // default 2 bars
 let padloopCapBus=null;       // capture bus — send() taps here when recording/overdubbing
-let padloopNode=null;         // ScriptProcessorNode
+let padloopWorklet=null;      // AudioWorkletNode (runs on audio thread — no glitches)
 let padloopOutGain=null;      // loop playback → masterEQ
 let padloopRevSend=null;      // → revPre
 let padloopDlySend=null;      // → delNode
@@ -1581,26 +1578,104 @@ function setPadloopBars(bars,btn){
   document.querySelectorAll('[data-pbars]').forEach(b=>b.classList.toggle('on',+b.dataset.pbars===bars));
 }
 
-function initPadloop(){
-  // Capture bus — receives pad audio from send() during recording/overdub
-  padloopCapBus=ctx.createGain(); padloopCapBus.gain.value=1.0;
-  // ScriptProcessor: reads capture bus, outputs loop playback (mono)
-  padloopNode=ctx.createScriptProcessor(2048,1,1);
-  padloopNode.onaudioprocess=padloopProcess;
-  padloopCapBus.connect(padloopNode);
-  // Playback output
-  padloopOutGain=ctx.createGain(); padloopOutGain.gain.value=r('padloop-loopvol')/100||0.8;
-  padloopNode.connect(padloopOutGain);
-  padloopOutGain.connect(masterEQ);
-  // FX sends
-  padloopRevSend=ctx.createGain(); padloopRevSend.gain.value=0;
-  padloopOutGain.connect(padloopRevSend); padloopRevSend.connect(revPre);
-  padloopDlySend=ctx.createGain(); padloopDlySend.gain.value=0;
-  padloopOutGain.connect(padloopDlySend); padloopDlySend.connect(delNode);
-  // Analyser — shows loop output level
-  padloopAnalyser=ctx.createAnalyser(); padloopAnalyser.fftSize=256;
-  padloopAnalyserBuf=new Uint8Array(padloopAnalyser.frequencyBinCount);
-  padloopOutGain.connect(padloopAnalyser);
+const PADLOOP_WORKLET_CODE=`
+class PadLoopProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._state='idle'; this._buf=null; this._pos=0;
+    this._targetLen=0; this._recStart=0; this._decay=1.0;
+    this._chunks=[]; this._accumulated=0;
+    this.port.onmessage=({data})=>{
+      const cmd=data.cmd;
+      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; }
+      else if(cmd==='stop_record'){ this._finalize(); }
+      else if(cmd==='overdub'){ if(this._buf){ this._state='overdubbing'; this._decay=data.decay; } }
+      else if(cmd==='stop_overdub'){ this._state='playing'; }
+      else if(cmd==='play'){ if(this._buf){ this._state='playing'; this._pos=0; } }
+      else if(cmd==='stop'){ this._state='idle'; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._pos=0; }
+      else if(cmd==='set_decay'){ this._decay=data.decay; }
+    };
+  }
+  _finalize(){
+    const target=this._targetLen>0?this._targetLen:this._accumulated;
+    const total=Math.min(this._accumulated,target);
+    if(total>0){
+      const buf=new Float32Array(total);
+      let off=0;
+      for(const chunk of this._chunks){
+        const n=Math.min(chunk.length,total-off);
+        buf.set(n===chunk.length?chunk:chunk.subarray(0,n),off);
+        off+=n; if(off>=total) break;
+      }
+      this._chunks=[]; this._buf=buf; this._pos=0; this._state='playing';
+      this.port.postMessage({type:'done',len:total});
+    } else {
+      this._chunks=[]; this._state='idle';
+      this.port.postMessage({type:'done',len:0});
+    }
+  }
+  process(inputs,outputs){
+    const ch=inputs[0]&&inputs[0][0];
+    const out=outputs[0][0];
+    if(this._state==='recording'){
+      if(currentTime<this._recStart){ out.fill(0); return true; }
+      // Always accumulate 128 samples per block (even silence) so auto-stop fires at the
+      // right real-time bar boundary. Chrome's silence optimisation passes inputs[0]=[]
+      // for quiet blocks — without this, the counter stalls and the loop never auto-stops.
+      const blockSize=out.length;
+      this._chunks.push(ch?new Float32Array(ch):new Float32Array(blockSize));
+      this._accumulated+=blockSize;
+      if(this._targetLen>0&&this._accumulated>=this._targetLen){ this._finalize(); return true; }
+      out.fill(0);
+    } else if(this._state==='playing'){
+      const b=this._buf; if(!b){ out.fill(0); return true; }
+      for(let i=0;i<out.length;i++){ out[i]=b[this._pos]; this._pos=(this._pos+1)%b.length; }
+    } else if(this._state==='overdubbing'){
+      const b=this._buf; if(!b){ out.fill(0); return true; }
+      const d=this._decay;
+      for(let i=0;i<out.length;i++){
+        const inp=ch?ch[i]:0; b[this._pos]=b[this._pos]*d+inp;
+        out[i]=b[this._pos]; this._pos=(this._pos+1)%b.length;
+      }
+    } else { out.fill(0); }
+    return true;
+  }
+}
+registerProcessor('padloop-processor',PadLoopProcessor);`;
+
+async function initPadloop(){
+  try{
+    const blob=new Blob([PADLOOP_WORKLET_CODE],{type:'application/javascript'});
+    const url=URL.createObjectURL(blob);
+    await ctx.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+    padloopWorklet=new AudioWorkletNode(ctx,'padloop-processor',{
+      numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]
+    });
+    padloopWorklet.port.onmessage=({data})=>{
+      if(data.type==='done'){
+        padloopLen=data.len; padloopRec=false;
+        if(data.len>0) padloopPlay=true;
+        updatePadloopUI();
+      }
+    };
+    // Capture bus
+    padloopCapBus=ctx.createGain(); padloopCapBus.gain.value=1.0;
+    // Explicit mono downmix: stereo panned sources → proper (L+R)/2 sum
+    const padloopMonoBus=ctx.createGain();
+    padloopMonoBus.channelCount=1; padloopMonoBus.channelCountMode='explicit'; padloopMonoBus.channelInterpretation='speakers';
+    padloopCapBus.connect(padloopMonoBus); padloopMonoBus.connect(padloopWorklet);
+    padloopOutGain=ctx.createGain(); padloopOutGain.gain.value=r('padloop-loopvol')/100||0.8;
+    padloopWorklet.connect(padloopOutGain); padloopOutGain.connect(masterEQ);
+    padloopRevSend=ctx.createGain(); padloopRevSend.gain.value=0;
+    padloopOutGain.connect(padloopRevSend); padloopRevSend.connect(revPre);
+    padloopDlySend=ctx.createGain(); padloopDlySend.gain.value=0;
+    padloopOutGain.connect(padloopDlySend); padloopDlySend.connect(delNode);
+    padloopAnalyser=ctx.createAnalyser(); padloopAnalyser.fftSize=256;
+    padloopAnalyserBuf=new Uint8Array(padloopAnalyser.frequencyBinCount);
+    padloopOutGain.connect(padloopAnalyser);
+  }catch(e){ console.warn('PadLoop AudioWorklet init failed:',e); }
 }
 
 // ═══ SESSION RECORDER ═════════════════════════════
@@ -1923,65 +1998,31 @@ function drawGloopVU(){
 }
 
 // ═══ TOUCHPAD LOOPER FUNCTIONS ════════════════════
-function padloopProcess(e){
-  const inp=e.inputBuffer.getChannelData(0);
-  const out=e.outputBuffer.getChannelData(0);
-  const count=inp.length;
-  if(padloopRec && !padloopPlay){
-    // First-pass: wait for bar boundary, then record
-    if(ctx.currentTime < padloopRecStart){ out.fill(0); return; }
-    const chunk=new Float32Array(count);
-    for(let i=0;i<count;i++) chunk[i]=inp[i];
-    padloopSamples.push(chunk);
-    const recorded=padloopSamples.reduce((s,c)=>s+c.length,0);
-    if(padloopTargetLen>0 && recorded>=padloopTargetLen && !padloopFinalizing){
-      padloopFinalizing=true; setTimeout(padloopFinalize,0);
-    }
-    out.fill(0);
-  } else if(padloopPlay){
-    // Playback / overdub
-    const retain=0.1+(r('padloop-decay')/100)*0.9;
-    for(let i=0;i<count;i++){
-      if(padloopOverdub && padloopRec)
-        padloopBuffer[padloopPos]=padloopBuffer[padloopPos]*retain + inp[i];
-      out[i]=padloopBuffer[padloopPos];
-      padloopPos=(padloopPos+1)%padloopLen;
-    }
-  } else {
-    out.fill(0);
-  }
-}
-function padloopFinalize(){
-  padloopFinalizing=false; padloopRec=false;
-  const total=padloopSamples.reduce((s,c)=>s+c.length,0);
-  if(total>0){
-    padloopBuffer=new Float32Array(total);
-    let off=0; padloopSamples.forEach(c=>{ padloopBuffer.set(c,off); off+=c.length; });
-    padloopLen=total; padloopPos=0; padloopPlay=true;
-  }
-  padloopSamples=[];
-  updatePadloopUI();
-}
 function padloopRecord(){
-  if(!ctx) return;
-  if(padloopRec && !padloopOverdub){ padloopFinalize(); return; }
-  if(padloopOverdub){ padloopRec=false; padloopOverdub=false; updatePadloopUI(); return; }
-  if(padloopPlay && padloopLen>0){ padloopOverdub=true; padloopRec=true; updatePadloopUI(); return; }
-  // Fresh record
-  padloopSamples=[]; padloopBuffer=null; padloopLen=0; padloopPos=0;
-  padloopPlay=false; padloopOverdub=false; padloopFinalizing=false; padloopRec=true;
-  padloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
-  padloopTargetLen=Math.round(padloopBars*4*(60/bpm)*ctx.sampleRate);
+  if(!ctx||!padloopWorklet) return;
+  if(padloopRec&&!padloopOverdub){ padloopWorklet.port.postMessage({cmd:'stop_record'}); return; }
+  if(padloopOverdub){ padloopRec=false; padloopOverdub=false; padloopWorklet.port.postMessage({cmd:'stop_overdub'}); updatePadloopUI(); return; }
+  if(padloopPlay&&padloopLen>0){ padloopOverdub=true; padloopRec=true; const decay=0.1+(r('padloop-decay')/100)*0.9; padloopWorklet.port.postMessage({cmd:'overdub',decay}); updatePadloopUI(); return; }
+  padloopLen=0; padloopPlay=false; padloopOverdub=false; padloopRec=true;
+  padloopRecStart=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
+  // bars × 16 steps × step duration in samples — same as gloopTargetLen formula
+  const _barSamples=Math.round(16*(60/bpm/4)*ctx.sampleRate);
+  padloopTargetLen=padloopBars*_barSamples;
+  padloopWorklet.port.postMessage({cmd:'record',targetLen:padloopTargetLen,recStart:padloopRecStart});
+  // Retroactively tap samplerizer if a note is already held
+  if(samplerGain&&padloopCapBus) try{ samplerGain.connect(padloopCapBus); }catch(e){}
   updatePadloopUI();
 }
 function padloopToggle(){
-  if(!padloopLen) return;
-  padloopPlay=!padloopPlay; if(padloopPlay) padloopPos=0;
+  if(!padloopLen||!padloopWorklet) return;
+  padloopPlay=!padloopPlay;
+  if(padloopPlay) padloopWorklet.port.postMessage({cmd:'play'});
+  else padloopWorklet.port.postMessage({cmd:'stop'});
   updatePadloopUI();
 }
 function padloopClear(){
-  padloopBuffer=null; padloopLen=0; padloopPos=0; padloopFinalizing=false;
-  padloopRec=false; padloopPlay=false; padloopOverdub=false; padloopSamples=[];
+  if(padloopWorklet) padloopWorklet.port.postMessage({cmd:'clear'});
+  padloopLen=0; padloopPlay=false; padloopOverdub=false; padloopRec=false;
   if(padloopOutGain) padloopOutGain.gain.value=r('padloop-loopvol')/100||0.8;
   updatePadloopUI();
 }
@@ -2285,7 +2326,7 @@ function init(){
 
   wireSliders();
   initGloop();
-  initPadloop();
+  initPadloop().catch(e=>console.warn('PadLoop init:',e));
   loop();
   startAudioKeepAlive();
 
@@ -2750,6 +2791,7 @@ function samplerStart(px,py){
     samplerRevSend=rvS;
   }
   mg.connect(masterEQ);
+  if(padloopCapBus&&(padloopRec||padloopOverdub)) mg.connect(padloopCapBus);
   const rv0=ctx.createGain(); rv0.gain.value=r('SMP-Rev')/100; mg.connect(rv0); rv0.connect(revPre);
   samplerRevSend=rv0;
   if(smpPadPreset!=='echo'){ const dl0=ctx.createGain(); dl0.gain.value=r('SMP-Dly')/100; mg.connect(dl0); dl0.connect(delNode); }
@@ -2774,6 +2816,7 @@ function samplerSpawnAt(px,py,schedT,volMult){
   mg.gain.setValueAtTime((r('SMP-Vol')/100)*volMult, schedT);
   mg.gain.exponentialRampToValueAtTime(0.0001, schedT+capDur*0.90);
   src.connect(filt); filt.connect(mg); mg.connect(masterEQ);
+  if(padloopCapBus&&(padloopRec||padloopOverdub)) mg.connect(padloopCapBus);
   const rv0=ctx.createGain(); rv0.gain.value=(r('SMP-Rev')/100)*volMult; mg.connect(rv0); rv0.connect(revPre);
   const dl0=ctx.createGain(); dl0.gain.value=(r('SMP-Dly')/100)*volMult; mg.connect(dl0); dl0.connect(delNode);
   src.start(schedT, offset, capDur);
@@ -2811,6 +2854,7 @@ function _spawnPsychoLayers(buf, basePitchRate, offset, schedT, vol, capDur, fil
     // Filter each layer with the same cutoff as the main voice
     const lf=ctx.createBiquadFilter(); lf.type='lowpass'; lf.frequency.value=Math.min(cutoff*(0.7+st/60),18000); lf.Q.value=0.8;
     s.connect(lf); lf.connect(g); g.connect(masterEQ);
+    if(padloopCapBus&&(padloopRec||padloopOverdub)) g.connect(padloopCapBus);
     // Scale rev/dly by vol so generation decay also reduces the reverb feed
     const rv2=ctx.createGain(); rv2.gain.value=revAmt*Math.min(1,vol*1.4); g.connect(rv2); rv2.connect(revPre);
     const dl2=ctx.createGain(); dl2.gain.value=dlyAmt*Math.min(1,vol*1.4); g.connect(dl2); dl2.connect(delNode);
@@ -2913,6 +2957,7 @@ function _holoSpawnCore(p, px, py, schedT, vol){
     env.gain.linearRampToValueAtTime(vol*volMult,t+atkT);
     env.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(atkT+0.002,playDur*(p.atk+p.rel)));
     src.connect(env); env.connect(masterEQ);
+    if(padloopCapBus&&(padloopRec||padloopOverdub)) env.connect(padloopCapBus);
     if(p.revAmt>0.01){const rv=ctx.createGain();rv.gain.value=p.revAmt*holoRevWet;env.connect(rv);rv.connect(revPre);}
     if(p.dlyAmt>0.01&&holoDelNode){const dl=ctx.createGain();dl.gain.value=p.dlyAmt;env.connect(dl);dl.connect(holoDelNode);}
     src.start(t,offset,Math.max(0.001,playDur));
@@ -2992,6 +3037,7 @@ function playSamplerStep(t){
 
   src.connect(seqFilt); seqFilt.connect(g);
   g.connect(masterEQ);
+  if(padloopCapBus&&(padloopRec||padloopOverdub)) g.connect(padloopCapBus);
   if(revAmt>0.005){ const rv=ctx.createGain(); rv.gain.value=revAmt*0.9; g.connect(rv); rv.connect(revPre); }
   if(dlyAmt>0.005){ const dl=ctx.createGain(); dl.gain.value=dlyAmt*0.9; g.connect(dl); dl.connect(delNode); }
 
