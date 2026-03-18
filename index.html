@@ -1896,7 +1896,9 @@ async function gloopConnectDevice(deviceId){
     // Auto-detect input latency: device ADC latency reported by browser
     const _trk=micStream.getAudioTracks()[0];
     const _tset=_trk?.getSettings?.()||{};
-    micInputLatency=Math.max(0.01, Math.min(0.2, (_tset.latency||0.05)));
+    const _outLat=(ctx.outputLatency||ctx.baseLatency||0);
+    const _inLat=(_tset.latency||0);
+    micInputLatency=Math.max(0.01, Math.min(0.2, _outLat+_inLat||0.05));
     gloopLatTrim=micInputLatency;
     const _cs=document.getElementById('gloop-comp');
     if(_cs){ _cs.value=Math.round(micInputLatency*1000); document.getElementById('gloop-comp-v').textContent=Math.round(micInputLatency*1000); }
@@ -1975,7 +1977,7 @@ function gloopProcess(e){
         src.buffer=abuf; src.loop=true; src.loopStart=0; src.loopEnd=total/ctx.sampleRate;
         src.connect(gloopOutGain);
         gloopPlayStartTime=gloopRecStart+gloopTargetLen/ctx.sampleRate; // bar boundary
-        src.start(gloopPlayStartTime);
+        src.start(gloopPlayStartTime, gloopLatTrim);
         gloopSource=src; gloopPlay=true;
       }
       gloopSamples=[]; gloopRec=false; gloopFinalizing=false;
