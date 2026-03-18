@@ -2603,14 +2603,13 @@ function drawBg(){
   bgCtx.fillStyle=vg; bgCtx.fillRect(0,0,bgW,bgH);
 }
 
-function send(src,toRev,toDly,bus){
+function send(src,toRev,toDly,bus,padCapture=false){
   if(toRev>0.005){ const g=ctx.createGain(); g.gain.value=toRev; src.connect(g); g.connect(revPre); }
   if(toDly>0.005){ const g=ctx.createGain(); g.gain.value=toDly; src.connect(g); g.connect(delNode); }
   src.connect(masterEQ);
   if(bus && bus!==masterEQ) src.connect(bus);
   src.connect(waveshaper);
-  // Tap dry signal into pad looper capture bus when recording or overdubbing
-  if(padloopCapBus && (padloopRec || padloopOverdub)) src.connect(padloopCapBus);
+  if(padCapture && padloopCapBus && (padloopRec||padloopOverdub)) src.connect(padloopCapBus);
 }
 
 // ═══ FX LIVE ══════════════════════════════════════
@@ -3145,7 +3144,7 @@ function startPadVoice(px,py){
   env.gain.value=0;
   env.gain.linearRampToValueAtTime(vol*0.44, ctx.currentTime+0.09); // smooth attack
   o1.connect(filt); o2.connect(g2); g2.connect(filt); filt.connect(env);
-  send(env, Math.min(1,n('X-Rev')*1.2), n('X-Dly')*0.5);
+  send(env, Math.min(1,n('X-Rev')*1.2), n('X-Dly')*0.5, null, true);
   o1.start(); o2.start();
   padVoice={o1,o2,g2,filt,env,px};
 }
@@ -3180,7 +3179,7 @@ function updatePadVoiceForChord(){
 
 // ═══ GRAIN SPAWNER ════════════════════════════════
 // Spawn a single musical oscillator voice
-function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly, bus){
+function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly, bus, padCapture=false){
   const osc=ctx.createOscillator(), env=ctx.createGain(), pan=ctx.createStereoPanner();
   osc.type=type; osc.frequency.value=Math.max(20,freq);
   env.gain.setValueAtTime(0,t);
@@ -3188,7 +3187,7 @@ function makeVoice(freq, type, atk, rel, amp, t, panVal, toRev, toDly, bus){
   env.gain.exponentialRampToValueAtTime(0.0001,t+atk+Math.max(0.01,rel));
   pan.pan.value=Math.max(-1,Math.min(1,panVal));
   osc.connect(env); env.connect(pan);
-  send(pan,toRev,toDly,bus);
+  send(pan,toRev,toDly,bus,padCapture);
   osc.start(t); osc.stop(t+atk+rel+0.15);
 }
 
@@ -3238,12 +3237,12 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.22));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.22)+rel);
         vp.pan.value=panV; vo.connect(ve); ve.connect(vt); vt.connect(vp);
-        send(vp,toRev*1.3,toDly*0.2);
+        send(vp,toRev*1.3,toDly*0.2,null,true);
         const sT=schedT+atk+(v*0.22)+rel+0.4;
         vo.start(schedT); vo.stop(sT); trem.start(schedT); trem.stop(sT);
       }
       // Octave harmonic ghost — very quiet
-      if(shim>0.08) makeVoice(baseFreq*2,'sine',atk+0.4,rel+0.8,amp*shim*0.18,schedT,(Math.random()-0.5)*spread*0.8,toRev*1.6,0);
+      if(shim>0.08) makeVoice(baseFreq*2,'sine',atk+0.4,rel+0.8,amp*shim*0.18,schedT,(Math.random()-0.5)*spread*0.8,toRev*1.6,0,null,true);
       break;
     }
 
@@ -3261,14 +3260,14 @@ function spawnGrainAt(px, py, schedT, volMult=1){
       wob1.connect(wg1); wg1.connect(vo1.frequency);
       ve1.gain.setValueAtTime(0,schedT); ve1.gain.linearRampToValueAtTime(amp*0.72,schedT+atk);
       ve1.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel);
-      vo1.connect(ve1); send(ve1,toRev*1.5,toDly*0.4);
+      vo1.connect(ve1); send(ve1,toRev*1.5,toDly*0.4,null,true);
       vo1.start(schedT); wob1.start(schedT); vo1.stop(schedT+atk+rel+0.5); wob1.stop(schedT+atk+rel+0.5);
       // Sub-sub ghost — barely perceptible pressure
       const vo2=ctx.createOscillator(), ve2=ctx.createGain();
       vo2.type='sine'; vo2.frequency.value=Math.max(10,baseFreq*0.25);
       ve2.gain.setValueAtTime(0,schedT); ve2.gain.linearRampToValueAtTime(amp*0.42,schedT+atk+0.5);
       ve2.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel*1.2);
-      vo2.connect(ve2); send(ve2,toRev,0);
+      vo2.connect(ve2); send(ve2,toRev,0,null,true);
       vo2.start(schedT); vo2.stop(schedT+atk+rel*1.2+0.6);
       // Mid ghost — surface shimmer from deep below
       if(shim>0.05){
@@ -3279,7 +3278,7 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         wob3.connect(wg3); wg3.connect(vo3.frequency);
         ve3.gain.setValueAtTime(0,schedT); ve3.gain.linearRampToValueAtTime(amp*shim*0.22,schedT+atk+1.0);
         ve3.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+rel+1.2);
-        vo3.connect(ve3); send(ve3,toRev*1.9,0);
+        vo3.connect(ve3); send(ve3,toRev*1.9,0,null,true);
         vo3.start(schedT); wob3.start(schedT); vo3.stop(schedT+atk+rel+1.4); wob3.stop(schedT+atk+rel+1.4);
       }
       break;
@@ -3309,7 +3308,7 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,onset); ve.gain.linearRampToValueAtTime(aV,onset+atk);
         ve.gain.exponentialRampToValueAtTime(0.0001,onset+atk+rel);
         vp.pan.value=(v-1)*spread*0.9; vo.connect(ve); ve.connect(vt); vt.connect(vp);
-        send(vp,toRev*(1+v*0.25),v===0?toDly:0);
+        send(vp,toRev*(1+v*0.25),v===0?toDly:0,null,true);
         const sT=onset+atk+rel+0.3;
         vo.start(onset); vo.stop(sT); dL.start(onset); dL.stop(sT); tL.start(onset); tL.stop(sT);
       }
@@ -3335,11 +3334,11 @@ function spawnGrainAt(px, py, schedT, volMult=1){
         ve.gain.setValueAtTime(0,schedT); ve.gain.linearRampToValueAtTime(aV,schedT+atk+(v*0.12));
         ve.gain.exponentialRampToValueAtTime(0.0001,schedT+atk+(v*0.12)+rel);
         vp.pan.value=panV; vo.connect(ve); ve.connect(vt); vt.connect(vp);
-        send(vp,toRev*1.2,v===0?toDly:0);
+        send(vp,toRev*1.2,v===0?toDly:0,null,true);
         const sT=schedT+atk+(v*0.12)+rel+0.4;
         vo.start(schedT); vo.stop(sT); sw.start(schedT); sw.stop(sT);
       }
-      if(shim>0.08) makeVoice(baseFreq*2+(Math.random()-0.5)*10,'sine',atk+0.5,rel+1,amp*shim*0.18,schedT,0,toRev*1.5,0);
+      if(shim>0.08) makeVoice(baseFreq*2+(Math.random()-0.5)*10,'sine',atk+0.5,rel+1,amp*shim*0.18,schedT,0,toRev*1.5,0,null,true);
       break;
     }
 
@@ -3349,9 +3348,9 @@ function spawnGrainAt(px, py, schedT, volMult=1){
       const atk = 0.04+n('X-Atk')*dur*0.5;
       const rel = 0.12+n('X-Rel')*dur+smear*0.5;
       const ch  = (Math.random()-0.5)*jitter*0.4;
-      makeVoice(baseFreq+ch,'sine',atk,rel,amp*0.52,schedT,(Math.random()-0.5)*spread,toRev*1.2,toDly*0.8);
-      if(shim>0.08) makeVoice((baseFreq+ch)*2,'sine',atk+0.04,rel+0.1,amp*shim*0.28,schedT,(Math.random()-0.5)*spread*0.6,toRev*1.4,0);
-      if(n('X-Harm')>0.2) makeVoice((baseFreq+ch)*1.5,'sine',atk+0.02,rel*0.7,amp*0.18,schedT,(Math.random()-0.5)*spread,toRev,0);
+      makeVoice(baseFreq+ch,'sine',atk,rel,amp*0.52,schedT,(Math.random()-0.5)*spread,toRev*1.2,toDly*0.8,null,true);
+      if(shim>0.08) makeVoice((baseFreq+ch)*2,'sine',atk+0.04,rel+0.1,amp*shim*0.28,schedT,(Math.random()-0.5)*spread*0.6,toRev*1.4,0,null,true);
+      if(n('X-Harm')>0.2) makeVoice((baseFreq+ch)*1.5,'sine',atk+0.02,rel*0.7,amp*0.18,schedT,(Math.random()-0.5)*spread,toRev,0,null,true);
       break;
     }
   }
