@@ -688,8 +688,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <!-- LOOP LATENCY COMPENSATION -->
     <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px">
       <label style="font-size:8px;color:rgba(255,200,100,0.7);font-weight:900;letter-spacing:1.5px;white-space:nowrap">LOOP SYNC</label>
-      <input type="range" id="loop-lat-comp" min="-50" max="50" value="0" step="1" style="flex:1;accent-color:#ff9944" oninput="setLoopLatencyComp(+this.value)">
-      <div id="loop-lat-comp-v" style="font-size:10px;color:rgba(255,200,100,0.95);min-width:44px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">0 ms</div>
+      <input type="range" id="loop-lat-comp" min="-80" max="50" value="-47" step="1" style="flex:1;accent-color:#ff9944" oninput="setLoopLatencyComp(+this.value)">
+      <div id="loop-lat-comp-v" style="font-size:10px;color:rgba(255,200,100,0.95);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">-47 ms</div>
     </div>
 
     <!-- TOUCHPAD LOOPER -->
@@ -1555,7 +1555,7 @@ function setSmpLatch(on){
 }
 
 // ═══ LOOPER SHARED ═══════════════════════════════════════════════════════════
-let loopLatencyComp=parseFloat(localStorage.getItem('loop-lat-comp'))||0; // ms — manual latency compensation
+let loopLatencyComp=(v=>isNaN(v)?-47:v)(parseFloat(localStorage.getItem('loop-lat-comp'))); // ms — default -47
 
 function setLoopLatencyComp(ms){
   loopLatencyComp=ms; localStorage.setItem('loop-lat-comp',ms);
@@ -2174,6 +2174,8 @@ function updateGloopUI(){
   document.getElementById('gloop-play').classList.toggle('active',gloopPlay);
   document.getElementById('gloop-play').disabled=!has;
   document.getElementById('gloop-clear').disabled=!has&&!gloopRec;
+  // Mute monitoring when looper is active (user hears guitar through interface)
+  if(micMonitorGain) micMonitorGain.gain.value=(gloopRec||gloopPlay)?0:r('gloop-monvol')/100;
   const waiting=gloopRec&&!gloopPlay&&ctx&&ctx.currentTime<gloopRecStart;
   const sec=has?(gloopLen/ctx.sampleRate).toFixed(2)+'s':'';
   document.getElementById('gloop-status').textContent=
@@ -4539,7 +4541,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildChordSeq();
   buildSeqMode();
   // Restore loop latency compensation slider
-  if(loopLatencyComp){ const sl=document.getElementById('loop-lat-comp'); if(sl){ sl.value=loopLatencyComp; document.getElementById('loop-lat-comp-v').textContent=(loopLatencyComp>0?'+':'')+loopLatencyComp+' ms'; } }
+  { const sl=document.getElementById('loop-lat-comp'); if(sl){ sl.value=loopLatencyComp; document.getElementById('loop-lat-comp-v').textContent=(loopLatencyComp>0?'+':'')+loopLatencyComp+' ms'; } }
 
   document.getElementById('boot').addEventListener('click',e=>{
     init();
