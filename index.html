@@ -359,6 +359,11 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <span class="pad-label" id="samplerLabel" style="display:none;color:rgba(180,100,255,0.85);text-shadow:0 0 10px rgba(160,80,255,0.7)">SAMPLERIZER</span>
     <span class="pad-label" id="holoLabel" style="display:none;color:rgba(255,80,220,0.9);text-shadow:0 0 12px rgba(255,80,220,0.7)">✦ HOLOGRAM — <span id="holoPresetLbl">NEBULA</span> &nbsp;·&nbsp; X=POS Y=PITCH</span>
     <canvas id="padCanvas"></canvas>
+    <!-- Looper rec buttons overlaid on pad -->
+    <div id="pad-loop-btns" style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;gap:6px;z-index:10;pointer-events:none">
+      <button id="pad-gloop-rec" ontouchstart="event.stopPropagation()" onclick="event.stopPropagation();gloopRecord()" style="pointer-events:auto;flex:0 0 auto;padding:7px 12px;border-radius:20px;border:1.5px solid rgba(255,153,68,0.5);background:rgba(40,20,0,0.6);color:rgba(255,153,68,0.9);font-size:8px;font-weight:900;letter-spacing:1.5px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:all .15s">● GTR</button>
+      <button id="pad-padloop-rec" ontouchstart="event.stopPropagation()" onclick="event.stopPropagation();padloopRecord()" style="pointer-events:auto;flex:0 0 auto;padding:7px 12px;border-radius:20px;border:1.5px solid rgba(78,205,196,0.5);background:rgba(0,30,28,0.6);color:rgba(78,205,196,0.9);font-size:8px;font-weight:900;letter-spacing:1.5px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:all .15s">● PAD</button>
+    </div>
   </div>
 
 
@@ -1740,7 +1745,13 @@ async function initGloop(){
     gloopWorklet.port.onmessage=({data})=>{
       if(data.type==='done'){
         gloopLen=data.len; gloopRec=false;
-        if(data.len>0) gloopPlay=true;
+        if(data.len>0){
+          gloopPlay=true;
+          // Auto-enter overdub after first recording
+          gloopOverdub=true; gloopRec=true;
+          const decay=0.1+(r('gloop-decay')/100)*0.9;
+          gloopWorklet.port.postMessage({cmd:'overdub',decay});
+        }
         updateGloopUI();
       }
     };
@@ -1849,7 +1860,13 @@ async function initPadloop(){
     padloopWorklet.port.onmessage=({data})=>{
       if(data.type==='done'){
         padloopLen=data.len; padloopRec=false;
-        if(data.len>0) padloopPlay=true;
+        if(data.len>0){
+          padloopPlay=true;
+          // Auto-enter overdub after first recording
+          padloopOverdub=true; padloopRec=true;
+          const decay=0.1+(r('padloop-decay')/100)*0.9;
+          padloopWorklet.port.postMessage({cmd:'overdub',decay});
+        }
         updatePadloopUI();
       }
     };
@@ -1893,11 +1910,15 @@ function sessionRecToggle(){
   const mimeType=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';
   sessionMediaRec=new MediaRecorder(sessionDest.stream,{mimeType});
   sessionMediaRec.ondataavailable=e=>{ if(e.data&&e.data.size>0) sessionChunks.push(e.data); };
-  sessionMediaRec.onstop=()=>{
+  sessionMediaRec.onstop=async()=>{
     const blob=new Blob(sessionChunks,{type:'audio/webm'});
+    const fname='omniverse_'+(new Date().toISOString().slice(0,19).replace(/[T:]/g,'-'))+'.webm';
+    // iOS Safari: use share sheet if available, otherwise fallback to download link
+    if(navigator.canShare&&navigator.canShare({files:[new File([blob],fname,{type:'audio/webm'})]})){
+      try{ await navigator.share({files:[new File([blob],fname,{type:'audio/webm'})],title:fname}); return; }catch(e){}
+    }
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url;
-    a.download='omniverse_'+(new Date().toISOString().slice(0,19).replace(/[T:]/g,'-'))+'.webm';
+    const a=document.createElement('a'); a.href=url; a.download=fname;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),10000);
   };
@@ -2207,6 +2228,16 @@ function updateGloopUI(){
     waiting?'⏳ WAITING FOR BAR...':
     gloopRec?'● RECORDING...':
     (gloopPlay?`▶ LOOP ${sec}`:(has?`READY ${sec}`:'READY'));
+  // Pad overlay button visual state
+  const pgr=document.getElementById('pad-gloop-rec');
+  if(pgr){
+    const active=gloopRec||gloopOverdub;
+    pgr.style.borderColor=active?'rgba(255,68,68,0.9)':gloopPlay?'rgba(0,255,136,0.7)':'rgba(255,153,68,0.5)';
+    pgr.style.background=active?'rgba(255,30,30,0.45)':gloopPlay?'rgba(0,80,40,0.5)':'rgba(40,20,0,0.6)';
+    pgr.style.color=active?'#ff4466':gloopPlay?'#00ff88':'rgba(255,153,68,0.9)';
+    pgr.style.boxShadow=active?'0 0 12px rgba(255,68,68,0.6)':gloopPlay?'0 0 10px rgba(0,255,136,0.4)':'none';
+    pgr.textContent=gloopOverdub?'◉ GTR OVR':gloopRec?'● GTR REC':gloopPlay?'▶ GTR':'● GTR';
+  }
 }
 function drawGloopVU(){
   const canvas=document.getElementById('gloop-vu'); if(!canvas||!gloopAnalyser) return;
@@ -2264,6 +2295,16 @@ function updatePadloopUI(){
     waiting?'⏳ WAITING FOR BAR...':
     padloopRec?'● RECORDING...':
     (padloopPlay?`▶ LOOP ${sec}`:(has?`READY ${sec}`:'READY'));
+  // Pad overlay button visual state
+  const ppr=document.getElementById('pad-padloop-rec');
+  if(ppr){
+    const active=padloopRec||padloopOverdub;
+    ppr.style.borderColor=active?'rgba(255,68,68,0.9)':padloopPlay?'rgba(0,255,136,0.7)':'rgba(78,205,196,0.5)';
+    ppr.style.background=active?'rgba(255,30,30,0.45)':padloopPlay?'rgba(0,80,40,0.5)':'rgba(0,30,28,0.6)';
+    ppr.style.color=active?'#ff4466':padloopPlay?'#00ff88':'rgba(78,205,196,0.9)';
+    ppr.style.boxShadow=active?'0 0 12px rgba(255,68,68,0.6)':padloopPlay?'0 0 10px rgba(0,255,136,0.4)':'none';
+    ppr.textContent=padloopOverdub?'◉ PAD OVR':padloopRec?'● PAD REC':padloopPlay?'▶ PAD':'● PAD';
+  }
 }
 function drawPadloopVU(){
   const canvas=document.getElementById('padloop-vu'); if(!canvas||!padloopAnalyser) return;
@@ -4176,7 +4217,7 @@ function loop(){
       const wasLast=(seqStep===seqBarCount*16-1);
       seqStep=(seqStep+1)%(seqBarCount*16);
       // Update nextBarTime at every bar boundary so loopers always get the next 1-bar snap point
-      if(seqStep%16===0) nextBarTime=nextT;
+      if(seqStep%16===0){ nextBarTime=nextT; bassArpStep=0; }
       if(wasLast){
         chordBarCount++;
         if(chordBarCount%chordBarsPerStep===0){
