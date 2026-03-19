@@ -688,8 +688,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <!-- LOOP LATENCY COMPENSATION -->
     <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px">
       <label style="font-size:8px;color:rgba(255,200,100,0.7);font-weight:900;letter-spacing:1.5px;white-space:nowrap">LOOP SYNC</label>
-      <input type="range" id="loop-lat-comp" min="-80" max="50" value="-47" step="1" style="flex:1;accent-color:#ff9944" oninput="setLoopLatencyComp(+this.value)">
-      <div id="loop-lat-comp-v" style="font-size:10px;color:rgba(255,200,100,0.95);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">-47 ms</div>
+      <input type="range" id="loop-lat-comp" min="-100" max="100" value="50" step="1" style="flex:1;accent-color:#ff9944" oninput="setLoopLatencyComp(+this.value)">
+      <div id="loop-lat-comp-v" style="font-size:10px;color:rgba(255,200,100,0.95);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">+50 ms</div>
     </div>
 
     <!-- TOUCHPAD LOOPER -->
@@ -1555,10 +1555,10 @@ function setSmpLatch(on){
 }
 
 // ═══ LOOPER SHARED ═══════════════════════════════════════════════════════════
-let loopLatencyComp=(v=>isNaN(v)?-47:v)(parseFloat(localStorage.getItem('loop-lat-comp2'))); // ms — default -47
+let loopLatencyComp=(v=>isNaN(v)?50:v)(parseFloat(localStorage.getItem('loop-lat-comp3'))); // ms — default +50
 
 function setLoopLatencyComp(ms){
-  loopLatencyComp=ms; localStorage.setItem('loop-lat-comp2',ms);
+  loopLatencyComp=ms; localStorage.setItem('loop-lat-comp3',ms);
   document.getElementById('loop-lat-comp-v').textContent=(ms>0?'+':'')+ms+' ms';
   const rtt=ms/1000;
   if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_rtt',rtt});
