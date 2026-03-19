@@ -605,12 +605,32 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- CONNECT prompt — shown until user activates mic input -->
         <div id="gloop-connect-row" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 0 12px">
-          <button class="loop-btn" style="max-width:220px;padding:13px 10px;font-size:10px;letter-spacing:2px" onclick="gloopEnumDevices()">⚡ TAP TO USE MIC</button>
-          <div style="font-size:8px;color:rgba(255,153,68,0.45);letter-spacing:1px;text-align:center">Tap to activate mic input for looping</div>
+          <button class="loop-btn" style="max-width:220px;padding:13px 10px;font-size:10px;letter-spacing:2px" onclick="gloopEnumDevices()">⚡ CONNECT AUDIO INPUT</button>
+          <div style="font-size:8px;color:rgba(255,153,68,0.45);letter-spacing:1px;text-align:center">Activates mic — keep off to preserve synth audio quality</div>
         </div>
 
         <!-- Full controls — hidden until connected -->
         <div id="gloop-controls" style="display:none">
+
+          <!-- I/O device selectors -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div>
+              <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">INPUT</label>
+              <select class="gloop-select" id="gloop-device" onchange="gloopConnectDevice(this.value)"></select>
+            </div>
+            <div>
+              <label style="font-size:8px;color:rgba(255,153,68,0.7);font-weight:900;letter-spacing:2px;display:block;margin-bottom:4px">OUTPUT</label>
+              <select class="gloop-select" id="gloop-outdevice" onchange="gloopSetOutput(this.value)"></select>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+            <button class="cmr" style="border-color:rgba(255,100,60,0.5);color:rgba(255,100,60,0.8)" onclick="gloopDisconnect()">✕ DISCONNECT MIC</button>
+          </div>
+          <!-- iOS compensation note -->
+          <div style="font-size:8px;color:rgba(255,153,68,0.5);letter-spacing:1px;margin-bottom:8px;line-height:1.5">
+            iOS reduces synth volume when mic is active. Use <b style="color:rgba(255,153,68,0.8)">Synth Boost</b> to compensate. Keep <b style="color:rgba(255,153,68,0.8)">Monitor at 0</b> until you're ready — raising it adds your guitar to the output.
+          </div>
 
           <!-- 4 level controls -->
           <div class="pg4" style="margin-bottom:8px">
@@ -652,32 +672,10 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <!-- VU meter -->
           <div class="gloop-vu-wrap"><canvas id="gloop-vu"></canvas></div>
 
-          <!-- FX sends -->
-          <div class="pg2" style="margin-bottom:8px">
-            <div class="ctrl fx-ctrl">
-              <label>→ Rev</label>
-              <input type="range" id="gloop-rev-send" min="0" max="100" value="0" oninput="document.getElementById('gloop-rev-send-v').textContent=this.value; if(gloopRevSend) gloopRevSend.gain.value=this.value/100;">
-              <div class="dv" id="gloop-rev-send-v">0</div>
-            </div>
-            <div class="ctrl fx-ctrl">
-              <label>→ Dly</label>
-              <input type="range" id="gloop-dly-send" min="0" max="100" value="0" oninput="document.getElementById('gloop-dly-send-v').textContent=this.value; if(gloopDlySend) gloopDlySend.gain.value=this.value/100;">
-              <div class="dv" id="gloop-dly-send-v">0</div>
-            </div>
-          </div>
-
-          <!-- Latency compensation — shift recording start to align with bar boundary -->
-          <div class="ctrl" style="border-color:rgba(255,153,68,0.25);margin-bottom:8px">
-            <label style="color:rgba(255,153,68,0.7)" title="Shifts recording start to compensate for hardware mic input latency. Raise if loop plays back late.">COMP ms</label>
-            <input type="range" id="gloop-comp" min="0" max="200" step="5" value="50" oninput="gloopLatTrim=this.value/1000; document.getElementById('gloop-comp-v').textContent=this.value;">
-            <div class="dv" id="gloop-comp-v">50</div>
-          </div>
-
           <!-- Transport -->
           <div class="looper-btns" style="margin-top:8px">
             <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
             <button class="loop-btn play" id="gloop-play"  onclick="gloopToggle()"  disabled>▶ LOOP</button>
-            <button class="loop-btn"      id="gloop-rev"   onclick="gloopRevToggle()">◀ REV</button>
             <button class="loop-btn"      id="gloop-clear" onclick="gloopClear()"   disabled>✕ CLEAR</button>
           </div>
           <div class="loop-status" id="gloop-status">READY</div>
@@ -1560,26 +1558,18 @@ let gloopRec=false;
 let gloopPlay=false;
 let gloopOverdub=false;
 let gloopFinalizing=false;
-let gloopReverse=false;   // reverse playback direction
 let gloopSamples=[];      // array of Float32Array chunks during first-pass recording
 let gloopTargetLen=0;     // samples to record (bars × 4 beats × sr)
 let gloopRecStart=0;      // ctx.currentTime when recording should begin
 let gloopBars=1;
 let gloopNode=null;
 let gloopOutGain=null;    // loop playback volume → masterEQ
-let gloopRevSend=null;    // send to reverb bus
-let gloopDlySend=null;    // send to delay bus
 let gloopAnalyser=null;
 let gloopAnalyserBuf=null;
 let micStream=null;
 let micSource=null;
 let micInputGain=null;    // In Level  — how hot the signal going into the loop is
 let micMonitorGain=null;  // Monitor   — how loud you hear yourself live (direct, no latency)
-let micInputLatency=0.05; // estimated hardware mic→Web Audio input latency (seconds)
-let gloopLatTrim=0.05;    // COMP slider value in seconds — shifts recording threshold
-let gloopSource=null;     // AudioBufferSourceNode — handles loop playback with perfect clock sync
-let gloopPlayStartTime=0; // ctx time when current loop started playing (for overdub pos sync)
-let gloopNeedSync=false;  // when true, gloopProcess recomputes gloopPos from e.playbackTime on next callback
 
 // ═══ TOUCHPAD LOOPER STATE ════════════════════════
 // Buffer/position/chunk state lives inside the AudioWorklet — not on main thread
@@ -1610,9 +1600,6 @@ function initGloop(){
   // This keeps iOS in Playback audio session mode (higher quality/volume).
   gloopOutGain=ctx.createGain(); gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   gloopOutGain.connect(masterEQ);
-  // Rev/Dly sends — connect from loop output to global fx buses
-  gloopRevSend=ctx.createGain(); gloopRevSend.gain.value=0; gloopOutGain.connect(gloopRevSend); gloopRevSend.connect(revPre);
-  gloopDlySend=ctx.createGain(); gloopDlySend.gain.value=0; gloopOutGain.connect(gloopDlySend); gloopDlySend.connect(delNode);
   gloopAnalyser=ctx.createAnalyser(); gloopAnalyser.fftSize=256;
   gloopAnalyserBuf=new Uint8Array(gloopAnalyser.frequencyBinCount);
   // Do NOT call gloopEnumDevices() here
@@ -1894,21 +1881,64 @@ function flashCircle(id){
 }
 
 async function gloopEnumDevices(){
+  // Show connecting state on the button
   const connectRow=document.getElementById('gloop-connect-row');
   if(connectRow) connectRow.querySelector('button').textContent='⏳ CONNECTING...';
   try{
     const tmp=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     tmp.getTracks().forEach(t=>t.stop());
   }catch(e){
-    if(connectRow) connectRow.querySelector('button').textContent='⚡ TAP TO USE MIC';
+    if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
     const st=document.getElementById('gloop-status');
     if(st){ st.textContent='MIC PERMISSION DENIED'; st.style.display='block'; }
     return;
   }
+  // Permission granted — reveal full controls, hide connect prompt
   if(connectRow) connectRow.style.display='none';
   const controls=document.getElementById('gloop-controls');
   if(controls) controls.style.display='block';
-  await gloopConnectDevice(null);
+  const all=await navigator.mediaDevices.enumerateDevices();
+  const inputs=all.filter(d=>d.kind==='audioinput');
+  const outputs=all.filter(d=>d.kind==='audiooutput');
+
+  // ── Input dropdown ──
+  const sel=document.getElementById('gloop-device');
+  sel.innerHTML='';
+  let bestIn=null;
+  inputs.forEach((d,i)=>{
+    const opt=document.createElement('option');
+    opt.value=d.deviceId;
+    opt.textContent=d.label||(d.deviceId==='default'?'Default Input':`Input ${i+1}`);
+    sel.appendChild(opt);
+    if(!bestIn && d.deviceId!=='default' && !/built.?in|internal/i.test(d.label))
+      bestIn=d.deviceId;
+  });
+  if(!bestIn && inputs.length) bestIn=inputs[0].deviceId;
+  if(bestIn) sel.value=bestIn;
+
+  // ── Output dropdown ──
+  const outSel=document.getElementById('gloop-outdevice');
+  outSel.innerHTML='';
+  if(ctx.setSinkId && outputs.length){
+    let bestOut='default';
+    outputs.forEach((d,i)=>{
+      const opt=document.createElement('option');
+      opt.value=d.deviceId;
+      opt.textContent=d.label||(d.deviceId==='default'?'Default Output':`Output ${i+1}`);
+      if(!bestOut||( d.deviceId!=='default'&&!/built.?in|internal/i.test(d.label)))
+        bestOut=d.deviceId;
+      outSel.appendChild(opt);
+    });
+    outSel.value=bestOut;
+    await gloopSetOutput(bestOut);
+  } else {
+    const opt=document.createElement('option');
+    opt.textContent='System routing (iOS)'; opt.value='';
+    outSel.appendChild(opt);
+    outSel.disabled=true; outSel.style.opacity='0.35';
+  }
+
+  await gloopConnectDevice(bestIn);
 }
 
 async function gloopSetOutput(deviceId){
@@ -1924,29 +1954,16 @@ async function gloopConnectDevice(deviceId){
   if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
   if(micStream) micStream.getTracks().forEach(t=>t.stop());
   try{
-    // Use {ideal} not {exact} — exact throws a hard error if the ID has changed
-    // (iOS reassigns deviceIds between sessions). ideal tries the device but falls back.
     micStream=await navigator.mediaDevices.getUserMedia({audio:{
       deviceId:deviceId?{ideal:deviceId}:undefined,
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
     }});
     micSource=ctx.createMediaStreamSource(micStream);
-    // Auto-detect input latency: device ADC latency reported by browser
-    const _trk=micStream.getAudioTracks()[0];
-    const _tset=_trk?.getSettings?.()||{};
-    const _outLat=(ctx.outputLatency||ctx.baseLatency||0);
-    const _inLat=(_tset.latency||0);
-    micInputLatency=Math.max(0.01, Math.min(0.2, _outLat+_inLat||0.05));
-    gloopLatTrim=micInputLatency;
-    const _cs=document.getElementById('gloop-comp');
-    if(_cs){ _cs.value=Math.round(micInputLatency*1000); document.getElementById('gloop-comp-v').textContent=Math.round(micInputLatency*1000); }
 
     // VU taps raw mic signal
     micSource.connect(gloopAnalyser);
 
     // ── Monitor path ────────────────────────────────────────────────────────
-    // Starts at gain 0 (slider default) so no mic noise enters master chain
-    // until the user explicitly raises the Monitor knob.
     micMonitorGain=ctx.createGain();
     micMonitorGain.gain.value=r('gloop-monvol')/100; // 0 by default
     micSource.connect(micMonitorGain);
@@ -1962,18 +1979,9 @@ async function gloopConnectDevice(deviceId){
     gloopNode.connect(gloopOutGain);
 
     // ── iOS PlayAndRecord compensation ─────────────────────────────────────
-    // iOS switches audio session to PlayAndRecord when getUserMedia activates,
-    // which reduces output volume by ~6 dB. Compensate by boosting master gain.
-    // The 'Synth Boost' slider (gloop-boost) lets the user fine-tune this.
     const boost=1+(r('gloop-boost')/100)*1.5; // 1.0 … 2.5
     master.gain.setTargetAtTime(Math.min(master.gain.value*boost,2.5), ctx.currentTime, 0.1);
 
-    // Update the output info label — iOS routes output through same device as input
-    const outInfo=document.getElementById('gloop-out-info');
-    if(outInfo && outInfo.style.display!=='none'){
-      const trackLabel=micStream.getAudioTracks()[0]?.label||'Connected Interface';
-      document.getElementById('gloop-out-label').textContent=trackLabel;
-    }
     document.getElementById('gloop-status').textContent='READY';
   }catch(err){
     document.getElementById('gloop-status').textContent='ERR: '+err.message;
@@ -1985,173 +1993,69 @@ function gloopProcess(e){
   const out=e.outputBuffer.getChannelData(0);
   const count=inp.length;
   const inLvl=r('gloop-inlvl')/100;
-  const t=e.playbackTime; // sample-accurate buffer start time
 
-  if(gloopRec&&!gloopPlay){
-    // ── First pass: recording ──
-    if(t+count/ctx.sampleRate<=gloopRecStart){ out.fill(0); return; }
-    const skipSamples=(t<gloopRecStart)?Math.max(0,Math.round((gloopRecStart-t)*ctx.sampleRate)):0;
-    const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
-    const remaining=gloopTargetLen-recorded;
-    const toRecord=Math.min(count-skipSamples,remaining);
-    if(toRecord>0){
-      const chunk=new Float32Array(toRecord);
-      for(let i=0;i<toRecord;i++) chunk[i]=inp[skipSamples+i]*inLvl;
-      gloopSamples.push(chunk);
+  if(gloopRec && !gloopPlay){
+    // ── First pass ──
+    if(ctx.currentTime < gloopRecStart){
+      out.fill(0); return;
     }
-    if(recorded+toRecord>=gloopTargetLen){
-      // ── Finalize: build buffer and hand off to AudioBufferSourceNode ──
-      const total=gloopSamples.reduce((s,c)=>s+c.length,0);
-      if(total>0){
-        gloopBuffer=new Float32Array(total);
-        let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
-        gloopLen=total; gloopPos=0;
-        // Schedule an AudioBufferSourceNode to start EXACTLY at the bar boundary.
-        // This hands timing to the Web Audio scheduler — loop period is sample-accurate.
-        const abuf=ctx.createBuffer(1,total,ctx.sampleRate);
-        abuf.getChannelData(0).set(gloopBuffer);
-        if(gloopSource){try{gloopSource.stop(0);}catch(e){}try{gloopSource.disconnect();}catch(e){} gloopSource=null;}
-        const src=ctx.createBufferSource();
-        src.buffer=abuf; src.loop=true; src.loopStart=0; src.loopEnd=total/ctx.sampleRate;
-        src.connect(gloopOutGain);
-        gloopPlayStartTime=gloopRecStart+gloopTargetLen/ctx.sampleRate; // bar boundary
-        src.start(gloopPlayStartTime, gloopLatTrim);
-        gloopSource=src; gloopPlay=true;
-      }
-      gloopSamples=[]; gloopRec=false; gloopFinalizing=false;
-      setTimeout(updateGloopUI,0);
-      out.fill(0); // AudioBufferSourceNode handles audio from here
-      return;
+    const chunk=new Float32Array(count);
+    for(let i=0;i<count;i++) chunk[i]=inp[i]*inLvl;
+    gloopSamples.push(chunk);
+    const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
+    if(gloopTargetLen>0 && recorded>=gloopTargetLen && !gloopFinalizing){
+      gloopFinalizing=true; setTimeout(gloopFinalize,0);
     }
     out.fill(0);
   } else if(gloopPlay){
-    // ── Playback ──
-    // Normal playback: AudioBufferSourceNode handles audio; ScriptProcessor outputs silence.
-    // Overdub / reverse: ScriptProcessor mixes live input into gloopBuffer and outputs.
-    if((gloopOverdub&&gloopRec)||gloopReverse){
-      // Sync gloopPos on the audio thread using e.playbackTime — more accurate than ctx.currentTime
-      if(gloopNeedSync){
-        gloopNeedSync=false;
-        const loopDur=gloopLen/ctx.sampleRate;
-        const elapsed=e.playbackTime-gloopPlayStartTime;
-        gloopPos=Math.round(((elapsed%loopDur+loopDur)%loopDur)*ctx.sampleRate)%gloopLen;
-      }
-      const retain=0.1+(r('gloop-decay')/100)*0.9;
-      for(let i=0;i<count;i++){
-        if(gloopOverdub&&gloopRec) gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain+inp[i]*inLvl;
-        out[i]=gloopBuffer[gloopPos];
-        gloopPos=gloopReverse?(gloopPos-1+gloopLen)%gloopLen:(gloopPos+1)%gloopLen;
-      }
-    } else {
-      out.fill(0);
+    // ── Playback / overdub ──
+    const retain=0.1+(r('gloop-decay')/100)*0.9;
+    for(let i=0;i<count;i++){
+      if(gloopOverdub && gloopRec)
+        gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain + inp[i]*inLvl;
+      out[i]=gloopBuffer[gloopPos];
+      gloopPos=(gloopPos+1)%gloopLen;
     }
   } else {
     out.fill(0);
   }
 }
 
-function _gloopStopSrc(){
-  if(gloopSource){try{gloopSource.stop(0);}catch(e){}try{gloopSource.disconnect();}catch(e){} gloopSource=null;}
-}
-function _gloopMakeSrc(startTime, offset=0){
-  const abuf=ctx.createBuffer(1,gloopLen,ctx.sampleRate);
-  abuf.getChannelData(0).set(gloopBuffer);
-  const src=ctx.createBufferSource();
-  src.buffer=abuf; src.loop=true; src.loopStart=0; src.loopEnd=gloopLen/ctx.sampleRate;
-  src.connect(gloopOutGain); src.start(startTime, offset);
-  gloopSource=src;
-}
-function _gloopSyncPos(){
-  // Signal the audio thread to recompute gloopPos from e.playbackTime on its next callback.
-  // Using ctx.currentTime here would lag the audio thread by up to one buffer (~46ms).
-  if(!gloopPlayStartTime||!gloopLen) return;
-  gloopNeedSync=true;
-}
-
 function gloopFinalize(){
-  // Manual stop — finalize whatever is recorded so far
-  if(!gloopRec) return;
   gloopFinalizing=false; gloopRec=false;
   const total=gloopSamples.reduce((s,c)=>s+c.length,0);
   if(total>0){
     gloopBuffer=new Float32Array(total);
-    let off=0; gloopSamples.forEach(c=>{gloopBuffer.set(c,off);off+=c.length;});
-    gloopLen=total; gloopPos=0;
-    _gloopStopSrc();
-    gloopPlayStartTime=ctx.currentTime;
-    _gloopMakeSrc(gloopPlayStartTime, gloopLatTrim);
-    gloopPlay=true;
+    let off=0; gloopSamples.forEach(c=>{ gloopBuffer.set(c,off); off+=c.length; });
+    gloopLen=total; gloopPos=0; gloopPlay=true;
   }
-  gloopSamples=[]; updateGloopUI();
+  gloopSamples=[];
+  updateGloopUI();
 }
 
 function gloopRecord(){
-  if(gloopRec&&!gloopOverdub){ gloopFinalize(); return; }
-  if(gloopOverdub){
-    // End overdub — rebuild AudioBuffer with modified content, resume from current position
-    gloopRec=false; gloopOverdub=false;
-    if(gloopBuffer&&gloopLen>0){
-      _gloopStopSrc();
-      // Resume from where the ScriptProcessor left off so phase is preserved
-      const offset=(gloopPos/ctx.sampleRate)%(gloopLen/ctx.sampleRate);
-      gloopPlayStartTime=ctx.currentTime-offset; // virtual phase reference
-      _gloopMakeSrc(ctx.currentTime, offset);
-    }
-    updateGloopUI(); return;
-  }
-  if(gloopPlay&&gloopLen>0){
-    // Start overdub — stop AudioBufferSourceNode, ScriptProcessor takes over
-    _gloopStopSrc();
-    _gloopSyncPos(); // sync gloopPos to current playback position
-    gloopOverdub=true; gloopRec=true; updateGloopUI(); return;
-  }
+  if(gloopRec && !gloopOverdub){ gloopFinalize(); return; }
+  if(gloopOverdub){ gloopRec=false; gloopOverdub=false; updateGloopUI(); return; }
+  if(gloopPlay && gloopLen>0){ gloopOverdub=true; gloopRec=true; updateGloopUI(); return; }
   if(!micSource){ document.getElementById('gloop-status').textContent='NO INPUT'; return; }
-  // Fresh record — snap start to next bar boundary when sequencer is running
-  _gloopStopSrc();
   gloopSamples=[]; gloopBuffer=null; gloopLen=0; gloopPos=0;
   gloopPlay=false; gloopOverdub=false; gloopFinalizing=false; gloopRec=true;
-  gloopRecStart=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
-  gloopTargetLen=gloopBars*Math.round(16*(60/bpm/4)*ctx.sampleRate);
+  gloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
+  gloopTargetLen=Math.round(gloopBars*4*(60/bpm)*ctx.sampleRate);
   updateGloopUI();
 }
 function gloopToggle(){
   if(!gloopLen) return;
-  gloopPlay=!gloopPlay;
-  if(gloopPlay){
-    _gloopStopSrc();
-    const t=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
-    gloopPlayStartTime=t;
-    _gloopMakeSrc(t, gloopLatTrim);
-  } else {
-    _gloopStopSrc();
-  }
+  gloopPlay=!gloopPlay; if(gloopPlay) gloopPos=0;
   updateGloopUI();
 }
 function gloopClear(){
-  _gloopStopSrc();
-  gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false; gloopPlayStartTime=0;
-  gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[]; gloopNeedSync=false;
+  gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false;
+  gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
   if(gloopOutGain) gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   updateGloopUI();
 }
-function gloopRevToggle(){
-  gloopReverse=!gloopReverse;
-  document.getElementById('gloop-rev').classList.toggle('active',gloopReverse);
-  if(!gloopPlay||!gloopLen) return;
-  if(gloopReverse){
-    // Reverse: stop AudioBufferSourceNode, ScriptProcessor handles reversed playback
-    _gloopStopSrc();
-    _gloopSyncPos();
-  } else {
-    // Forward: restart AudioBufferSourceNode from the current gloopPos (preserve loop phase)
-    const t=ctx.currentTime;
-    const offset=(gloopPos/ctx.sampleRate)%(gloopLen/ctx.sampleRate);
-    gloopPlayStartTime=t-offset;
-    _gloopMakeSrc(t, offset);
-  }
-}
 function gloopDisconnect(){
-  _gloopStopSrc();
   if(gloopNode){ try{gloopNode.disconnect();}catch(e){} gloopNode=null; }
   if(micMonitorGain){ try{micMonitorGain.disconnect();}catch(e){} micMonitorGain=null; }
   if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
@@ -2159,7 +2063,7 @@ function gloopDisconnect(){
   if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
   if(master) master.gain.setTargetAtTime(0.75, ctx.currentTime, 0.1);
   const cr=document.getElementById('gloop-connect-row'), gc=document.getElementById('gloop-controls');
-  if(cr){ cr.style.display='flex'; cr.querySelector('button').textContent='⚡ TAP TO USE MIC'; }
+  if(cr){ cr.style.display='flex'; cr.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT'; }
   if(gc) gc.style.display='none';
   gloopClear();
 }
@@ -2187,7 +2091,7 @@ function drawGloopVU(){
   const w=canvas.width, h=canvas.height;
   gc.fillStyle='rgba(0,0,0,0.3)'; gc.fillRect(0,0,w,h);
   const grad=gc.createLinearGradient(0,0,w,0);
-  grad.addColorStop(0,'#ff9944'); grad.addColorStop(0.65,'#cc44ff'); grad.addColorStop(1,'#ff2200');
+  grad.addColorStop(0,'#00ff88'); grad.addColorStop(0.65,'#ffcc00'); grad.addColorStop(1,'#ff2200');
   gc.fillStyle=grad; gc.fillRect(0,1,w*Math.min(peak*2,1),h-2);
 }
 
