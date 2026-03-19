@@ -1693,9 +1693,14 @@ class GloopProcessor extends AudioWorkletProcessor {
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
       const d=this._decay;
+      // Input arrives rtt late — write it rtt samples earlier in the buffer
+      // so overdub layers align with the original recording
+      const writeOff=Math.round(this._rtt*sampleRate);
       for(let i=0;i<blockSize;i++){
         const inp=ch?ch[i]:0;
-        b[this._pos]=b[this._pos]*d+inp; out[i]=b[this._pos];
+        const wp=((this._pos-writeOff)%this._len+this._len)%this._len;
+        b[wp]=b[wp]*d+inp;
+        out[i]=b[this._pos];
         this._pos=(this._pos+1)%this._len;
       }
     } else { out.fill(0); }
@@ -1807,9 +1812,13 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
       const d=this._decay;
+      const writeOff=Math.round(this._rtt*sampleRate);
+      const len=b.length;
       for(let i=0;i<out.length;i++){
-        const inp=ch?ch[i]:0; b[this._pos]=b[this._pos]*d+inp;
-        out[i]=b[this._pos]; this._pos=(this._pos+1)%b.length;
+        const inp=ch?ch[i]:0;
+        const wp=((this._pos-writeOff)%len+len)%len;
+        b[wp]=b[wp]*d+inp;
+        out[i]=b[this._pos]; this._pos=(this._pos+1)%len;
       }
     } else { out.fill(0); }
     return true;
@@ -2103,11 +2112,10 @@ async function gloopConnectDevice(deviceId){
     // VU taps raw mic signal
     micSource.connect(gloopAnalyser);
 
-    // ── Monitor path — direct, zero latency ─────────────────────────────────
+    // ── Monitor path — DISABLED, user monitors through audio interface ──────
+    // No connection from mic to output — eliminates any monitoring bleed
     micMonitorGain=ctx.createGain();
-    micMonitorGain.gain.value=0; // always muted — user monitors through audio interface
-    micSource.connect(micMonitorGain);
-    micMonitorGain.connect(masterEQ);
+    micMonitorGain.gain.value=0;
 
     // ── Recording path → AudioWorklet (runs on audio thread, ~2.9ms latency) ─
     micInputGain=ctx.createGain();
