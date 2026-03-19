@@ -685,6 +685,13 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
       </div>
     </div>
 
+    <!-- LOOP LATENCY COMPENSATION -->
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px">
+      <label style="font-size:8px;color:rgba(255,200,100,0.7);font-weight:900;letter-spacing:1.5px;white-space:nowrap">LOOP SYNC</label>
+      <input type="range" id="loop-lat-comp" min="0" max="50" value="0" step="1" style="flex:1;accent-color:#ff9944" oninput="setLoopLatencyComp(+this.value)">
+      <div id="loop-lat-comp-v" style="font-size:9px;color:rgba(255,200,100,0.9);min-width:32px;text-align:right;font-variant-numeric:tabular-nums">0ms</div>
+    </div>
+
     <!-- TOUCHPAD LOOPER -->
     <div class="drawer" id="drPADLOOP">
       <div class="drawer-hdr" onclick="toggleD('drPADLOOP')" style="color:#4ecdc4">
@@ -1547,6 +1554,17 @@ function setSmpLatch(on){
   document.getElementById('smpHoldBtn').classList.toggle('on', !on);
 }
 
+// ═══ LOOPER SHARED ═══════════════════════════════════════════════════════════
+let loopLatencyComp=parseFloat(localStorage.getItem('loop-lat-comp'))||0; // ms — manual latency compensation
+
+function setLoopLatencyComp(ms){
+  loopLatencyComp=ms; localStorage.setItem('loop-lat-comp',ms);
+  document.getElementById('loop-lat-comp-v').textContent=ms+'ms';
+  const rtt=ms/1000;
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_rtt',rtt});
+  if(padloopWorklet) padloopWorklet.port.postMessage({cmd:'set_rtt',rtt});
+}
+
 // ═══ GUITAR LOOPER ════════════════════════════════════════════════════════════
 // Real PCM audio looper synced to the main sequencer clock.
 // ScriptProcessorNode mixes live input directly into the Float32Array loop buffer
@@ -1614,6 +1632,7 @@ class GloopProcessor extends AudioWorkletProcessor {
       else if(cmd==='stop_overdub'){ this._state='playing'; }
       else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._pos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
+      else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
     };
   }
   // Sync _pos to the bar grid with RTT latency compensation.
@@ -1724,10 +1743,10 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     super();
     this._state='idle'; this._buf=null; this._pos=0;
     this._targetLen=0; this._recStart=0; this._recStartAbsolute=-1; this._decay=1.0;
-    this._chunks=[]; this._accumulated=0;
+    this._rtt=0; this._chunks=[]; this._accumulated=0;
     this.port.onmessage=({data})=>{
       const cmd=data.cmd;
-      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; }
+      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; this._rtt=data.rtt||0; }
       else if(cmd==='stop_record'){ this._finalize(); }
       else if(cmd==='overdub'){ if(this._buf){ this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
@@ -1735,11 +1754,13 @@ class PadLoopProcessor extends AudioWorkletProcessor {
       else if(cmd==='stop'){ this._state='idle'; }
       else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._pos=0; this._recStartAbsolute=-1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
+      else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
     };
   }
   _syncPos(){
     if(this._recStartAbsolute<0||!this._buf){ this._pos=0; return; }
-    const elapsed=currentTime-this._recStartAbsolute;
+    const adjustedStart=this._recStartAbsolute-this._rtt;
+    const elapsed=currentTime-adjustedStart;
     const len=this._buf.length;
     this._pos=((Math.round(elapsed*sampleRate)%len)+len)%len;
   }
@@ -2118,11 +2139,9 @@ function gloopRecord(){
   gloopLen=0; gloopPlay=false; gloopOverdub=false; gloopRec=true;
   gloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
   gloopTargetLen=Math.round(gloopBars*4*(60/bpm)*ctx.sampleRate);
-  // Input capture latency: guitar beat 1 arrives this late in the recording buffer.
+  // Manual compensation + auto-detected input capture latency.
   // Worklet advances playback pos so beat 1 lines up with the bar grid.
-  // outputLatency is NOT included — it delays sequencer and loop equally.
-  const inputLat=ctx.inputLatency||(ctx.baseLatency||0);
-  const rtt=inputLat+(ctx.baseLatency||0)+128/ctx.sampleRate;
+  const rtt=loopLatencyComp/1000;
   if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'record',targetLen:gloopTargetLen,recStart:gloopRecStart,rtt});
   updateGloopUI();
 }
@@ -2188,7 +2207,7 @@ function padloopRecord(){
   // bars × 16 steps × step duration in samples — same as gloopTargetLen formula
   const _barSamples=Math.round(16*(60/bpm/4)*ctx.sampleRate);
   padloopTargetLen=padloopBars*_barSamples;
-  padloopWorklet.port.postMessage({cmd:'record',targetLen:padloopTargetLen,recStart:padloopRecStart});
+  padloopWorklet.port.postMessage({cmd:'record',targetLen:padloopTargetLen,recStart:padloopRecStart,rtt:loopLatencyComp/1000});
   // Retroactively tap samplerizer if a note is already held
   if(samplerGain&&padloopCapBus) try{ samplerGain.connect(padloopCapBus); }catch(e){}
   updatePadloopUI();
@@ -4519,6 +4538,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   buildChordSeq();
   buildSeqMode();
+  // Restore loop latency compensation slider
+  if(loopLatencyComp){ const sl=document.getElementById('loop-lat-comp'); if(sl){ sl.value=loopLatencyComp; document.getElementById('loop-lat-comp-v').textContent=loopLatencyComp+'ms'; } }
 
   document.getElementById('boot').addEventListener('click',e=>{
     init();
