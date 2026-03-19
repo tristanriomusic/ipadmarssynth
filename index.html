@@ -688,8 +688,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <!-- LOOP LATENCY COMPENSATION -->
     <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px">
       <label style="font-size:8px;color:rgba(255,200,100,0.7);font-weight:900;letter-spacing:1.5px;white-space:nowrap">LOOP SYNC</label>
-      <input type="range" id="loop-lat-comp" min="-100" max="100" value="50" step="1" style="flex:1;accent-color:#ff9944" oninput="setLoopLatencyComp(+this.value)">
-      <div id="loop-lat-comp-v" style="font-size:10px;color:rgba(255,200,100,0.95);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">+50 ms</div>
+      <input type="range" id="loop-lat-comp" min="-100" max="100" value="76" step="1" style="flex:1;accent-color:#ff9944" oninput="setLoopLatencyComp(+this.value)">
+      <div id="loop-lat-comp-v" style="font-size:10px;color:rgba(255,200,100,0.95);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">+76 ms</div>
     </div>
 
     <!-- TOUCHPAD LOOPER -->
@@ -1555,10 +1555,10 @@ function setSmpLatch(on){
 }
 
 // ═══ LOOPER SHARED ═══════════════════════════════════════════════════════════
-let loopLatencyComp=(v=>isNaN(v)?50:v)(parseFloat(localStorage.getItem('loop-lat-comp3'))); // ms — default +50
+let loopLatencyComp=(v=>isNaN(v)?76:v)(parseFloat(localStorage.getItem('loop-lat-comp4'))); // ms — default +76
 
 function setLoopLatencyComp(ms){
-  loopLatencyComp=ms; localStorage.setItem('loop-lat-comp3',ms);
+  loopLatencyComp=ms; localStorage.setItem('loop-lat-comp4',ms);
   document.getElementById('loop-lat-comp-v').textContent=(ms>0?'+':'')+ms+' ms';
   const rtt=ms/1000;
   if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_rtt',rtt});
@@ -1715,7 +1715,18 @@ async function initGloop(){
   // getUserMedia is NOT called here — only when user taps CONNECT AUDIO INPUT.
   // This keeps iOS in Playback audio session mode (higher quality/volume).
   gloopOutGain=ctx.createGain(); gloopOutGain.gain.value=r('gloop-loopvol')/50||1.0;
-  gloopOutGain.connect(masterEQ);
+  // Compressor + headroom to prevent distortion on stacked overdub layers
+  const gloopComp=ctx.createDynamicsCompressor();
+  gloopComp.threshold.value=-18; // catch peaks early
+  gloopComp.knee.value=12;       // soft knee for natural feel
+  gloopComp.ratio.value=6;       // firm squeeze
+  gloopComp.attack.value=0.003;  // fast attack — catch transients
+  gloopComp.release.value=0.15;  // smooth release
+  const gloopHeadroom=ctx.createGain();
+  gloopHeadroom.gain.value=0.55;  // -5dB headroom before compressor
+  gloopOutGain.connect(gloopHeadroom);
+  gloopHeadroom.connect(gloopComp);
+  gloopComp.connect(masterEQ);
   gloopAnalyser=ctx.createAnalyser(); gloopAnalyser.fftSize=256;
   gloopAnalyserBuf=new Uint8Array(gloopAnalyser.frequencyBinCount);
   try{
@@ -1849,7 +1860,12 @@ async function initPadloop(){
     padloopMonoBus.channelCount=1; padloopMonoBus.channelCountMode='explicit'; padloopMonoBus.channelInterpretation='speakers';
     padloopCapBus.connect(padloopMonoBus); padloopMonoBus.connect(padloopWorklet);
     padloopOutGain=ctx.createGain(); padloopOutGain.gain.value=r('padloop-loopvol')/100||0.8;
-    padloopWorklet.connect(padloopOutGain); padloopOutGain.connect(masterEQ);
+    const padloopComp=ctx.createDynamicsCompressor();
+    padloopComp.threshold.value=-18; padloopComp.knee.value=12;
+    padloopComp.ratio.value=6; padloopComp.attack.value=0.003; padloopComp.release.value=0.15;
+    const padloopHeadroom=ctx.createGain(); padloopHeadroom.gain.value=0.55;
+    padloopWorklet.connect(padloopOutGain);
+    padloopOutGain.connect(padloopHeadroom); padloopHeadroom.connect(padloopComp); padloopComp.connect(masterEQ);
     padloopRevSend=ctx.createGain(); padloopRevSend.gain.value=0;
     padloopOutGain.connect(padloopRevSend); padloopRevSend.connect(revPre);
     padloopDlySend=ctx.createGain(); padloopDlySend.gain.value=0;
