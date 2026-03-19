@@ -1797,15 +1797,19 @@ function seqRecTapAndPlay(inst){
   if(inst==='H'  ||inst==='DRMS') playH(t);
   if(inst==='DR') playDR(t);
   if(inst==='B'){ playBassArpNote(t,bassArpFreq(),sl*bassNoteSteps); bassArpStep++; }
-  // 2. Quantize to nearest step boundary (not always seqStep which is 1 step ahead)
+  // 2. Quantize tap to nearest 16th-note grid position
   let targetStep;
   if(isPlaying){
-    const lastStepT=nextT-sl;
-    const midT=(lastStepT+nextT)/2;
     const totalSteps=seqBarCount*16;
-    if(t>=midT){
-      // Closer to upcoming step — flag it so scheduler skips the fire (we already played it)
-      targetStep=seqStep;
+    // Extrapolate loop start time from current scheduler position:
+    // nextT is the scheduled time of seqStep, so step 0 started at nextT - seqStep*sl
+    const loopStartT=nextT-seqStep*sl;
+    const fracStep=(t-loopStartT)/sl;
+    // Round to nearest step, wrap within loop
+    const nearest=Math.round(fracStep);
+    targetStep=((nearest%totalSteps)+totalSteps)%totalSteps;
+    // If targeting the upcoming unscheduled step, skip its scheduler fire (we already played it)
+    if(targetStep===seqStep){
       const sk=':'+seqStep;
       if(inst==='K'  ||inst==='DRMS') seqRecSkipOnce.add('K' +sk);
       if(inst==='SN' ||inst==='DRMS') seqRecSkipOnce.add('SN'+sk);
@@ -1813,9 +1817,6 @@ function seqRecTapAndPlay(inst){
       if(inst==='H'  ||inst==='DRMS') seqRecSkipOnce.add('H' +sk);
       if(inst==='DR') seqRecSkipOnce.add('DR'+sk);
       if(inst==='B')  seqRecSkipOnce.add('B' +sk);
-    } else {
-      // Closer to last step — scheduler already fired it; record for next loop iteration
-      targetStep=(seqStep-1+totalSteps)%totalSteps;
     }
   } else {
     targetStep=seqViewBar*16;
@@ -1829,21 +1830,24 @@ function seqRecTap(inst,stepOverride){
   const grids=INST_CFG[inst]; if(!grids) return;
   grids.forEach(({s,cls,gid})=>{
     s[step]=1;
-    // Update drawer grid if step is in bar 0 range
-    if(step<16){
-      const grid=document.getElementById(gid); if(!grid) return;
-      const el=grid.querySelector('.s-'+step); if(el) el.classList.add(cls);
-    }
+    // Redraw the full drawer grid (always bar 0) so display is always accurate
+    refreshGrid(gid,cls,s);
   });
   // Update SEQ MODE track dot
   smUpdateDot(inst);
   // Update SEQ MODE grid cell if visible
-  if(seqModeActive){ const localStep=step%16; const bar=Math.floor(step/16); if(bar===seqViewBar) smRefreshTrack(inst); }
+  if(seqModeActive){ const bar=Math.floor(step/16); if(bar===seqViewBar) smRefreshTrack(inst); }
 }
 
 // ═══ INSTRUMENT CIRCLES ═══════════════════════════
 let activeCircleDrawer=null;
 const _circTapTimes={};  // per-instrument debounce so different circles can be tapped simultaneously
+// Maps drawerId → grids to refresh when that drawer opens as a popup
+const DRAWER_GRIDS={
+  drDRMS:[{gid:'gK',cls:'k-on', s:kS},{gid:'gSN',cls:'sn-on',s:snS},{gid:'gD',cls:'d-on',s:dS},{gid:'gH',cls:'h-on',s:hS}],
+  drB:   [{gid:'gB', cls:'b-on', s:bS}],
+  drDR:  [{gid:'gDR',cls:'dr-on',s:drS}],
+};
 
 function openCirclePopup(drawerId, evt, instId){
   if(evt){ evt.stopPropagation(); evt.preventDefault(); }
@@ -1860,6 +1864,8 @@ function openCirclePopup(drawerId, evt, instId){
   if(activeCircleDrawer===drawerId){ closeCirclePopup(); return; }
   closeCirclePopup();
   const d=document.getElementById(drawerId); if(!d) return;
+  // Sync drawer grid display with current state before showing
+  (DRAWER_GRIDS[drawerId]||[]).forEach(({gid,cls,s})=>refreshGrid(gid,cls,s));
   d.classList.add('popup-mode');
   document.getElementById('popup-bg').classList.add('active');
   activeCircleDrawer=drawerId;
