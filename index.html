@@ -1776,6 +1776,7 @@ function updateSessionRecUI(){
 
 // ═══ SEQ TAP RECORDER ═════════════════════════════
 let seqRecActive=false;
+let seqRecSkipOnce=new Set(); // 'INST:step' keys — tells scheduler to skip one fire after immediate play
 
 function seqRecToggle(){
   seqRecActive=!seqRecActive;
@@ -1787,16 +1788,44 @@ function seqRecToggle(){
 }
 
 function seqRecTapAndPlay(inst){
-  // Do NOT play immediately — seqStep is the next scheduled step (fires within
-  // the lookahead window, ≤100ms). Playing here AND letting the scheduler fire
-  // it at nextT causes a double-hit. The scheduler provides the audio feedback.
-  seqRecTap(inst);
+  const t=ctx.currentTime;
+  const sl=60/bpm/4;
+  // 1. Instant audio feedback on tap
+  if(inst==='K'  ||inst==='DRMS') playKick(t);
+  if(inst==='SN' ||inst==='DRMS') playSnare(t);
+  if(inst==='D'  ||inst==='DRMS') playD(t);
+  if(inst==='H'  ||inst==='DRMS') playH(t);
+  if(inst==='DR') playDR(t);
+  if(inst==='B'){ playBassArpNote(t,bassArpFreq(),sl*bassNoteSteps); bassArpStep++; }
+  // 2. Quantize to nearest step boundary (not always seqStep which is 1 step ahead)
+  let targetStep;
+  if(isPlaying){
+    const lastStepT=nextT-sl;
+    const midT=(lastStepT+nextT)/2;
+    const totalSteps=seqBarCount*16;
+    if(t>=midT){
+      // Closer to upcoming step — flag it so scheduler skips the fire (we already played it)
+      targetStep=seqStep;
+      const sk=':'+seqStep;
+      if(inst==='K'  ||inst==='DRMS') seqRecSkipOnce.add('K' +sk);
+      if(inst==='SN' ||inst==='DRMS') seqRecSkipOnce.add('SN'+sk);
+      if(inst==='D'  ||inst==='DRMS') seqRecSkipOnce.add('D' +sk);
+      if(inst==='H'  ||inst==='DRMS') seqRecSkipOnce.add('H' +sk);
+      if(inst==='DR') seqRecSkipOnce.add('DR'+sk);
+      if(inst==='B')  seqRecSkipOnce.add('B' +sk);
+    } else {
+      // Closer to last step — scheduler already fired it; record for next loop iteration
+      targetStep=(seqStep-1+totalSteps)%totalSteps;
+    }
+  } else {
+    targetStep=seqViewBar*16;
+  }
+  seqRecTap(inst,targetStep);
 }
 
-function seqRecTap(inst){
+function seqRecTap(inst,stepOverride){
   if(!seqRecActive) return;
-  // When playing, stamp on the current global step; when stopped, stamp bar 0 step 0
-  const step=isPlaying?seqStep:seqViewBar*16;
+  const step=(stepOverride!==undefined)?stepOverride:(isPlaying?seqStep:seqViewBar*16);
   const grids=INST_CFG[inst]; if(!grids) return;
   grids.forEach(({s,cls,gid})=>{
     s[step]=1;
@@ -1814,14 +1843,16 @@ function seqRecTap(inst){
 
 // ═══ INSTRUMENT CIRCLES ═══════════════════════════
 let activeCircleDrawer=null;
-let _circTapGuard=0;
+const _circTapTimes={};  // per-instrument debounce so different circles can be tapped simultaneously
 
 function openCirclePopup(drawerId, evt, instId){
   if(evt){ evt.stopPropagation(); evt.preventDefault(); }
   // Debounce: block ghost clicks / double-fire from iOS touch events
+  // Key by instId so K and SN can be tapped within the same step; fallback to drawerId for null instId
+  const tapKey=instId||drawerId;
   const now=Date.now();
-  if(now-_circTapGuard<220) return;
-  _circTapGuard=now;
+  if(now-(_circTapTimes[tapKey]||0)<80) return;
+  _circTapTimes[tapKey]=now;
   if(seqRecActive){
     if(instId) seqRecTapAndPlay(instId);
     return;
@@ -4089,12 +4120,13 @@ function loop(){
         document.querySelectorAll(`#seqMode .sm-step-${localStep}`).forEach(e=>e.classList.add('playing'));
       }
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
-      if(drS[seqStep]) playDR(nextT+swOff);
-      if(bS[seqStep]){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
-      if(kS[seqStep])  playKick(nextT+swOff);
-      if(snS[seqStep]) playSnare(nextT+swOff);
-      if(dS[seqStep])  playD(nextT+swOff);
-      if(hS[seqStep])  playH(nextT+swOff);
+      const _sk=':'+seqStep;
+      if(drS[seqStep]  &&!seqRecSkipOnce.delete('DR'+_sk)) playDR(nextT+swOff);
+      if(bS[seqStep]   &&!seqRecSkipOnce.delete('B' +_sk)){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
+      if(kS[seqStep]   &&!seqRecSkipOnce.delete('K' +_sk)) playKick(nextT+swOff);
+      if(snS[seqStep]  &&!seqRecSkipOnce.delete('SN'+_sk)) playSnare(nextT+swOff);
+      if(dS[seqStep]   &&!seqRecSkipOnce.delete('D' +_sk)) playD(nextT+swOff);
+      if(hS[seqStep]   &&!seqRecSkipOnce.delete('H' +_sk)) playH(nextT+swOff);
       // SMPLR: 16 steps over 4 bars — fires on every quarter note (every 4 main steps)
       if(seqStep%4===0){
         if(smpS[smpBeatCount]&&!muted.SMP) playSamplerStep(nextT+swOff);
