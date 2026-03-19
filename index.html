@@ -639,10 +639,10 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
               <input type="range" id="gloop-inlvl" min="0" max="100" value="80" oninput="document.getElementById('gloop-inlvl-v').textContent=this.value; if(micInputGain) micInputGain.gain.value=this.value/100;">
               <div class="dv" id="gloop-inlvl-v">80</div>
             </div>
-            <div class="ctrl">
+            <div class="ctrl" style="opacity:0.35;pointer-events:none">
               <label>Monitor</label>
-              <input type="range" id="gloop-monvol" min="0" max="100" value="0" oninput="document.getElementById('gloop-monvol-v').textContent=this.value; if(micMonitorGain) micMonitorGain.gain.value=this.value/100;">
-              <div class="dv" id="gloop-monvol-v">0</div>
+              <input type="range" id="gloop-monvol" min="0" max="100" value="0" disabled>
+              <div class="dv" id="gloop-monvol-v">OFF</div>
             </div>
             <div class="ctrl">
               <label>Loop Vol</label>
@@ -1555,10 +1555,10 @@ function setSmpLatch(on){
 }
 
 // ═══ LOOPER SHARED ═══════════════════════════════════════════════════════════
-let loopLatencyComp=(v=>isNaN(v)?-47:v)(parseFloat(localStorage.getItem('loop-lat-comp'))); // ms — default -47
+let loopLatencyComp=(v=>isNaN(v)?-47:v)(parseFloat(localStorage.getItem('loop-lat-comp2'))); // ms — default -47
 
 function setLoopLatencyComp(ms){
-  loopLatencyComp=ms; localStorage.setItem('loop-lat-comp',ms);
+  loopLatencyComp=ms; localStorage.setItem('loop-lat-comp2',ms);
   document.getElementById('loop-lat-comp-v').textContent=(ms>0?'+':'')+ms+' ms';
   const rtt=ms/1000;
   if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_rtt',rtt});
@@ -2105,7 +2105,7 @@ async function gloopConnectDevice(deviceId){
 
     // ── Monitor path — direct, zero latency ─────────────────────────────────
     micMonitorGain=ctx.createGain();
-    micMonitorGain.gain.value=r('gloop-monvol')/100; // 0 by default
+    micMonitorGain.gain.value=0; // always muted — user monitors through audio interface
     micSource.connect(micMonitorGain);
     micMonitorGain.connect(masterEQ);
 
@@ -2174,8 +2174,8 @@ function updateGloopUI(){
   document.getElementById('gloop-play').classList.toggle('active',gloopPlay);
   document.getElementById('gloop-play').disabled=!has;
   document.getElementById('gloop-clear').disabled=!has&&!gloopRec;
-  // Mute monitoring when looper is active (user hears guitar through interface)
-  if(micMonitorGain) micMonitorGain.gain.value=(gloopRec||gloopPlay)?0:r('gloop-monvol')/100;
+  // Always mute monitoring — user hears guitar through audio interface
+  if(micMonitorGain) micMonitorGain.gain.value=0;
   const waiting=gloopRec&&!gloopPlay&&ctx&&ctx.currentTime<gloopRecStart;
   const sec=has?(gloopLen/ctx.sampleRate).toFixed(2)+'s':'';
   document.getElementById('gloop-status').textContent=
