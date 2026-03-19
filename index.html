@@ -2118,9 +2118,11 @@ function gloopRecord(){
   gloopLen=0; gloopPlay=false; gloopOverdub=false; gloopRec=true;
   gloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
   gloopTargetLen=Math.round(gloopBars*4*(60/bpm)*ctx.sampleRate);
-  // rtt = round-trip hardware latency: guitar beat 1 arrives this late in the recording buffer.
-  // Worklet uses it to offset playback pos so beat 1 lines up with the bar grid.
-  const rtt=Math.max(0,(ctx.outputLatency||0)+(ctx.inputLatency||0));
+  // Input capture latency: guitar beat 1 arrives this late in the recording buffer.
+  // Worklet advances playback pos so beat 1 lines up with the bar grid.
+  // outputLatency is NOT included — it delays sequencer and loop equally.
+  const inputLat=ctx.inputLatency||(ctx.baseLatency||0);
+  const rtt=inputLat+(ctx.baseLatency||0)+128/ctx.sampleRate;
   if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'record',targetLen:gloopTargetLen,recStart:gloopRecStart,rtt});
   updateGloopUI();
 }
