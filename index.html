@@ -651,7 +651,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
             </div>
             <div class="ctrl">
               <label>Decay</label>
-              <input type="range" id="gloop-decay" min="0" max="100" value="100" oninput="document.getElementById('gloop-decay-v').textContent=this.value">
+              <input type="range" id="gloop-decay" min="0" max="100" value="100" oninput="document.getElementById('gloop-decay-v').textContent=this.value; if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_decay',decay:0.1+(this.value/100)*0.9})">
               <div class="dv" id="gloop-decay-v">100</div>
             </div>
           </div>
@@ -1551,20 +1551,15 @@ function setSmpLatch(on){
 // Real PCM audio looper synced to the main sequencer clock.
 // ScriptProcessorNode mixes live input directly into the Float32Array loop buffer
 // so overdub works in-place without allocation.
-let gloopBuffer=null;     // Float32Array — the live loop
-let gloopLen=0;           // loop length in samples (exactly gloopTargetLen after finalize)
-let gloopPos=0;           // unused in playback (clock-derived); kept for legacy refs
+// Buffer/position state lives inside the AudioWorklet — not on main thread
+let gloopLen=0;           // loop length in samples (set from worklet 'done' message)
 let gloopRec=false;
 let gloopPlay=false;
 let gloopOverdub=false;
-let gloopFinalizing=false;
-let gloopSamples=[];      // array of Float32Array chunks during first-pass recording
-let gloopTargetLen=0;     // samples to record (bars × 4 beats × sr)
+let gloopTargetLen=0;     // target sample count
 let gloopRecStart=0;      // ctx.currentTime when recording should begin
-let gloopRecStartAbsolute=-1; // e.playbackTime of first recorded sample — enables sample-exact clock sync
 let gloopBars=1;
-let gloopNode=null;
-let gloopNodeConnected=false; // ScriptProcessor only connected while recording/playing (keeps monitor path latency-free)
+let gloopWorklet=null;    // AudioWorkletNode — runs on audio thread for sub-3ms latency
 let gloopOutGain=null;    // loop playback volume → masterEQ
 let gloopAnalyser=null;
 let gloopAnalyserBuf=null;
@@ -1595,7 +1590,87 @@ function setGloopBars(bars,btn){
   document.querySelectorAll('[data-gbars]').forEach(b=>b.classList.toggle('on',+b.dataset.gbars===bars));
 }
 
-function initGloop(){
+const GLOOP_WORKLET_CODE=`
+class GloopProcessor extends AudioWorkletProcessor {
+  constructor(){
+    super();
+    this._state='idle';
+    this._buf=null; this._len=0; this._targetLen=0;
+    this._recStart=0; this._recStartAbsolute=-1;
+    this._chunks=[]; this._accumulated=0;
+    this._decay=1.0;
+    this.port.onmessage=({data})=>{
+      const cmd=data.cmd;
+      if(cmd==='record'){
+        this._state='recording'; this._chunks=[]; this._accumulated=0;
+        this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1;
+      } else if(cmd==='stop_record'){ this._finalize(); }
+      else if(cmd==='play'){ if(this._buf) this._state='playing'; }
+      else if(cmd==='stop'){ this._state='idle'; }
+      else if(cmd==='overdub'){ if(this._buf){ this._state='overdubbing'; this._decay=data.decay; } }
+      else if(cmd==='stop_overdub'){ this._state='playing'; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; }
+      else if(cmd==='set_decay'){ this._decay=data.decay; }
+    };
+  }
+  _finalize(){
+    const target=this._targetLen>0?this._targetLen:this._accumulated;
+    const total=Math.min(this._accumulated,target);
+    if(total>0){
+      const buf=new Float32Array(total);
+      let off=0;
+      for(const chunk of this._chunks){
+        const n=Math.min(chunk.length,total-off);
+        buf.set(n===chunk.length?chunk:chunk.subarray(0,n),off); off+=n;
+        if(off>=total) break;
+      }
+      this._chunks=[]; this._buf=buf; this._len=total; this._state='playing';
+      this.port.postMessage({type:'done',len:total});
+    } else {
+      this._chunks=[]; this._state='idle';
+      this.port.postMessage({type:'done',len:0});
+    }
+  }
+  process(inputs,outputs){
+    const ch=inputs[0]&&inputs[0][0];
+    const out=outputs[0][0];
+    const blockSize=out.length;
+    if(this._state==='recording'){
+      const blockEnd=currentTime+blockSize/sampleRate;
+      if(blockEnd<=this._recStart){ out.fill(0); return true; }
+      let skip=0;
+      if(this._recStartAbsolute<0){
+        skip=Math.max(0,Math.round((this._recStart-currentTime)*sampleRate));
+        this._recStartAbsolute=currentTime+skip/sampleRate;
+      }
+      const count=blockSize-skip;
+      const chunk=new Float32Array(count);
+      for(let i=0;i<count;i++) chunk[i]=ch?ch[i+skip]:0;
+      this._chunks.push(chunk); this._accumulated+=count;
+      if(this._targetLen>0&&this._accumulated>=this._targetLen){ this._finalize(); return true; }
+      out.fill(0);
+    } else if(this._state==='playing'){
+      const b=this._buf; if(!b){ out.fill(0); return true; }
+      const elapsed=currentTime-this._recStartAbsolute;
+      const startPos=((Math.round(elapsed*sampleRate)%this._len)+this._len)%this._len;
+      for(let i=0;i<blockSize;i++) out[i]=b[(startPos+i)%this._len];
+    } else if(this._state==='overdubbing'){
+      const b=this._buf; if(!b){ out.fill(0); return true; }
+      const elapsed=currentTime-this._recStartAbsolute;
+      const startPos=((Math.round(elapsed*sampleRate)%this._len)+this._len)%this._len;
+      const d=this._decay;
+      for(let i=0;i<blockSize;i++){
+        const pos=(startPos+i)%this._len;
+        const inp=ch?ch[i]:0;
+        b[pos]=b[pos]*d+inp; out[i]=b[pos];
+      }
+    } else { out.fill(0); }
+    return true;
+  }
+}
+registerProcessor('gloop-processor',GloopProcessor);`;
+
+async function initGloop(){
   // Create output nodes now — they produce silence until mic is connected,
   // so they have no impact on synth quality or volume.
   // getUserMedia is NOT called here — only when user taps CONNECT AUDIO INPUT.
@@ -1604,7 +1679,23 @@ function initGloop(){
   gloopOutGain.connect(masterEQ);
   gloopAnalyser=ctx.createAnalyser(); gloopAnalyser.fftSize=256;
   gloopAnalyserBuf=new Uint8Array(gloopAnalyser.frequencyBinCount);
-  // Do NOT call gloopEnumDevices() here
+  try{
+    const blob=new Blob([GLOOP_WORKLET_CODE],{type:'application/javascript'});
+    const url=URL.createObjectURL(blob);
+    await ctx.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+    gloopWorklet=new AudioWorkletNode(ctx,'gloop-processor',{
+      numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]
+    });
+    gloopWorklet.port.onmessage=({data})=>{
+      if(data.type==='done'){
+        gloopLen=data.len; gloopRec=false;
+        if(data.len>0) gloopPlay=true;
+        updateGloopUI();
+      }
+    };
+    gloopWorklet.connect(gloopOutGain);
+  }catch(e){ console.warn('GloopWorklet init failed:',e); }
 }
 
 function setPadloopBars(bars,btn){
@@ -1948,18 +2039,8 @@ async function gloopSetOutput(deviceId){
   try{ await ctx.setSinkId(deviceId); }catch(e){}
 }
 
-function _gloopConnectNode(){
-  if(gloopNodeConnected||!gloopNode||!micInputGain) return;
-  try{ micInputGain.connect(gloopNode); gloopNode.connect(gloopOutGain); gloopNodeConnected=true; }catch(e){}
-}
-function _gloopDisconnectNode(){
-  if(!gloopNodeConnected||!gloopNode) return;
-  try{ gloopNode.disconnect(); gloopNodeConnected=false; }catch(e){}
-}
-
 async function gloopConnectDevice(deviceId){
-  // Tear down old nodes cleanly
-  if(gloopNode){ try{gloopNode.disconnect();}catch(e){} gloopNode=null; }
+  // Tear down old mic nodes cleanly
   if(micMonitorGain){ try{micMonitorGain.disconnect();}catch(e){} micMonitorGain=null; }
   if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
   if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
@@ -1974,21 +2055,17 @@ async function gloopConnectDevice(deviceId){
     // VU taps raw mic signal
     micSource.connect(gloopAnalyser);
 
-    // ── Monitor path ────────────────────────────────────────────────────────
+    // ── Monitor path — direct, zero latency ─────────────────────────────────
     micMonitorGain=ctx.createGain();
     micMonitorGain.gain.value=r('gloop-monvol')/100; // 0 by default
     micSource.connect(micMonitorGain);
     micMonitorGain.connect(masterEQ);
 
-    // ── Recording path ──────────────────────────────────────────────────────
+    // ── Recording path → AudioWorklet (runs on audio thread, ~2.9ms latency) ─
     micInputGain=ctx.createGain();
     micInputGain.gain.value=r('gloop-inlvl')/100||0.8;
     micSource.connect(micInputGain);
-    gloopNode=ctx.createScriptProcessor(512,1,1);
-    gloopNode.onaudioprocess=gloopProcess;
-    gloopNodeConnected=false;
-    // Not connected yet — _gloopConnectNode() is called when recording/playing starts,
-    // so the monitor path has zero ScriptProcessor latency while idle.
+    if(gloopWorklet) micInputGain.connect(gloopWorklet);
 
     // ── iOS PlayAndRecord compensation ─────────────────────────────────────
     const boost=1+(r('gloop-boost')/100)*1.5; // 1.0 … 2.5
@@ -2000,98 +2077,36 @@ async function gloopConnectDevice(deviceId){
   }
 }
 
-function gloopProcess(e){
-  const inp=e.inputBuffer.getChannelData(0);
-  const out=e.outputBuffer.getChannelData(0);
-  const count=inp.length;
-  const sr=ctx.sampleRate;
-  const inLvl=r('gloop-inlvl')/100;
-
-  if(gloopRec && !gloopPlay){
-    // ── First pass ──
-    // Use e.playbackTime (audio-thread accurate) to find the exact sample where recording begins
-    const blockEnd=e.playbackTime+count/sr;
-    if(blockEnd<=gloopRecStart){ out.fill(0); return; }
-    let skip=0;
-    if(gloopRecStartAbsolute<0){
-      // First block that overlaps gloopRecStart — skip samples before the bar boundary
-      skip=Math.max(0,Math.round((gloopRecStart-e.playbackTime)*sr));
-      gloopRecStartAbsolute=e.playbackTime+skip/sr;
-    }
-    const chunk=new Float32Array(count-skip);
-    for(let i=skip;i<count;i++) chunk[i-skip]=inp[i]*inLvl;
-    gloopSamples.push(chunk);
-    const recorded=gloopSamples.reduce((s,c)=>s+c.length,0);
-    if(gloopTargetLen>0 && recorded>=gloopTargetLen && !gloopFinalizing){
-      gloopFinalizing=true; setTimeout(gloopFinalize,0);
-    }
-    out.fill(0);
-  } else if(gloopPlay){
-    // ── Playback / overdub — position derived from audio clock for perfect bar sync ──
-    // elapsed < 0 can't happen normally; modulo+gloopLen guard handles edge cases
-    const elapsed=e.playbackTime-gloopRecStartAbsolute;
-    const blockStartPos=((Math.round(elapsed*sr)%gloopLen)+gloopLen)%gloopLen;
-    const retain=0.1+(r('gloop-decay')/100)*0.9;
-    for(let i=0;i<count;i++){
-      const pos=(blockStartPos+i)%gloopLen;
-      if(gloopOverdub && gloopRec)
-        gloopBuffer[pos]=gloopBuffer[pos]*retain+inp[i]*inLvl;
-      out[i]=gloopBuffer[pos];
-    }
-  } else {
-    out.fill(0);
-  }
-}
-
 function gloopFinalize(){
-  gloopFinalizing=false; gloopRec=false;
-  const total=gloopSamples.reduce((s,c)=>s+c.length,0);
-  // Truncate to exactly gloopTargetLen so the loop is precisely N bars, never drifting
-  const len=(gloopTargetLen>0)?Math.min(total,gloopTargetLen):total;
-  if(len>0){
-    gloopBuffer=new Float32Array(len);
-    let off=0;
-    for(const c of gloopSamples){
-      const n=Math.min(c.length,len-off);
-      gloopBuffer.set(c.subarray(0,n),off); off+=n;
-      if(off>=len) break;
-    }
-    gloopLen=len; gloopPos=0; gloopPlay=true;
-    // gloopNode stays connected (was connected for recording, now needed for playback)
-  }
-  gloopSamples=[];
+  // Manual stop — tell worklet to finalize; worklet sends back 'done' message
+  gloopRec=false;
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'stop_record'});
   updateGloopUI();
 }
-
 function gloopRecord(){
   if(gloopRec && !gloopOverdub){ gloopFinalize(); return; }
-  if(gloopOverdub){ gloopRec=false; gloopOverdub=false; _gloopDisconnectNode(); updateGloopUI(); return; }
-  if(gloopPlay && gloopLen>0){ gloopOverdub=true; gloopRec=true; _gloopConnectNode(); updateGloopUI(); return; }
+  if(gloopOverdub){ gloopRec=false; gloopOverdub=false; if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'stop_overdub'}); updateGloopUI(); return; }
+  if(gloopPlay && gloopLen>0){ gloopOverdub=true; gloopRec=true; const decay=0.1+(r('gloop-decay')/100)*0.9; if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'overdub',decay}); updateGloopUI(); return; }
   if(!micSource){ document.getElementById('gloop-status').textContent='NO INPUT'; return; }
-  gloopSamples=[]; gloopBuffer=null; gloopLen=0; gloopPos=0; gloopRecStartAbsolute=-1;
-  gloopPlay=false; gloopOverdub=false; gloopFinalizing=false; gloopRec=true;
+  gloopLen=0; gloopPlay=false; gloopOverdub=false; gloopRec=true;
   gloopRecStart=(isPlaying && nextBarTime>ctx.currentTime) ? nextBarTime : ctx.currentTime;
   gloopTargetLen=Math.round(gloopBars*4*(60/bpm)*ctx.sampleRate);
-  _gloopConnectNode();
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'record',targetLen:gloopTargetLen,recStart:gloopRecStart});
   updateGloopUI();
 }
 function gloopToggle(){
   if(!gloopLen) return;
   gloopPlay=!gloopPlay;
-  if(gloopPlay) _gloopConnectNode();
-  else if(!gloopRec) _gloopDisconnectNode();
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:gloopPlay?'play':'stop'});
   updateGloopUI();
 }
 function gloopClear(){
-  gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false; gloopRecStartAbsolute=-1;
-  gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
-  _gloopDisconnectNode();
+  gloopLen=0; gloopRec=false; gloopPlay=false; gloopOverdub=false;
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'clear'});
   if(gloopOutGain) gloopOutGain.gain.value=r('gloop-loopvol')/50||1.0;
   updateGloopUI();
 }
 function gloopDisconnect(){
-  _gloopDisconnectNode();
-  if(gloopNode){ gloopNode=null; }
   if(micMonitorGain){ try{micMonitorGain.disconnect();}catch(e){} micMonitorGain=null; }
   if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
   if(micSource){ try{micSource.disconnect();}catch(e){} micSource=null; }
@@ -2487,7 +2502,7 @@ function init(){
   initInstEQ();
 
   wireSliders();
-  initGloop();
+  initGloop().catch(e=>console.warn('GloopWorklet init:',e));
   initPadloop().catch(e=>console.warn('PadLoop init:',e));
   loop();
   startAudioKeepAlive();
