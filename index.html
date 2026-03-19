@@ -1579,6 +1579,7 @@ let micInputLatency=0.05; // estimated hardware mic→Web Audio input latency (s
 let gloopLatTrim=0.05;    // COMP slider value in seconds — shifts recording threshold
 let gloopSource=null;     // AudioBufferSourceNode — handles loop playback with perfect clock sync
 let gloopPlayStartTime=0; // ctx time when current loop started playing (for overdub pos sync)
+let gloopNeedSync=false;  // when true, gloopProcess recomputes gloopPos from e.playbackTime on next callback
 
 // ═══ TOUCHPAD LOOPER STATE ════════════════════════
 // Buffer/position/chunk state lives inside the AudioWorklet — not on main thread
@@ -1991,6 +1992,13 @@ function gloopProcess(e){
     // Normal playback: AudioBufferSourceNode handles audio; ScriptProcessor outputs silence.
     // Overdub / reverse: ScriptProcessor mixes live input into gloopBuffer and outputs.
     if((gloopOverdub&&gloopRec)||gloopReverse){
+      // Sync gloopPos on the audio thread using e.playbackTime — more accurate than ctx.currentTime
+      if(gloopNeedSync){
+        gloopNeedSync=false;
+        const loopDur=gloopLen/ctx.sampleRate;
+        const elapsed=e.playbackTime-gloopPlayStartTime;
+        gloopPos=Math.round(((elapsed%loopDur+loopDur)%loopDur)*ctx.sampleRate)%gloopLen;
+      }
       const retain=0.1+(r('gloop-decay')/100)*0.9;
       for(let i=0;i<count;i++){
         if(gloopOverdub&&gloopRec) gloopBuffer[gloopPos]=gloopBuffer[gloopPos]*retain+inp[i]*inLvl;
@@ -2017,11 +2025,10 @@ function _gloopMakeSrc(startTime, offset=0){
   gloopSource=src;
 }
 function _gloopSyncPos(){
-  // Compute gloopPos from elapsed time since loop start (for overdub/reverse sync)
+  // Signal the audio thread to recompute gloopPos from e.playbackTime on its next callback.
+  // Using ctx.currentTime here would lag the audio thread by up to one buffer (~46ms).
   if(!gloopPlayStartTime||!gloopLen) return;
-  const loopDur=gloopLen/ctx.sampleRate;
-  const elapsed=ctx.currentTime-gloopPlayStartTime;
-  gloopPos=Math.round(((elapsed%loopDur+loopDur)%loopDur)*ctx.sampleRate)%gloopLen;
+  gloopNeedSync=true;
 }
 
 function gloopFinalize(){
@@ -2035,7 +2042,7 @@ function gloopFinalize(){
     gloopLen=total; gloopPos=0;
     _gloopStopSrc();
     gloopPlayStartTime=ctx.currentTime;
-    _gloopMakeSrc(gloopPlayStartTime);
+    _gloopMakeSrc(gloopPlayStartTime, gloopLatTrim);
     gloopPlay=true;
   }
   gloopSamples=[]; updateGloopUI();
@@ -2077,7 +2084,7 @@ function gloopToggle(){
     _gloopStopSrc();
     const t=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
     gloopPlayStartTime=t;
-    _gloopMakeSrc(t);
+    _gloopMakeSrc(t, gloopLatTrim);
   } else {
     _gloopStopSrc();
   }
@@ -2086,7 +2093,7 @@ function gloopToggle(){
 function gloopClear(){
   _gloopStopSrc();
   gloopBuffer=null; gloopLen=0; gloopPos=0; gloopFinalizing=false; gloopPlayStartTime=0;
-  gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[];
+  gloopRec=false; gloopPlay=false; gloopOverdub=false; gloopSamples=[]; gloopNeedSync=false;
   if(gloopOutGain) gloopOutGain.gain.value=r('gloop-loopvol')/100||0.8;
   updateGloopUI();
 }
@@ -2099,10 +2106,11 @@ function gloopRevToggle(){
     _gloopStopSrc();
     _gloopSyncPos();
   } else {
-    // Forward: restart AudioBufferSourceNode
-    const t=(isPlaying&&nextBarTime>ctx.currentTime)?nextBarTime:ctx.currentTime;
-    gloopPlayStartTime=t;
-    _gloopMakeSrc(t);
+    // Forward: restart AudioBufferSourceNode from the current gloopPos (preserve loop phase)
+    const t=ctx.currentTime;
+    const offset=(gloopPos/ctx.sampleRate)%(gloopLen/ctx.sampleRate);
+    gloopPlayStartTime=t-offset;
+    _gloopMakeSrc(t, offset);
   }
 }
 function gloopDisconnect(){
