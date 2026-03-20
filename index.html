@@ -386,7 +386,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(0,242,255,0.5)">DCY</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="62" style="accent-color:#00f2ff" oninput="syncCircVol('X-Vol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="100" value="28" style="accent-color:#00f2ff" oninput="syncCircVol('X-Vol',this.value)">
     </div>
     <!-- GTR LOOP -->
     <div class="inst-circle" id="circ-GL">
@@ -400,7 +400,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(255,153,68,0.5)">DCY</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="80" style="accent-color:#ff9944" oninput="syncCircVol('gloop-loopvol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="100" value="38" style="accent-color:#ff9944" oninput="syncCircVol('gloop-loopvol',this.value)">
     </div>
     <!-- PAD LOOP -->
     <div class="inst-circle" id="circ-PL">
@@ -414,7 +414,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(78,205,196,0.5)">DCY</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="80" style="accent-color:#4ecdc4" oninput="syncCircVol('padloop-loopvol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="100" value="36" style="accent-color:#4ecdc4" oninput="syncCircVol('padloop-loopvol',this.value)">
     </div>
     <!-- ARP -->
     <div class="inst-circle" id="circ-ARP">
@@ -429,7 +429,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(255,0,110,0.5)">REV</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="58" style="accent-color:#ff006e" oninput="syncCircVol('ARP-Vol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="100" value="75" style="accent-color:#ff006e" oninput="syncCircVol('ARP-Vol',this.value)">
     </div>
     <!-- BASS -->
     <div class="inst-circle" id="circ-B">
@@ -444,7 +444,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(255,204,0,0.5)">REV</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="65" style="accent-color:#ffcc00" oninput="syncCircVol('BA-Vol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="120" value="110" style="accent-color:#ffcc00" oninput="syncCircVol('BA-Vol',this.value)">
     </div>
     <!-- ROW 2: PERCUSSION -->
     <!-- KICK -->
@@ -490,7 +490,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(255,102,0,0.5)">REV</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="60" style="accent-color:#ff6600" oninput="syncCircVol('D-Vol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="100" value="55" style="accent-color:#ff6600" oninput="syncCircVol('D-Vol',this.value)">
     </div>
     <!-- HI-HAT -->
     <div class="inst-circle" id="circ-H">
@@ -533,7 +533,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="circ-y-lbl" style="color:rgba(255,200,80,0.5)">DNS</span>
         </div>
       </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="62" style="accent-color:#ffc850" oninput="syncCircVol('X-Vol',this.value)">
+      <input type="range" class="circ-vol" min="0" max="100" value="80" style="accent-color:#ffc850" oninput="syncCircVol('X-Vol',this.value)">
     </div>
     <!-- FX -->
     <div class="inst-circle" id="circ-FX">
@@ -562,7 +562,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <!-- PRESET MODE (always visible) -->
         <div id="X-preset-section">
           <div class="pg3">
-            <div class="ctrl xs-ctrl"><label>Volume</label>  <input type="range" id="X-Vol"   min="0" max="100" value="62"><div class="dv" id="X-Vol-v">62</div></div>
+            <div class="ctrl xs-ctrl"><label>Volume</label>  <input type="range" id="X-Vol"   min="0" max="100" value="28"><div class="dv" id="X-Vol-v">28</div></div>
             <div class="ctrl xs-ctrl"><label>Jitter</label>  <input type="range" id="X-Jitter" min="0" max="100" value="12"><div class="dv" id="X-Jitter-v">12</div></div>
             <div class="ctrl xs-ctrl"><label>Density</label> <input type="range" id="X-Grain" min="0" max="100" value="32"><div class="dv" id="X-Grain-v">32</div></div>
           </div>
@@ -651,8 +651,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
             </div>
             <div class="ctrl">
               <label>Loop Vol</label>
-              <input type="range" id="gloop-loopvol" min="0" max="100" value="50" oninput="document.getElementById('gloop-loopvol-v').textContent=this.value; if(gloopOutGain) gloopOutGain.gain.value=this.value/50;">
-              <div class="dv" id="gloop-loopvol-v">50</div>
+              <input type="range" id="gloop-loopvol" min="0" max="100" value="38" oninput="document.getElementById('gloop-loopvol-v').textContent=this.value; if(gloopOutGain) gloopOutGain.gain.value=this.value/50;">
+              <div class="dv" id="gloop-loopvol-v">38</div>
             </div>
             <div class="ctrl">
               <label>Decay</label>
@@ -668,9 +668,9 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
           <!-- Bars — synced to main clock -->
           <div class="loop-bars" style="margin-bottom:8px">
-            <button class="loop-bar-btn on" data-gbars="1" onclick="setGloopBars(1,this)">1 BAR</button>
+            <button class="loop-bar-btn" data-gbars="1" onclick="setGloopBars(1,this)">1 BAR</button>
             <button class="loop-bar-btn"    data-gbars="2" onclick="setGloopBars(2,this)">2 BAR</button>
-            <button class="loop-bar-btn"    data-gbars="4" onclick="setGloopBars(4,this)">4 BAR</button>
+            <button class="loop-bar-btn on" data-gbars="4" onclick="setGloopBars(4,this)">4 BAR</button>
             <button class="loop-bar-btn"    data-gbars="8" onclick="setGloopBars(8,this)">8 BAR</button>
           </div>
 
@@ -709,8 +709,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <div class="pg2" style="margin-bottom:8px">
           <div class="ctrl">
             <label>Loop Vol</label>
-            <input type="range" id="padloop-loopvol" min="0" max="100" value="80" oninput="document.getElementById('padloop-loopvol-v').textContent=this.value; if(padloopOutGain) padloopOutGain.gain.value=this.value/100;">
-            <div class="dv" id="padloop-loopvol-v">80</div>
+            <input type="range" id="padloop-loopvol" min="0" max="100" value="36" oninput="document.getElementById('padloop-loopvol-v').textContent=this.value; if(padloopOutGain) padloopOutGain.gain.value=this.value/100;">
+            <div class="dv" id="padloop-loopvol-v">36</div>
           </div>
           <div class="ctrl">
             <label>Decay</label>
@@ -722,8 +722,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <!-- Bar selection -->
         <div class="loop-bars" style="margin-bottom:8px">
           <button class="loop-bar-btn" data-pbars="1" onclick="setPadloopBars(1,this)">1 BAR</button>
-          <button class="loop-bar-btn on" data-pbars="2" onclick="setPadloopBars(2,this)">2 BAR</button>
-          <button class="loop-bar-btn" data-pbars="4" onclick="setPadloopBars(4,this)">4 BAR</button>
+          <button class="loop-bar-btn" data-pbars="2" onclick="setPadloopBars(2,this)">2 BAR</button>
+          <button class="loop-bar-btn on" data-pbars="4" onclick="setPadloopBars(4,this)">4 BAR</button>
           <button class="loop-bar-btn" data-pbars="8" onclick="setPadloopBars(8,this)">8 BAR</button>
         </div>
 
@@ -897,10 +897,11 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <button class="barr-div on" onclick="setBassNoteLen(4,this)">1/4</button>
           <button class="barr-div"    onclick="setBassNoteLen(8,this)">1/2</button>
           <button class="barr-div"    onclick="setBassNoteLen(16,this)">1 BAR</button>
+          <button class="barr-div" id="bass-one-note-btn" onclick="toggleBassOneNote(this)" style="border-color:rgba(0,242,255,0.4);color:rgba(0,242,255,0.7)">ONE NOTE</button>
         </div>
         <div class="pg2" style="margin-bottom:10px">
           <div class="ctrl"><label>Gate %</label><input type="range" id="BA-Gate" min="0" max="100" value="72"><div class="dv" id="BA-Gate-v">72</div></div>
-          <div class="ctrl"><label>Vol</label>   <input type="range" id="BA-Vol"  min="0" max="100" value="65"><div class="dv" id="BA-Vol-v">65</div></div>
+          <div class="ctrl"><label>Vol</label>   <input type="range" id="BA-Vol"  min="0" max="120" value="110"><div class="dv" id="BA-Vol-v">110</div></div>
         </div>
 
         <div class="sec">OSCILLATOR</div>
@@ -1008,7 +1009,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="grid" id="gD"></div>
           <div class="preset-row" id="preD"></div>
           <div class="pg4">
-            <div class="ctrl"><label>Vol</label>   <input type="range" id="D-Vol"   min="0" max="100" value="60"><div class="dv" id="D-Vol-v">60</div></div>
+            <div class="ctrl"><label>Vol</label>   <input type="range" id="D-Vol"   min="0" max="100" value="55"><div class="dv" id="D-Vol-v">55</div></div>
             <div class="ctrl"><label>Tune</label>  <input type="range" id="D-Tune"  min="0" max="100" value="48"><div class="dv" id="D-Tune-v">48</div></div>
             <div class="ctrl"><label>Decay</label> <input type="range" id="D-Decay" min="0" max="100" value="42"><div class="dv" id="D-Decay-v">42</div></div>
             <div class="ctrl"><label>Snap</label>  <input type="range" id="D-Snap"  min="0" max="100" value="25"><div class="dv" id="D-Snap-v">25</div></div>
@@ -1062,6 +1063,11 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span class="chd-ctrl-lbl">SOURCE</span>
           <button class="chd-btn on" id="chd-mode-custom" onclick="setChordGenMode('custom',this)">CUSTOM</button>
           <button class="chd-btn"    id="chd-mode-scale"  onclick="setChordGenMode('scale',this)">SCALE</button>
+        </div>
+        <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
+          <span style="font-size:7px;color:rgba(255,200,100,0.5);letter-spacing:1.5px;font-weight:900;width:100%;margin-bottom:2px">PRESETS</span>
+          <button class="chd-btn" onclick="loadChordPreset('E_AEOLIAN',this)">E AEOLIAN</button>
+          <button class="chd-btn" onclick="loadChordPreset('E_LYDIAN',this)">E LYDIAN</button>
         </div>
         <div id="chd-scale-controls" style="display:none;margin-bottom:6px">
           <div class="chd-ctrl-row" style="margin-top:6px;flex-wrap:wrap;gap:4px">
@@ -1143,7 +1149,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         </div>
         <div class="pg2" style="margin-bottom:10px">
           <div class="ctrl"><label>Gate %</label><input type="range" id="ARP-Gate"    min="0" max="100" value="65"><div class="dv" id="ARP-Gate-v">65</div></div>
-          <div class="ctrl"><label>Vol</label>   <input type="range" id="ARP-Vol"     min="0" max="100" value="58"><div class="dv" id="ARP-Vol-v">58</div></div>
+          <div class="ctrl"><label>Vol</label>   <input type="range" id="ARP-Vol"     min="0" max="100" value="75"><div class="dv" id="ARP-Vol-v">75</div></div>
         </div>
 
         <div class="sec">OSCILLATOR</div>
@@ -1420,6 +1426,40 @@ function buildScaleChords(key, mode){
   if(row){ row.innerHTML=''; if(rowB) rowB.innerHTML=''; buildChordSeq(); }
 }
 
+// ── CHORD USER PRESETS ───────────────────────────────
+const CHORD_USER_PRESETS={
+  'E_AEOLIAN':{
+    // Em Bm C G
+    chords:[
+      {name:'Em', notes:[82.41,98.00,123.47,164.81]},
+      {name:'Bm', notes:[61.74,73.42,92.50,123.47]},
+      {name:'C',  notes:[65.41,82.41,98.00,130.81]},
+      {name:'G',  notes:[98.00,123.47,146.83,196.00]},
+    ],
+    seq:[0,1,2,3, 0,1,2,3],
+  },
+  'E_LYDIAN':{
+    // E C#m G#m F#
+    chords:[
+      {name:'E',   notes:[82.41,103.83,123.47,164.81]},
+      {name:'C#m', notes:[69.30,82.41,103.83,138.59]},
+      {name:'G#m', notes:[103.83,123.47,155.56,207.65]},
+      {name:'F#',  notes:[92.50,116.54,138.59,185.00]},
+    ],
+    seq:[0,1,2,3, 0,1,2,3],
+  },
+};
+function loadChordPreset(name,btn){
+  const p=CHORD_USER_PRESETS[name]; if(!p) return;
+  ARP_CHORDS.splice(0,ARP_CHORDS.length,...p.chords.map(c=>({name:c.name,notes:[...c.notes]})));
+  for(let i=0;i<8;i++){ CHORD_SEQ_DATA[i]=p.seq[i]; CHORD_SEQ_B[i]=p.seq[i]; }
+  currentChordIdx=CHORD_SEQ_DATA[chordSeqStep]||0;
+  const row=document.getElementById('chdRow'); const rowB=document.getElementById('chdRowB');
+  if(row){ row.innerHTML=''; if(rowB) rowB.innerHTML=''; buildChordSeq(); }
+  document.querySelectorAll('.chd-btn').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+}
+
 function setChordGenMode(mode,btn){
   chordGenMode=mode;
   document.querySelectorAll('#chd-mode-custom,#chd-mode-scale').forEach(b=>b.classList.toggle('on',b===btn));
@@ -1581,7 +1621,7 @@ let gloopPlay=false;
 let gloopOverdub=false;
 let gloopTargetLen=0;     // target sample count
 let gloopRecStart=0;      // ctx.currentTime when recording should begin
-let gloopBars=1;
+let gloopBars=4;
 let gloopWorklet=null;    // AudioWorkletNode — runs on audio thread for sub-3ms latency
 let gloopOutGain=null;    // loop playback volume → masterEQ
 let gloopAnalyser=null;
@@ -1599,7 +1639,7 @@ let padloopPlay=false;
 let padloopOverdub=false;
 let padloopTargetLen=0;       // target sample count
 let padloopRecStart=0;        // ctx.currentTime to start recording
-let padloopBars=2;            // default 2 bars
+let padloopBars=4;            // default 4 bars
 let padloopCapBus=null;       // capture bus — send() taps here when recording/overdubbing
 let padloopWorklet=null;      // AudioWorkletNode (runs on audio thread — no glitches)
 let padloopOutGain=null;      // loop playback → masterEQ
@@ -3623,8 +3663,22 @@ function spawnGrain(){
 
 // ═══ BASS SYNTH ARP (grid-driven) ═════════════════
 let bassArpStep=0, bassNoteSteps=4; // 4 = 1 quarter note per triggered step
+let bassOneNote=false; // one-note mode: root note, one per bar
+
+function toggleBassOneNote(btn){
+  bassOneNote=!bassOneNote;
+  if(btn) btn.classList.toggle('on',bassOneNote);
+  if(bassOneNote){
+    // Force 1-bar note length
+    bassNoteSteps=16;
+    document.querySelectorAll('.barr-div').forEach(b=>b.classList.remove('on'));
+    if(btn) btn.classList.add('on');
+  }
+}
 
 function bassArpFreq(){
+  // One-note mode: always return root of current chord
+  if(bassOneNote) return ARP_CHORDS[currentChordIdx].notes[0];
   const base=ARP_CHORDS[currentChordIdx].notes;
   const octs=Math.max(1,Math.min(3,Math.ceil(r('BA-Octaves')/34)));
   const full=[]; for(let o=0;o<octs;o++) base.forEach(f=>full.push(f*Math.pow(2,o)));
@@ -3714,7 +3768,9 @@ function playBassArpNote(t, freq, stepLen){
 
 function setBassNoteLen(steps,btn){
   bassNoteSteps=steps;
+  bassOneNote=false; // exit one-note mode when selecting a note length
   document.querySelectorAll('.barr-div').forEach(b=>b.classList.toggle('on',b===btn));
+  const onb=document.getElementById('bass-one-note-btn'); if(onb) onb.classList.remove('on');
 }
 
 // ═══ KICK ══════════════════════════════════════════
@@ -4200,7 +4256,7 @@ function loop(){
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
       const _sk=':'+seqStep;
       if(drS[seqStep]  &&!seqRecSkipOnce.delete('DR'+_sk)) playDR(nextT+swOff);
-      if(bS[seqStep]   &&!seqRecSkipOnce.delete('B' +_sk)){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
+      if(bassOneNote?seqStep%16===0:(bS[seqStep]&&!seqRecSkipOnce.delete('B'+_sk))){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
       if(kS[seqStep]   &&!seqRecSkipOnce.delete('K' +_sk)) playKick(nextT+swOff);
       if(snS[seqStep]  &&!seqRecSkipOnce.delete('SN'+_sk)) playSnare(nextT+swOff);
       if(dS[seqStep]   &&!seqRecSkipOnce.delete('D' +_sk)) playD(nextT+swOff);
