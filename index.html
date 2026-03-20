@@ -3767,7 +3767,7 @@ function playBassArpNote(t, freq, stepLen){
   const wave=waves[Math.min(3,Math.floor(r('BA-Wave')/25))];
   const octShift=Math.round(r('BA-Oct')/100*4-2);
   const lowDrop=bassLowSteps[chordSeqStep]?-1:0;
-  const f=freq*Math.pow(2,octShift+lowDrop);
+  const f=Math.max(30.87,freq*Math.pow(2,octShift+lowDrop)); // never below B0
   const detHz=f*(Math.pow(2,n('BA-Detune')*80/1200)-1);
   const subLvl=n('BA-Sub')*0.60;   // heavier sub than synth arp
   const gate=0.08+n('BA-Gate')*0.92;
