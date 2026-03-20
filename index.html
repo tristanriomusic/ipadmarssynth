@@ -907,7 +907,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <div class="sec">OSCILLATOR</div>
         <div class="pg4">
           <div class="ctrl"><label>Wave</label>  <input type="range" id="BA-Wave"   min="0" max="100" value="75"><div class="dv" id="BA-Wave-v"  style="font-size:8px">SIN</div></div>
-          <div class="ctrl"><label>Oct</label>   <input type="range" id="BA-Oct"    min="0" max="100" value="25"><div class="dv" id="BA-Oct-v">-1</div></div>
+          <div class="ctrl"><label>Oct</label>   <input type="range" id="BA-Oct"    min="0" max="100" value="50"><div class="dv" id="BA-Oct-v">0</div></div>
           <div class="ctrl"><label>Detune</label><input type="range" id="BA-Detune" min="0" max="100" value="8"> <div class="dv" id="BA-Detune-v">8</div></div>
           <div class="ctrl"><label>Sub</label>   <input type="range" id="BA-Sub"    min="0" max="100" value="62"><div class="dv" id="BA-Sub-v">62</div></div>
         </div>
@@ -2430,7 +2430,7 @@ const PDEFS={
 function r(id){ const e=document.getElementById(id); return e?parseFloat(e.value):50; }
 function n(id){ return r(id)/100; }
 // Volume scale: slider 60 = old calibrated loudness. Keeps all defaults at "60" for visual consistency.
-const VOL_SCALE={'X-Vol':0.467,'ARP-Vol':1.25,'BA-Vol':1.528,'K-Vol':1.25,'SN-Vol':1.083,'D-Vol':0.917,'H-Vol':0.583,'DR-Vol':0.667,'gloop-loopvol':1.267,'padloop-loopvol':0.6};
+const VOL_SCALE={'X-Vol':0.483,'ARP-Vol':1.25,'BA-Vol':2.292,'K-Vol':1.25,'SN-Vol':1.083,'D-Vol':0.917,'H-Vol':0.583,'DR-Vol':0.667,'gloop-loopvol':1.267,'padloop-loopvol':0.6};
 function nv(id){ return n(id)*(VOL_SCALE[id]||1); }
 // For deep mode, read from -d suffixed sliders when in deep mode, otherwise from preset sliders
 function rSend(inst,type){
