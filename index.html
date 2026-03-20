@@ -950,6 +950,9 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="ctrl"><label>Octaves</label><input type="range" id="BA-Octaves" min="0" max="100" value="33"><div class="dv" id="BA-Octaves-v">33</div></div>
         </div>
 
+        <div class="sec">LOW OCTAVE</div>
+        <div id="bassLowRow" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap"></div>
+
         <div class="sec">FX SEND</div>
         <div class="pg2">
           <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="BA-Rev" min="0" max="100" value="42"><div class="dv" id="BA-Rev-v">42</div></div>
@@ -2580,6 +2583,7 @@ function buildChordSeq(){
   }
   updateChordUI();
   updateSectionUI();
+  buildBassLowRow();
 }
 function cycleChordStep(i,section){
   if(section==='B'){
@@ -2589,6 +2593,9 @@ function cycleChordStep(i,section){
     CHORD_SEQ_DATA[i]=(CHORD_SEQ_DATA[i]+1)%ARP_CHORDS.length;
     document.getElementById('chs-'+i).textContent=ARP_CHORDS[CHORD_SEQ_DATA[i]].name;
   }
+  // Update bass low row chord names
+  const blBtn=document.getElementById('bassLow-'+i);
+  if(blBtn){ const seq=section==='B'?CHORD_SEQ_B:CHORD_SEQ_DATA; blBtn.textContent=ARP_CHORDS[seq[i]].name; }
 }
 function updateChordUI(){
   for(let i=0;i<8;i++){
@@ -3697,6 +3704,27 @@ function spawnGrain(){
 // ═══ BASS SYNTH ARP (grid-driven) ═════════════════
 let bassArpStep=0, bassNoteSteps=4; // 4 = 1 quarter note per triggered step
 let bassOneNote=false; // one-note mode: root note, one per bar
+const bassLowSteps=new Array(8).fill(false); // per-chord-step octave drop
+
+function buildBassLowRow(){
+  const row=document.getElementById('bassLowRow'); if(!row) return;
+  row.innerHTML='';
+  const seq=currentSection==='A'?CHORD_SEQ_DATA:CHORD_SEQ_B;
+  for(let i=0;i<8;i++){
+    const btn=document.createElement('button');
+    btn.className='chd-step'+(i>=chordSeqLen?' off':'')+(bassLowSteps[i]?' bass-low':'');
+    btn.id='bassLow-'+i;
+    btn.textContent=ARP_CHORDS[seq[i]].name;
+    btn.style.cssText='font-size:8px;font-weight:900;padding:5px 8px;border-radius:6px;cursor:pointer;letter-spacing:.5px;border:1px solid rgba(255,204,0,0.3);background:'+(bassLowSteps[i]?'rgba(255,204,0,0.35)':'rgba(255,204,0,0.08)')+';color:'+(bassLowSteps[i]?'#ffcc00':'rgba(255,204,0,0.5)')+';'+(i>=chordSeqLen?'opacity:0.3;':'');
+    btn.addEventListener('click',(function(idx){return function(){
+      bassLowSteps[idx]=!bassLowSteps[idx];
+      this.style.background=bassLowSteps[idx]?'rgba(255,204,0,0.35)':'rgba(255,204,0,0.08)';
+      this.style.color=bassLowSteps[idx]?'#ffcc00':'rgba(255,204,0,0.5)';
+      this.style.borderColor=bassLowSteps[idx]?'rgba(255,204,0,0.7)':'rgba(255,204,0,0.3)';
+    };})(i));
+    row.appendChild(btn);
+  }
+}
 
 function toggleBassOneNote(btn){
   bassOneNote=!bassOneNote;
@@ -3734,7 +3762,8 @@ function playBassArpNote(t, freq, stepLen){
   const waves=['sawtooth','square','triangle','sine'];
   const wave=waves[Math.min(3,Math.floor(r('BA-Wave')/25))];
   const octShift=Math.round(r('BA-Oct')/100*4-2);
-  const f=freq*Math.pow(2,octShift);
+  const lowDrop=bassLowSteps[chordSeqStep]?-1:0;
+  const f=freq*Math.pow(2,octShift+lowDrop);
   const detHz=f*(Math.pow(2,n('BA-Detune')*80/1200)-1);
   const subLvl=n('BA-Sub')*0.60;   // heavier sub than synth arp
   const gate=0.08+n('BA-Gate')*0.92;
