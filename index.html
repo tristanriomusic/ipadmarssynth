@@ -1682,13 +1682,17 @@ class GloopProcessor extends AudioWorkletProcessor {
     this._chunks=[]; this._accumulated=0;
     this._decay=1.0;
     this._rtt=0;
-    this._fpos=0;  // fractional playback position for time-stretch interpolation
-    this._rate=1;  // playback rate: currentBPM / recordedBPM
-    this._recBPM=120; this._curBPM=120;
+    this._rate=1; this._recBPM=120; this._curBPM=120;
+    // OLA pitch-preserving time-stretch
+    this._G=4096; this._H=2048; // grain size, hop (50% overlap)
+    this._hp=0; this._rdA=0; this._rdB=0; this._wPos=0;
+    this._hann=new Float32Array(4096);
+    for(let i=0;i<4096;i++) this._hann[i]=0.5*(1-Math.cos(2*Math.PI*i/4095));
     this.port.onmessage=({data})=>{
       const cmd=data.cmd;
       if(cmd==='record'){
-        this._state='recording'; this._chunks=[]; this._accumulated=0; this._fpos=0;
+        this._state='recording'; this._chunks=[]; this._accumulated=0;
+        this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0;
         this._targetLen=data.targetLen; this._recStart=data.recStart;
         this._recStartAbsolute=-1; this._rtt=data.rtt||0;
         this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rate=1;
@@ -1697,18 +1701,27 @@ class GloopProcessor extends AudioWorkletProcessor {
       else if(cmd==='stop'){ this._state='idle'; }
       else if(cmd==='overdub'){ if(this._buf){ this._syncPos(); this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._fpos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; this._rate=1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; this._rate=1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
       else if(cmd==='set_bpm'){ this._curBPM=data.bpm; this._rate=this._recBPM>0?this._curBPM/this._recBPM:1; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
     };
   }
   _syncPos(){
-    if(this._recStartAbsolute<0||this._len===0){ this._fpos=0; return; }
-    const adjustedStart=this._recStartAbsolute-this._rtt;
-    const elapsed=currentTime-adjustedStart;
-    const pos=elapsed*sampleRate*this._rate;
-    this._fpos=((pos%this._len)+this._len)%this._len;
+    if(this._recStartAbsolute<0||this._len===0){ this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; return; }
+    const adj=this._recStartAbsolute-this._rtt;
+    const el=currentTime-adj;
+    const tot=Math.max(0,el*sampleRate);
+    const len=this._len, H=this._H, r=this._rate;
+    if(r===1){
+      this._rdA=((Math.round(tot)%len)+len)%len; this._rdB=this._rdA; this._hp=0;
+    } else {
+      const hI=H*r, hn=Math.floor(tot/H);
+      this._hp=Math.round(tot)%H;
+      this._rdA=((hn*hI)%len+len)%len;
+      this._rdB=(((hn-1)*hI)%len+len)%len;
+    }
+    this._wPos=((tot*r)%len+len)%len;
   }
   _finalize(){
     const target=this._targetLen>0?this._targetLen:this._accumulated;
@@ -1722,12 +1735,22 @@ class GloopProcessor extends AudioWorkletProcessor {
         if(off>=total) break;
       }
       this._chunks=[]; this._buf=buf; this._len=total;
-      this._syncPos();
-      this._state='playing';
+      this._syncPos(); this._state='playing';
       this.port.postMessage({type:'done',len:total});
     } else {
       this._chunks=[]; this._state='idle';
       this.port.postMessage({type:'done',len:0});
+    }
+  }
+  _readOLA(out,blockSize){
+    const b=this._buf,len=this._len,H=this._H,hann=this._hann,hI=H*this._rate;
+    for(let i=0;i<blockSize;i++){
+      const p=this._hp;
+      const a=((this._rdA+p|0)%len+len)%len;
+      const c=((this._rdB+p+H|0)%len+len)%len;
+      out[i]=b[a]*hann[p]+b[c]*hann[p+H];
+      this._hp++;
+      if(this._hp>=H){ this._hp=0; this._rdB=this._rdA; this._rdA=((this._rdA+hI)%len+len)%len; }
     }
   }
   process(inputs,outputs){
@@ -1751,23 +1774,29 @@ class GloopProcessor extends AudioWorkletProcessor {
     }
     if(this._state==='playing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const len=this._len, rate=this._rate;
-      for(let i=0;i<blockSize;i++){
-        const idx=this._fpos|0, frac=this._fpos-idx;
-        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
-        this._fpos=(this._fpos+rate)%len;
-      }
+      if(this._rate===1){
+        const len=this._len;
+        for(let i=0;i<blockSize;i++){ out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len; }
+      } else { this._readOLA(out,blockSize); }
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const d=this._decay, len=this._len, rate=this._rate;
-      const writeOff=Math.round(this._rtt*sampleRate*rate);
-      for(let i=0;i<blockSize;i++){
-        const inp=ch?ch[i]:0;
-        const idx=this._fpos|0, frac=this._fpos-idx;
-        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
-        const wp=((Math.round(this._fpos)-writeOff)%len+len)%len;
-        b[wp]=b[wp]*d+inp;
-        this._fpos=(this._fpos+rate)%len;
+      const d=this._decay,len=this._len,rate=this._rate;
+      const writeOff=Math.round(this._rtt*sampleRate);
+      if(rate===1){
+        for(let i=0;i<blockSize;i++){
+          const inp=ch?ch[i]:0;
+          const wp=((this._rdA-writeOff)%len+len)%len;
+          b[wp]=b[wp]*d+inp;
+          out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
+        }
+      } else {
+        this._readOLA(out,blockSize);
+        for(let i=0;i<blockSize;i++){
+          const inp=ch?ch[i]:0;
+          const wp=((Math.round(this._wPos)-writeOff)%len+len)%len;
+          b[wp]=b[wp]*d+inp;
+          this._wPos=(this._wPos+rate)%len;
+        }
       }
     } else { out.fill(0); }
     return true;
@@ -1829,31 +1858,44 @@ const PADLOOP_WORKLET_CODE=`
 class PadLoopProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this._state='idle'; this._buf=null; this._fpos=0;
+    this._state='idle'; this._buf=null;
     this._targetLen=0; this._recStart=0; this._recStartAbsolute=-1; this._decay=1.0;
     this._rtt=0; this._chunks=[]; this._accumulated=0;
     this._rate=1; this._recBPM=120; this._curBPM=120;
+    // OLA pitch-preserving time-stretch
+    this._G=4096; this._H=2048;
+    this._hp=0; this._rdA=0; this._rdB=0; this._wPos=0;
+    this._hann=new Float32Array(4096);
+    for(let i=0;i<4096;i++) this._hann[i]=0.5*(1-Math.cos(2*Math.PI*i/4095));
     this.port.onmessage=({data})=>{
       const cmd=data.cmd;
-      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; this._rtt=data.rtt||0; this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rate=1; }
+      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; this._rtt=data.rtt||0; this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rate=1; this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; }
       else if(cmd==='stop_record'){ this._finalize(); }
       else if(cmd==='overdub'){ if(this._buf){ this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
       else if(cmd==='play'){ if(this._buf){ this._syncPos(); this._state='playing'; } }
       else if(cmd==='stop'){ this._state='idle'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._fpos=0; this._recStartAbsolute=-1; this._rate=1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; this._recStartAbsolute=-1; this._rate=1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
       else if(cmd==='set_bpm'){ this._curBPM=data.bpm; this._rate=this._recBPM>0?this._curBPM/this._recBPM:1; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
     };
   }
   _syncPos(){
-    if(this._recStartAbsolute<0||!this._buf){ this._fpos=0; return; }
-    const adjustedStart=this._recStartAbsolute-this._rtt;
-    const elapsed=currentTime-adjustedStart;
-    const len=this._buf.length;
-    const pos=elapsed*sampleRate*this._rate;
-    this._fpos=((pos%len)+len)%len;
+    if(this._recStartAbsolute<0||!this._buf){ this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; return; }
+    const adj=this._recStartAbsolute-this._rtt;
+    const el=currentTime-adj;
+    const tot=Math.max(0,el*sampleRate);
+    const len=this._buf.length, H=this._H, r=this._rate;
+    if(r===1){
+      this._rdA=((Math.round(tot)%len)+len)%len; this._rdB=this._rdA; this._hp=0;
+    } else {
+      const hI=H*r, hn=Math.floor(tot/H);
+      this._hp=Math.round(tot)%H;
+      this._rdA=((hn*hI)%len+len)%len;
+      this._rdB=(((hn-1)*hI)%len+len)%len;
+    }
+    this._wPos=((tot*r)%len+len)%len;
   }
   _finalize(){
     const target=this._targetLen>0?this._targetLen:this._accumulated;
@@ -1871,6 +1913,17 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     } else {
       this._chunks=[]; this._state='idle';
       this.port.postMessage({type:'done',len:0});
+    }
+  }
+  _readOLA(out,blockSize){
+    const b=this._buf,len=b.length,H=this._H,hann=this._hann,hI=H*this._rate;
+    for(let i=0;i<blockSize;i++){
+      const p=this._hp;
+      const a=((this._rdA+p|0)%len+len)%len;
+      const c=((this._rdB+p+H|0)%len+len)%len;
+      out[i]=b[a]*hann[p]+b[c]*hann[p+H];
+      this._hp++;
+      if(this._hp>=H){ this._hp=0; this._rdB=this._rdA; this._rdA=((this._rdA+hI)%len+len)%len; }
     }
   }
   process(inputs,outputs){
@@ -1894,23 +1947,29 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     }
     if(this._state==='playing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const len=b.length, rate=this._rate;
-      for(let i=0;i<out.length;i++){
-        const idx=this._fpos|0, frac=this._fpos-idx;
-        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
-        this._fpos=(this._fpos+rate)%len;
-      }
+      if(this._rate===1){
+        const len=b.length;
+        for(let i=0;i<out.length;i++){ out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len; }
+      } else { this._readOLA(out,out.length); }
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const d=this._decay, len=b.length, rate=this._rate;
-      const writeOff=Math.round(this._rtt*sampleRate*rate);
-      for(let i=0;i<out.length;i++){
-        const inp=ch?ch[i]:0;
-        const idx=this._fpos|0, frac=this._fpos-idx;
-        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
-        const wp=((Math.round(this._fpos)-writeOff)%len+len)%len;
-        b[wp]=b[wp]*d+inp;
-        this._fpos=(this._fpos+rate)%len;
+      const d=this._decay,len=b.length,rate=this._rate;
+      const writeOff=Math.round(this._rtt*sampleRate);
+      if(rate===1){
+        for(let i=0;i<out.length;i++){
+          const inp=ch?ch[i]:0;
+          const wp=((this._rdA-writeOff)%len+len)%len;
+          b[wp]=b[wp]*d+inp;
+          out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
+        }
+      } else {
+        this._readOLA(out,out.length);
+        for(let i=0;i<out.length;i++){
+          const inp=ch?ch[i]:0;
+          const wp=((Math.round(this._wPos)-writeOff)%len+len)%len;
+          b[wp]=b[wp]*d+inp;
+          this._wPos=(this._wPos+rate)%len;
+        }
       }
     } else { out.fill(0); }
     return true;
