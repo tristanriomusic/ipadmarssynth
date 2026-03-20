@@ -47,6 +47,7 @@
     /* PLAY */
     #playBtn{ display:block; width:94vw; margin:10px 3vw 0; padding:18px; border-radius:12px; border:2px solid #00ff88; font-weight:900; font-size:15px; letter-spacing:4px; cursor:pointer; background:rgba(0,30,15,0.55); color:#00ff88; box-shadow:0 0 25px rgba(0,255,136,0.3); transition:all .15s; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
     #playBtn.playing{ background:rgba(30,0,10,0.55); color:#ff4466; border-color:#ff4466; box-shadow:0 0 25px rgba(255,68,102,0.35); }
+    #muteAllBtn.muted{ background:rgba(255,40,40,0.5); color:#ff5555; border-color:#ff4444; box-shadow:0 0 18px rgba(255,50,50,0.5); }
 
     /* TOP BAR */
     .top-bar{ display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:7px 3vw 0; }
@@ -322,7 +323,10 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 </button>
 <div id="ui">
 
-  <button id="playBtn" onclick="togglePlay()">▶  PLAY</button>
+  <div style="display:flex;gap:8px;width:94vw;margin:10px 3vw 0">
+    <button id="playBtn" onclick="togglePlay()" style="flex:1;margin:0;width:auto">▶  PLAY</button>
+    <button id="muteAllBtn" onclick="muteAll()" style="padding:18px 16px;border-radius:12px;border:2px solid rgba(255,60,60,0.5);font-weight:900;font-size:11px;letter-spacing:2px;cursor:pointer;background:rgba(40,0,0,0.55);color:rgba(255,100,100,0.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);white-space:nowrap;transition:all .15s">MUTE ALL</button>
+  </div>
   <div id="session-rec-row">
     <button id="session-rec-btn" onclick="sessionRecToggle()"><span class="rec-dot"></span>⏺ REC SESSION</button>
     <span id="session-rec-timer" style="display:none">0:00</span>
@@ -1353,6 +1357,18 @@ let holoDelNode=null, holoDelFb=null, holoDelWet=null;
 
 // ── MUTE STATE ────────────────────────────────────
 const muted={X:false,DR:false,B:false,K:false,SN:false,D:false,H:false,ARP:true,SMP:false};
+const pendingMutes={}; // key→targetState, applied at chord cycle start
+let muteAllActive=false;
+function intendedMute(k){ return k in pendingMutes?pendingMutes[k]:muted[k]; }
+function syncMuteUI(key,state){
+  const db=document.getElementById('mute'+key); if(db) db.classList.toggle('muted',state);
+  const cb=document.getElementById('cmute-'+key); if(cb) cb.classList.toggle('muted',state);
+}
+function queueMute(key,state){ pendingMutes[key]=state; syncMuteUI(key,state); }
+function applyPendingMutes(){
+  for(const k in pendingMutes){ muted[k]=pendingMutes[k]; if(k==='X'&&muted[k]) stopPadVoice(true); }
+  for(const k in pendingMutes) delete pendingMutes[k];
+}
 let seqBarCount=1; // 1–4: how many bars the loop cycles through
 let seqViewBar=0;  // 0–3: which bar is shown in SEQ MODE editor
 let seqModeActive=false;
@@ -4281,6 +4297,8 @@ function loop(){
         chordBarCount++;
         if(chordBarCount%chordBarsPerStep===0){
           const nextStep=(chordSeqStep+1)%chordSeqLen;
+          // Apply pending mutes at chord cycle start
+          if(nextStep===0) applyPendingMutes();
           // Switch section at wrap-around point
           if(nextStep===0&&pendingSection&&pendingSection!==currentSection){
             currentSection=pendingSection; pendingSection=null;
@@ -4366,23 +4384,28 @@ function instRandom(key){
 }
 function instMute(key,btn){
   if(key==='DRMS'){
-    // Master drums: all-mute or all-unmute
-    const allMuted=muted.K&&muted.SN&&muted.D&&muted.H;
+    const allMuted=['K','SN','D','H'].every(k=>intendedMute(k));
     const s=!allMuted;
-    ['K','SN','D','H'].forEach(k=>{
-      muted[k]=s;
-      const b=document.getElementById('mute'+k); if(b) b.classList.toggle('muted',s);
-    });
+    ['K','SN','D','H'].forEach(k=>queueMute(k,s));
     btn.classList.toggle('muted',s);
   } else {
-    muted[key]=!muted[key];
-    btn.classList.toggle('muted',muted[key]);
+    queueMute(key,!intendedMute(key));
     if(['K','SN','D','H'].includes(key)){
-      const allMuted=muted.K&&muted.SN&&muted.D&&muted.H;
+      const allMuted=['K','SN','D','H'].every(k=>intendedMute(k));
       const mb=document.getElementById('muteDRMS'); if(mb) mb.classList.toggle('muted',allMuted);
     }
-    if(key==='X' && muted.X) stopPadVoice(true);
   }
+  // sync muteAll indicator
+  const allKeys=['X','DR','B','K','SN','D','H','ARP','SMP'];
+  muteAllActive=allKeys.every(k=>intendedMute(k));
+  const mab=document.getElementById('muteAllBtn'); if(mab) mab.classList.toggle('muted',muteAllActive);
+}
+function muteAll(){
+  const allKeys=['X','DR','B','K','SN','D','H','ARP','SMP'];
+  muteAllActive=!allKeys.every(k=>intendedMute(k));
+  allKeys.forEach(k=>queueMute(k,muteAllActive));
+  const mb=document.getElementById('muteDRMS'); if(mb) mb.classList.toggle('muted',muteAllActive);
+  const mab=document.getElementById('muteAllBtn'); if(mab) mab.classList.toggle('muted',muteAllActive);
 }
 
 function buildGrid(cid,state,cls){
@@ -4667,6 +4690,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   buildSeqMode();
   // Restore loop latency compensation slider
   { const sl=document.getElementById('loop-lat-comp'); if(sl){ sl.value=loopLatencyComp; document.getElementById('loop-lat-comp-v').textContent=(loopLatencyComp>0?'+':'')+loopLatencyComp+' ms'; } }
+  // Sync all mute UI indicators with initial muted state
+  for(const k of Object.keys(muted)) syncMuteUI(k,muted[k]);
 
   document.getElementById('boot').addEventListener('click',e=>{
     init();
