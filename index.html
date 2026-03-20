@@ -1678,33 +1678,34 @@ class GloopProcessor extends AudioWorkletProcessor {
     this._recStart=0; this._recStartAbsolute=-1;
     this._chunks=[]; this._accumulated=0;
     this._decay=1.0;
-    this._rtt=0;   // outputLatency + inputLatency in seconds — shifts playback so guitar beat 1 aligns with bar
-    this._pos=0;   // counter-based playback position (synced to clock+RTT at play start)
+    this._rtt=0;
+    this._fpos=0;  // fractional playback position for time-stretch interpolation
+    this._rate=1;  // playback rate: currentBPM / recordedBPM
+    this._recBPM=120; this._curBPM=120;
     this.port.onmessage=({data})=>{
       const cmd=data.cmd;
       if(cmd==='record'){
-        this._state='recording'; this._chunks=[]; this._accumulated=0; this._pos=0;
+        this._state='recording'; this._chunks=[]; this._accumulated=0; this._fpos=0;
         this._targetLen=data.targetLen; this._recStart=data.recStart;
         this._recStartAbsolute=-1; this._rtt=data.rtt||0;
+        this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rate=1;
       } else if(cmd==='stop_record'){ this._finalize(); }
       else if(cmd==='play'){ if(this._buf){ this._syncPos(); this._state='playing'; } }
       else if(cmd==='stop'){ this._state='idle'; }
       else if(cmd==='overdub'){ if(this._buf){ this._syncPos(); this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._pos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._fpos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; this._rate=1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
+      else if(cmd==='set_bpm'){ this._curBPM=data.bpm; this._rate=this._recBPM>0?this._curBPM/this._recBPM:1; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
     };
   }
-  // Sync _pos to the bar grid with RTT latency compensation.
-  // Guitar beat 1 sits at offset rtt*sampleRate in the buffer (it arrived that late).
-  // adjustedStart = recStartAbsolute - rtt makes pos=rtt*sr at every bar boundary,
-  // so beat 1 is rendered at the bar and heard at barTime + outputLatency (in sync with drums).
   _syncPos(){
-    if(this._recStartAbsolute<0||this._len===0){ this._pos=0; return; }
+    if(this._recStartAbsolute<0||this._len===0){ this._fpos=0; return; }
     const adjustedStart=this._recStartAbsolute-this._rtt;
     const elapsed=currentTime-adjustedStart;
-    this._pos=((Math.round(elapsed*sampleRate)%this._len)+this._len)%this._len;
+    const pos=elapsed*sampleRate*this._rate;
+    this._fpos=((pos%this._len)+this._len)%this._len;
   }
   _finalize(){
     const target=this._targetLen>0?this._targetLen:this._accumulated;
@@ -1747,22 +1748,23 @@ class GloopProcessor extends AudioWorkletProcessor {
     }
     if(this._state==='playing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
+      const len=this._len, rate=this._rate;
       for(let i=0;i<blockSize;i++){
-        out[i]=b[this._pos];
-        this._pos=(this._pos+1)%this._len;
+        const idx=this._fpos|0, frac=this._fpos-idx;
+        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
+        this._fpos=(this._fpos+rate)%len;
       }
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const d=this._decay;
-      // Input arrives rtt late — write it rtt samples earlier in the buffer
-      // so overdub layers align with the original recording
-      const writeOff=Math.round(this._rtt*sampleRate);
+      const d=this._decay, len=this._len, rate=this._rate;
+      const writeOff=Math.round(this._rtt*sampleRate*rate);
       for(let i=0;i<blockSize;i++){
         const inp=ch?ch[i]:0;
-        const wp=((this._pos-writeOff)%this._len+this._len)%this._len;
+        const idx=this._fpos|0, frac=this._fpos-idx;
+        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
+        const wp=((Math.round(this._fpos)-writeOff)%len+len)%len;
         b[wp]=b[wp]*d+inp;
-        out[i]=b[this._pos];
-        this._pos=(this._pos+1)%this._len;
+        this._fpos=(this._fpos+rate)%len;
       }
     } else { out.fill(0); }
     return true;
@@ -1824,28 +1826,31 @@ const PADLOOP_WORKLET_CODE=`
 class PadLoopProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this._state='idle'; this._buf=null; this._pos=0;
+    this._state='idle'; this._buf=null; this._fpos=0;
     this._targetLen=0; this._recStart=0; this._recStartAbsolute=-1; this._decay=1.0;
     this._rtt=0; this._chunks=[]; this._accumulated=0;
+    this._rate=1; this._recBPM=120; this._curBPM=120;
     this.port.onmessage=({data})=>{
       const cmd=data.cmd;
-      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; this._rtt=data.rtt||0; }
+      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; this._rtt=data.rtt||0; this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rate=1; }
       else if(cmd==='stop_record'){ this._finalize(); }
       else if(cmd==='overdub'){ if(this._buf){ this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
       else if(cmd==='play'){ if(this._buf){ this._syncPos(); this._state='playing'; } }
       else if(cmd==='stop'){ this._state='idle'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._pos=0; this._recStartAbsolute=-1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._fpos=0; this._recStartAbsolute=-1; this._rate=1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
+      else if(cmd==='set_bpm'){ this._curBPM=data.bpm; this._rate=this._recBPM>0?this._curBPM/this._recBPM:1; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
     };
   }
   _syncPos(){
-    if(this._recStartAbsolute<0||!this._buf){ this._pos=0; return; }
+    if(this._recStartAbsolute<0||!this._buf){ this._fpos=0; return; }
     const adjustedStart=this._recStartAbsolute-this._rtt;
     const elapsed=currentTime-adjustedStart;
     const len=this._buf.length;
-    this._pos=((Math.round(elapsed*sampleRate)%len)+len)%len;
+    const pos=elapsed*sampleRate*this._rate;
+    this._fpos=((pos%len)+len)%len;
   }
   _finalize(){
     const target=this._targetLen>0?this._targetLen:this._accumulated;
@@ -1886,17 +1891,23 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     }
     if(this._state==='playing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      for(let i=0;i<out.length;i++){ out[i]=b[this._pos]; this._pos=(this._pos+1)%b.length; }
+      const len=b.length, rate=this._rate;
+      for(let i=0;i<out.length;i++){
+        const idx=this._fpos|0, frac=this._fpos-idx;
+        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
+        this._fpos=(this._fpos+rate)%len;
+      }
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const d=this._decay;
-      const writeOff=Math.round(this._rtt*sampleRate);
-      const len=b.length;
+      const d=this._decay, len=b.length, rate=this._rate;
+      const writeOff=Math.round(this._rtt*sampleRate*rate);
       for(let i=0;i<out.length;i++){
         const inp=ch?ch[i]:0;
-        const wp=((this._pos-writeOff)%len+len)%len;
+        const idx=this._fpos|0, frac=this._fpos-idx;
+        out[i]=b[idx%len]*(1-frac)+b[(idx+1)%len]*frac;
+        const wp=((Math.round(this._fpos)-writeOff)%len+len)%len;
         b[wp]=b[wp]*d+inp;
-        out[i]=b[this._pos]; this._pos=(this._pos+1)%len;
+        this._fpos=(this._fpos+rate)%len;
       }
     } else { out.fill(0); }
     return true;
@@ -2243,7 +2254,7 @@ function gloopRecord(){
   // Manual compensation + auto-detected input capture latency.
   // Worklet advances playback pos so beat 1 lines up with the bar grid.
   const rtt=loopLatencyComp/1000;
-  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'record',targetLen:gloopTargetLen,recStart:gloopRecStart,rtt});
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'record',targetLen:gloopTargetLen,recStart:gloopRecStart,rtt,bpm});
   updateGloopUI();
 }
 function gloopToggle(){
@@ -2320,7 +2331,7 @@ function padloopRecord(){
   // bars × 16 steps × step duration in samples — same as gloopTargetLen formula
   const _barSamples=Math.round(16*(60/bpm/4)*ctx.sampleRate);
   padloopTargetLen=padloopBars*_barSamples;
-  padloopWorklet.port.postMessage({cmd:'record',targetLen:padloopTargetLen,recStart:padloopRecStart,rtt:loopLatencyComp/1000});
+  padloopWorklet.port.postMessage({cmd:'record',targetLen:padloopTargetLen,recStart:padloopRecStart,rtt:loopLatencyComp/1000,bpm});
   // Retroactively tap samplerizer if a note is already held
   if(samplerGain&&padloopCapBus) try{ samplerGain.connect(padloopCapBus); }catch(e){}
   updatePadloopUI();
@@ -2469,6 +2480,9 @@ function setBpm(val){
   if(delNode) delNode.delayTime.setTargetAtTime(60/bpm/2, ctx.currentTime, 0.05);
   if(delSyncDiv!==null && delNode) delNode.delayTime.setTargetAtTime((60/bpm)*delSyncDiv, ctx.currentTime, 0.05);
   if(holoDelNode) holoDelNode.delayTime.setTargetAtTime((60/bpm)*holoDelayDiv, ctx.currentTime, 0.05);
+  // Time-stretch loops to match new tempo
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val});
+  if(padloopWorklet) padloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val});
 }
 function setPadMode(mode,btn){
   padMode=mode;
