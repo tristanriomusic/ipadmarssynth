@@ -47,13 +47,20 @@
     /* PLAY */
     #playBtn{ display:block; width:94vw; margin:10px 3vw 0; padding:18px; border-radius:12px; border:2px solid #00ff88; font-weight:900; font-size:15px; letter-spacing:4px; cursor:pointer; background:rgba(0,30,15,0.55); color:#00ff88; box-shadow:0 0 25px rgba(0,255,136,0.3); transition:all .15s; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
     #playBtn.playing{ background:rgba(30,0,10,0.55); color:#ff4466; border-color:#ff4466; box-shadow:0 0 25px rgba(255,68,102,0.35); }
-    #muteAllBtn.muted{ background:rgba(255,40,40,0.5); color:#ff5555; border-color:#ff4444; box-shadow:0 0 18px rgba(255,50,50,0.5); }
+    #muteAllBtn.muted{ background:rgba(255,40,40,0.5)!important; color:#ff5555!important; border-color:#ff4444!important; box-shadow:0 0 18px rgba(255,50,50,0.5)!important; }
 
     /* TOP BAR */
-    .top-bar{ display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:7px 3vw 0; }
+    .top-bar{ display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px 3vw 0; }
     .m-btn{ padding:13px 6px; border:none; border-radius:10px; font-weight:900; color:#fff; text-transform:uppercase; font-size:9px; letter-spacing:.8px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+    .tb-btn{ padding:11px 4px; font-size:8px; letter-spacing:1px; border-radius:8px; border:1.5px solid; transition:all .15s; }
+    #muteAllBtn{ background:rgba(255,40,40,0.18); border-color:rgba(255,60,60,0.5); color:rgba(255,100,100,0.85); }
+    #seqModeBtn{ background:rgba(0,160,255,0.15); border-color:rgba(80,180,255,0.45); color:#50b4ff; }
+    #seqrec-btn{ background:rgba(255,136,0,0.15); border-color:rgba(255,136,0,0.45); color:#ffaa44; }
+    #seqrec-btn.active{ border-color:#ff8800; background:rgba(80,30,0,0.65); color:#ffcc66; animation:recPulse 1.2s ease-in-out infinite; }
+    #silence{ background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.25); color:#ccc; }
+    #session-rec-btn{ background:rgba(255,50,100,0.15); border-color:rgba(255,50,100,0.45); color:#ff6688; position:relative; display:flex; align-items:center; justify-content:center; gap:4px; }
+    #session-rec-btn.recording{ border-color:#ff2222; background:rgba(80,0,0,0.65); animation:recPulse 1.2s ease-in-out infinite; }
     #kill{ background:rgba(220,0,50,0.65); border:1px solid rgba(255,50,80,0.5); }
-    #silence{ background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#ddd; }
 
     /* BPM */
     .bpm-bar{ display:flex; align-items:center; gap:8px; margin:7px 3vw; padding:10px 14px; background:rgba(5,5,25,0.45); border-radius:12px; border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
@@ -208,7 +215,7 @@
     input[type=range]{ -webkit-appearance:none; appearance:none; background:#222; height:4px; border-radius:2px; width:100%; cursor:pointer; }
     input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; background:#ddd; border-radius:50%; border:3px solid #000; box-shadow:0 0 6px rgba(0,0,0,.6); }
     /* ══ SEQ MODE ═══════════════════════════════════════ */
-    #seqModeBtn{ display:block; width:94vw; margin:6px 3vw 0; padding:11px; border-radius:10px; border:1.5px solid rgba(80,180,255,0.5); font-weight:900; font-size:10px; letter-spacing:4px; cursor:pointer; background:rgba(0,40,80,0.35); color:#50b4ff; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); text-shadow:0 0 12px rgba(80,180,255,0.6); }
+    #seqModeBtn.active{ background:rgba(0,80,160,0.45); border-color:#50b4ff; box-shadow:0 0 12px rgba(80,180,255,0.4); }
     #seqMode{ position:fixed; inset:0; z-index:8000; display:none; overflow-y:auto; background:rgba(5,3,12,0.97); padding:10px; -webkit-overflow-scrolling:touch; }
     #seqMode.active{ display:block; }
     .sm-top{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); }
@@ -253,17 +260,13 @@
     .chd-mode.on{ background:rgba(255,136,200,0.28); color:#fff; border-color:rgba(255,136,200,0.55); }
 
 /* SESSION REC */
-#session-rec-row{ display:flex; align-items:center; gap:8px; padding:4px 3vw 0; }
-#session-rec-btn{ flex:1; padding:11px 10px; border-radius:10px; border:2px solid rgba(255,50,50,0.45); background:rgba(50,0,0,0.5); color:#ff5555; font-weight:900; font-size:10px; letter-spacing:2px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; gap:6px; }
-#session-rec-btn.recording{ border-color:#ff2222; background:rgba(80,0,0,0.65); animation:recPulse 1.2s ease-in-out infinite; }
+/* session rec dot styling kept */
 .rec-dot{ width:8px; height:8px; border-radius:50%; background:#ff5555; flex-shrink:0; }
 #session-rec-btn.recording .rec-dot{ background:#ff2222; animation:dotPulse 1.2s ease-in-out infinite; }
 #session-rec-timer{ font-size:13px; font-weight:900; color:#ff6666; letter-spacing:3px; min-width:48px; text-align:right; }
 @keyframes recPulse{ 0%,100%{box-shadow:0 0 6px rgba(255,34,34,0.25)} 50%{box-shadow:0 0 18px rgba(255,34,34,0.65)} }
 @keyframes dotPulse{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.2;transform:scale(0.7)} }
-/* SEQ REC */
-#seqrec-btn{ padding:11px 10px; border-radius:10px; border:2px solid rgba(255,136,0,0.4); background:rgba(40,15,0,0.5); color:#ffaa44; font-weight:900; font-size:10px; letter-spacing:2px; cursor:pointer; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
-#seqrec-btn.active{ border-color:#ff8800; background:rgba(80,30,0,0.65); color:#ffcc66; animation:recPulse 1.2s ease-in-out infinite; }
+/* SEQ REC active state handled in top-bar styles */
 
 /* INSTRUMENT CIRCLES */
 #popup-bg{ display:none; position:fixed; inset:0; z-index:499; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); touch-action:none; }
@@ -329,18 +332,17 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
   <div style="display:flex;gap:8px;width:94vw;margin:10px 3vw 0">
     <button id="playBtn" onclick="togglePlay()" style="flex:1;margin:0;width:auto">▶  PLAY</button>
-    <button id="muteAllBtn" onclick="muteAll()" style="padding:18px 16px;border-radius:12px;border:2px solid rgba(255,60,60,0.5);font-weight:900;font-size:11px;letter-spacing:2px;cursor:pointer;background:rgba(40,0,0,0.55);color:rgba(255,100,100,0.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);white-space:nowrap;transition:all .15s">MUTE ALL</button>
   </div>
-  <div id="session-rec-row">
-    <button id="session-rec-btn" onclick="sessionRecToggle()"><span class="rec-dot"></span>⏺ REC SESSION</button>
-    <span id="session-rec-timer" style="display:none">0:00</span>
-    <button id="seqrec-btn" onclick="seqRecToggle()">⊙ SEQ REC</button>
+  <div class="top-bar" style="grid-template-columns:1fr 1fr 1fr 1fr">
+    <button id="abSwitch" class="m-btn tb-btn" onclick="toggleABSection()" style="background:rgba(0,180,255,0.25);border:1px solid rgba(0,180,255,0.5);color:#00ccff">● A</button>
+    <button id="muteAllBtn" class="m-btn tb-btn" onclick="muteAll()">MUTE ALL</button>
+    <button id="seqModeBtn" class="m-btn tb-btn" onclick="enterSeqMode()">⊞ SEQ MODE</button>
+    <button id="seqrec-btn" class="m-btn tb-btn" onclick="seqRecToggle()">⊙ SEQ REC</button>
   </div>
-  <div class="top-bar">
-    <button id="abSwitch" class="m-btn" onclick="toggleABSection()" style="background:rgba(0,180,255,0.25);border:1px solid rgba(0,180,255,0.5);color:#00ccff;font-weight:900;letter-spacing:2px">● A</button>
-    <button id="silence" class="m-btn" onclick="clearSeq()">CLEAR STEPS</button>
+  <div class="top-bar" style="grid-template-columns:1fr 1fr 1fr">
+    <button id="silence" class="m-btn tb-btn" onclick="clearSeq()">CLEAR STEPS</button>
+    <button id="session-rec-btn" class="m-btn tb-btn" onclick="sessionRecToggle()" style="position:relative"><span class="rec-dot"></span>REC<span id="session-rec-timer" style="display:none;margin-left:4px;font-size:9px;color:#ff5555;font-weight:900">0:00</span></button>
   </div>
-  <button id="seqModeBtn" onclick="enterSeqMode()">⊞ SEQ MODE</button>
 
   <div class="bpm-bar">
     <label>BPM</label>
@@ -694,6 +696,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
             <button class="loop-btn rec"  id="gloop-rec"   onclick="gloopRecord()">● REC</button>
             <button class="loop-btn play" id="gloop-play"  onclick="gloopToggle()"  disabled>▶ LOOP</button>
             <button class="loop-btn"      id="gloop-clear" onclick="gloopClear()"   disabled>✕ CLEAR</button>
+            <button class="loop-btn"      id="gloop-rev"   onclick="gloopReverse()" disabled style="border-color:rgba(200,140,255,0.5);color:#c88cff">⇄ REV</button>
+            <button class="loop-btn"      id="gloop-fade"  onclick="gloopFadeOut()" disabled style="border-color:rgba(255,200,100,0.5);color:#ffc864">↘ FADE</button>
           </div>
           <div class="loop-status" id="gloop-status">READY</div>
 
@@ -765,6 +769,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <button class="loop-btn rec"  id="padloop-rec"   onclick="padloopRecord()">● REC</button>
           <button class="loop-btn play" id="padloop-play"  onclick="padloopToggle()" disabled>▶ LOOP</button>
           <button class="loop-btn"      id="padloop-clear" onclick="padloopClear()"  disabled>✕ CLEAR</button>
+          <button class="loop-btn"      id="padloop-rev"   onclick="padloopReverse()" disabled style="border-color:rgba(200,140,255,0.5);color:#c88cff">⇄ REV</button>
+          <button class="loop-btn"      id="padloop-fade"  onclick="padloopFadeOut()" disabled style="border-color:rgba(255,200,100,0.5);color:#ffc864">↘ FADE</button>
         </div>
         <div class="loop-status" id="padloop-status" style="color:#4ecdc4">READY</div>
 
@@ -1831,7 +1837,7 @@ class GloopProcessor extends AudioWorkletProcessor {
     this._decay=1.0;
     this._rtt=0;
     this._recBPM=120; this._curBPM=120;
-    this._hp=0; this._rdA=0; this._wPos=0;
+    this._hp=0; this._rdA=0; this._wPos=0; this._fadeEnd=0; this._fadeDur=0;
     this._hann=new Float32Array(4096);
     for(let i=0;i<4096;i++) this._hann[i]=0.5*(1-Math.cos(2*Math.PI*i/4095));
     this.port.onmessage=({data})=>{
@@ -1847,7 +1853,9 @@ class GloopProcessor extends AudioWorkletProcessor {
       else if(cmd==='stop'){ this._state='idle'; }
       else if(cmd==='overdub'){ if(this._buf){ this._syncPos(); this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._rdA=0; this._wPos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._rdA=0; this._wPos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; this._fadeEnd=0; }
+      else if(cmd==='reverse'){ if(this._buf) this._buf.reverse(); }
+      else if(cmd==='fade'){ this._fadeEnd=currentTime+data.dur; this._fadeDur=data.dur; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
       else if(cmd==='set_bpm'){
@@ -1947,6 +1955,12 @@ class GloopProcessor extends AudioWorkletProcessor {
         out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
       }
     } else { out.fill(0); }
+    // Apply fade-out envelope
+    if(this._fadeEnd>0){
+      const remaining=this._fadeEnd-currentTime;
+      if(remaining<=0){ out.fill(0); this._fadeEnd=0; this._state='idle'; this.port.postMessage({type:'faded'}); }
+      else { const g=Math.min(1,remaining/this._fadeDur); for(let i=0;i<out.length;i++) out[i]*=g; }
+    }
     return true;
   }
 }
@@ -1993,6 +2007,10 @@ async function initGloop(){
         updateGloopUI();
       } else if(data.type==='resized'){
         gloopLen=data.len; updateGloopUI();
+      } else if(data.type==='faded'){
+        gloopLen=0; gloopPlay=false; gloopOverdub=false; gloopRec=false;
+        gloopWorklet.port.postMessage({cmd:'clear'});
+        updateGloopUI();
       }
     };
     gloopWorklet.connect(gloopOutGain);
@@ -2012,7 +2030,7 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     this._targetLen=0; this._recStart=0; this._recStartAbsolute=-1; this._decay=1.0;
     this._rtt=0; this._chunks=[]; this._accumulated=0;
     this._recBPM=120; this._curBPM=120;
-    this._hp=0; this._rdA=0; this._wPos=0;
+    this._hp=0; this._rdA=0; this._wPos=0; this._fadeEnd=0; this._fadeDur=0;
     this._hann=new Float32Array(4096);
     for(let i=0;i<4096;i++) this._hann[i]=0.5*(1-Math.cos(2*Math.PI*i/4095));
     this.port.onmessage=({data})=>{
@@ -2023,7 +2041,9 @@ class PadLoopProcessor extends AudioWorkletProcessor {
       else if(cmd==='stop_overdub'){ this._state='playing'; }
       else if(cmd==='play'){ if(this._buf){ this._syncPos(); this._state='playing'; } }
       else if(cmd==='stop'){ this._state='idle'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._rdA=0; this._wPos=0; this._recStartAbsolute=-1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._rdA=0; this._wPos=0; this._recStartAbsolute=-1; this._fadeEnd=0; }
+      else if(cmd==='reverse'){ if(this._buf) this._buf.reverse(); }
+      else if(cmd==='fade'){ this._fadeEnd=currentTime+data.dur; this._fadeDur=data.dur; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
       else if(cmd==='set_bpm'){
@@ -2121,6 +2141,12 @@ class PadLoopProcessor extends AudioWorkletProcessor {
         out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
       }
     } else { out.fill(0); }
+    // Apply fade-out envelope
+    if(this._fadeEnd>0){
+      const remaining=this._fadeEnd-currentTime;
+      if(remaining<=0){ out.fill(0); this._fadeEnd=0; this._state='idle'; this.port.postMessage({type:'faded'}); }
+      else { const g=Math.min(1,remaining/this._fadeDur); for(let i=0;i<out.length;i++) out[i]*=g; }
+    }
     return true;
   }
 }
@@ -2148,6 +2174,10 @@ async function initPadloop(){
         updatePadloopUI();
       } else if(data.type==='resized'){
         padloopLen=data.len; updatePadloopUI();
+      } else if(data.type==='faded'){
+        padloopLen=0; padloopPlay=false; padloopOverdub=false; padloopRec=false;
+        padloopWorklet.port.postMessage({cmd:'clear'});
+        updatePadloopUI();
       }
     };
     // Capture bus
@@ -2225,7 +2255,7 @@ function updateSessionRecUI(){
     if(sessionRecActive){
       const s=Math.floor((Date.now()-sessionRecStart)/1000);
       timer.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
-      timer.style.display='block';
+      timer.style.display='inline';
     } else { timer.style.display='none'; }
   }
 }
@@ -2485,6 +2515,15 @@ function gloopClear(){
   if(gloopOutGain) gloopOutGain.gain.value=nv('gloop-loopvol')||1.0;
   updateGloopUI();
 }
+function gloopReverse(){
+  if(!gloopLen||!gloopWorklet) return;
+  gloopWorklet.port.postMessage({cmd:'reverse'});
+}
+function gloopFadeOut(){
+  if(!gloopLen||!gloopWorklet) return;
+  gloopWorklet.port.postMessage({cmd:'fade',dur:30});
+  document.getElementById('gloop-status').textContent='↘ FADING 30s...';
+}
 function gloopDisconnect(){
   if(micMonitorGain){ try{micMonitorGain.disconnect();}catch(e){} micMonitorGain=null; }
   if(micInputGain){ try{micInputGain.disconnect();}catch(e){} micInputGain=null; }
@@ -2502,6 +2541,8 @@ function updateGloopUI(){
   document.getElementById('gloop-play').classList.toggle('active',gloopPlay);
   document.getElementById('gloop-play').disabled=!has;
   document.getElementById('gloop-clear').disabled=!has&&!gloopRec;
+  document.getElementById('gloop-rev').disabled=!has;
+  document.getElementById('gloop-fade').disabled=!has;
   // Always mute monitoring — user hears guitar through audio interface
   if(micMonitorGain) micMonitorGain.gain.value=0;
   const waiting=gloopRec&&!gloopPlay&&ctx&&ctx.currentTime<gloopRecStart;
@@ -2565,12 +2606,23 @@ function padloopClear(){
   if(padloopOutGain) padloopOutGain.gain.value=nv('padloop-loopvol')||0.8;
   updatePadloopUI();
 }
+function padloopReverse(){
+  if(!padloopLen||!padloopWorklet) return;
+  padloopWorklet.port.postMessage({cmd:'reverse'});
+}
+function padloopFadeOut(){
+  if(!padloopLen||!padloopWorklet) return;
+  padloopWorklet.port.postMessage({cmd:'fade',dur:30});
+  document.getElementById('padloop-status').textContent='↘ FADING 30s...';
+}
 function updatePadloopUI(){
   const has=padloopLen>0;
   document.getElementById('padloop-rec').classList.toggle('active',padloopRec);
   document.getElementById('padloop-play').classList.toggle('active',padloopPlay);
   document.getElementById('padloop-play').disabled=!has;
   document.getElementById('padloop-clear').disabled=!has&&!padloopRec;
+  document.getElementById('padloop-rev').disabled=!has;
+  document.getElementById('padloop-fade').disabled=!has;
   const waiting=padloopRec&&!padloopPlay&&ctx&&ctx.currentTime<padloopRecStart;
   const sec=has?(padloopLen/ctx.sampleRate).toFixed(2)+'s':'';
   document.getElementById('padloop-status').textContent=
