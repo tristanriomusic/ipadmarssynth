@@ -342,6 +342,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   <div class="top-bar" style="grid-template-columns:1fr 1fr 1fr">
     <button id="silence" class="m-btn tb-btn" onclick="clearSeq()">CLEAR STEPS</button>
     <button id="session-rec-btn" class="m-btn tb-btn" onclick="sessionRecToggle()" style="position:relative"><span class="rec-dot"></span>REC<span id="session-rec-timer" style="display:none;margin-left:4px;font-size:9px;color:#ff5555;font-weight:900">0:00</span></button>
+    <button class="m-btn tb-btn" onclick="openCirclePopup('drFX',event,null)" style="background:rgba(255,68,136,0.18);border:1px solid rgba(255,68,136,0.45);color:#ff4488">FX RACK</button>
   </div>
 
   <div class="bpm-bar">
@@ -456,7 +457,35 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="60" style="accent-color:#ffcc00" oninput="syncCircVol('BA-Vol',this.value)">
     </div>
-    <!-- ROW 2: PERCUSSION -->
+    <!-- ROW 2: BASS + CHORDS + TOUCHPAD -->
+    <!-- CHORDS -->
+    <div class="inst-circle" id="circ-CHD">
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,136,204,0.2);border:2px solid rgba(255,136,204,0.65);box-shadow:0 0 16px rgba(255,136,204,0.2),inset 0 0 20px rgba(255,136,204,0.1)" onclick="openCirclePopup('drCHD',event,null)">
+          <div class="circ-ring" id="cring-CHD" style="border-color:#ff88cc"></div>
+          <div class="circ-name">CHORDS</div>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="38" style="accent-color:#ff88cc" oninput="syncCircVol('ARP-Rev',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,136,204,0.5)">REV</span>
+        </div>
+      </div>
+    </div>
+    <!-- TOUCHPAD -->
+    <div class="inst-circle" id="circ-PAD">
+      <div class="circ-inner-row">
+        <div class="circ-body" style="background:rgba(255,200,80,0.2);border:2px solid rgba(255,200,80,0.65);box-shadow:0 0 16px rgba(255,200,80,0.2),inset 0 0 20px rgba(255,200,80,0.1)" onclick="openCirclePopup('drTOUCHPAD',event,null)">
+          <div class="circ-ring" id="cring-PAD" style="border-color:#ffc850"></div>
+          <div class="circ-name" id="padCircName">PAD</div>
+        </div>
+        <div class="circ-y-wrap">
+          <input type="range" class="circ-y" min="0" max="100" value="32" style="accent-color:#ffc850" oninput="syncCircVol('X-Grain',this.value)">
+          <span class="circ-y-lbl" style="color:rgba(255,200,80,0.5)">DNS</span>
+        </div>
+      </div>
+      <input type="range" class="circ-vol" min="0" max="100" value="60" style="accent-color:#ffc850" oninput="syncCircVol('X-Vol',this.value)">
+    </div>
+    <!-- ROW 3: ALL DRUMS ON ONE LINE -->
     <!-- KICK -->
     <div class="inst-circle" id="circ-K">
       <div class="circ-inner-row">
@@ -516,41 +545,6 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         </div>
       </div>
       <input type="range" class="circ-vol" min="0" max="100" value="60" style="accent-color:#00d2ff" oninput="syncCircVol('H-Vol',this.value)">
-    </div>
-    <!-- ROW 3: CHORDS + FX -->
-    <!-- CHORDS -->
-    <div class="inst-circle" id="circ-CHD">
-      <div class="circ-inner-row">
-        <div class="circ-body" style="background:rgba(255,136,204,0.2);border:2px solid rgba(255,136,204,0.65);box-shadow:0 0 16px rgba(255,136,204,0.2),inset 0 0 20px rgba(255,136,204,0.1)" onclick="openCirclePopup('drCHD',event,null)">
-          <div class="circ-ring" id="cring-CHD" style="border-color:#ff88cc"></div>
-          <div class="circ-name">CHORDS</div>
-        </div>
-        <div class="circ-y-wrap">
-          <input type="range" class="circ-y" min="0" max="100" value="38" style="accent-color:#ff88cc" oninput="syncCircVol('ARP-Rev',this.value)">
-          <span class="circ-y-lbl" style="color:rgba(255,136,204,0.5)">REV</span>
-        </div>
-      </div>
-    </div>
-    <!-- TOUCHPAD -->
-    <div class="inst-circle" id="circ-PAD">
-      <div class="circ-inner-row">
-        <div class="circ-body" style="background:rgba(255,200,80,0.2);border:2px solid rgba(255,200,80,0.65);box-shadow:0 0 16px rgba(255,200,80,0.2),inset 0 0 20px rgba(255,200,80,0.1)" onclick="openCirclePopup('drTOUCHPAD',event,null)">
-          <div class="circ-ring" id="cring-PAD" style="border-color:#ffc850"></div>
-          <div class="circ-name" id="padCircName">PAD</div>
-        </div>
-        <div class="circ-y-wrap">
-          <input type="range" class="circ-y" min="0" max="100" value="32" style="accent-color:#ffc850" oninput="syncCircVol('X-Grain',this.value)">
-          <span class="circ-y-lbl" style="color:rgba(255,200,80,0.5)">DNS</span>
-        </div>
-      </div>
-      <input type="range" class="circ-vol" min="0" max="100" value="60" style="accent-color:#ffc850" oninput="syncCircVol('X-Vol',this.value)">
-    </div>
-    <!-- FX -->
-    <div class="inst-circle" id="circ-FX">
-      <div class="circ-body" style="background:rgba(255,68,136,0.2);border:2px solid rgba(255,68,136,0.65);box-shadow:0 0 16px rgba(255,68,136,0.2),inset 0 0 20px rgba(255,68,136,0.1)" onclick="openCirclePopup('drFX',event,null)">
-        <div class="circ-ring" id="cring-FX" style="border-color:#ff4488"></div>
-        <div class="circ-name">FX RACK</div>
-      </div>
     </div>
   </div>
 
@@ -1008,7 +1002,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- KICK -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--kick);display:flex;justify-content:space-between;align-items:center"><span>KICK</span><div style="display:flex;gap:4px"><button class="cmr" id="muteK" onclick="instMute('K',this)">MUTE</button><button class="cmr" onclick="instRandom('K')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--kick);display:flex;justify-content:space-between;align-items:center"><span>KICK</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="K" onclick="copyInstBtoA('K')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="K" onclick="copyInstAtoB('K')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteK" onclick="instMute('K',this)">MUTE</button><button class="cmr" onclick="instRandom('K')">RND</button></div></div>
           <div class="grid" id="gK"></div>
           <div class="preset-row" id="preK"></div>
           <div class="pg4">
@@ -1025,7 +1019,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- SNARE -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--snare);display:flex;justify-content:space-between;align-items:center"><span>SNARE</span><div style="display:flex;gap:4px"><button class="cmr" id="muteSN" onclick="instMute('SN',this)">MUTE</button><button class="cmr" onclick="instRandom('SN')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--snare);display:flex;justify-content:space-between;align-items:center"><span>SNARE</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="SN" onclick="copyInstBtoA('SN')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="SN" onclick="copyInstAtoB('SN')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteSN" onclick="instMute('SN',this)">MUTE</button><button class="cmr" onclick="instRandom('SN')">RND</button></div></div>
           <div class="grid" id="gSN"></div>
           <div class="preset-row" id="preSN"></div>
           <div class="pg4">
@@ -1042,7 +1036,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- BONGO -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--drum);display:flex;justify-content:space-between;align-items:center"><span>BONGO</span><div style="display:flex;gap:4px"><button class="cmr" id="muteD" onclick="instMute('D',this)">MUTE</button><button class="cmr" onclick="instRandom('D')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--drum);display:flex;justify-content:space-between;align-items:center"><span>BONGO</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="D" onclick="copyInstBtoA('D')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="D" onclick="copyInstAtoB('D')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteD" onclick="instMute('D',this)">MUTE</button><button class="cmr" onclick="instRandom('D')">RND</button></div></div>
           <div class="grid" id="gD"></div>
           <div class="preset-row" id="preD"></div>
           <div class="pg4">
@@ -1060,7 +1054,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- HI-HAT -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--hihat);display:flex;justify-content:space-between;align-items:center"><span>HI-HAT</span><div style="display:flex;gap:4px"><button class="cmr" id="muteH" onclick="instMute('H',this)">MUTE</button><button class="cmr" onclick="instRandom('H')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--hihat);display:flex;justify-content:space-between;align-items:center"><span>HI-HAT</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="H" onclick="copyInstBtoA('H')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="H" onclick="copyInstAtoB('H')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteH" onclick="instMute('H',this)">MUTE</button><button class="cmr" onclick="instRandom('H')">RND</button></div></div>
           <div class="grid" id="gH"></div>
           <div class="preset-row" id="preH"></div>
           <div class="pg4">
@@ -1485,6 +1479,16 @@ function copySectionAtoB(){
 function copySectionBtoA(){
   copySeqSection('B','A');
   copyParamsBtoA();
+}
+function copyInstAtoB(key){
+  const ab=SEQ_AB[key]; if(!ab) return;
+  ab.b.set?ab.b.set(ab.a):ab.a.forEach((v,i)=>ab.b[i]=v);
+  refreshAllGridsForSection();
+}
+function copyInstBtoA(key){
+  const ab=SEQ_AB[key]; if(!ab) return;
+  ab.a.set?ab.a.set(ab.b):ab.b.forEach((v,i)=>ab.a[i]=v);
+  refreshAllGridsForSection();
 }
 // Looper A/B follow
 let gloopFollowAB=false, padloopFollowAB=false;
@@ -2273,8 +2277,8 @@ function seqRecToggle(){
   if(smBtn) smBtn.classList.toggle('active',seqRecActive);
 }
 
-function seqRecTapAndPlay(inst){
-  const t=ctx.currentTime;
+function seqRecTapAndPlay(inst, touchTime){
+  const t=touchTime||ctx.currentTime;
   const sl=60/bpm/4;
   // 1. Instant audio feedback on tap
   if(inst==='K'  ||inst==='DRMS') playKick(t);
@@ -2336,16 +2340,16 @@ const DRAWER_GRIDS={
   drDR:  [{gid:'gDR',cls:'dr-on',s:drS}],
 };
 
-function openCirclePopup(drawerId, evt, instId){
+function openCirclePopup(drawerId, evt, instId, touchTime){
   if(evt){ evt.stopPropagation(); evt.preventDefault(); }
   // Debounce: block ghost clicks / double-fire from iOS touch events
   // Key by instId so K and SN can be tapped within the same step; fallback to drawerId for null instId
   const tapKey=instId||drawerId;
   const now=Date.now();
-  if(now-(_circTapTimes[tapKey]||0)<80) return;
+  if(now-(_circTapTimes[tapKey]||0)<50) return;
   _circTapTimes[tapKey]=now;
   if(seqRecActive){
-    if(instId) seqRecTapAndPlay(instId);
+    if(instId) seqRecTapAndPlay(instId, touchTime);
     return;
   }
   if(activeCircleDrawer===drawerId){ closeCirclePopup(); return; }
@@ -5031,6 +5035,26 @@ document.addEventListener('DOMContentLoaded',()=>{
   // ARP armed by default (but muted — unmute via mute button)
   arpActive=true;
   { const btn=document.getElementById('arpBtn'); if(btn){ btn.textContent='■ ARMED'; btn.classList.add('playing'); } }
+
+  // ── Fast touch handling for circle instruments ──
+  // Use touchstart instead of click for immediate response on iOS (avoids ~300ms click delay).
+  // Convert event.timeStamp to AudioContext time for accurate seq rec quantization.
+  document.querySelectorAll('.circ-body').forEach(el=>{
+    el.addEventListener('touchstart', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      // Extract drawerId and instId from the onclick attribute
+      const onc=this.getAttribute('onclick')||'';
+      const m=onc.match(/openCirclePopup\('([^']+)',\s*event\s*,\s*'?([^')]*)'?\)/);
+      if(!m) return;
+      const drawerId=m[1];
+      const instId=m[2]==='null'?null:m[2]||null;
+      // Capture precise touch time relative to AudioContext for quantization
+      // performance.now() is closest to the actual touch moment
+      const touchTime=ctx?(ctx.currentTime-(performance.now()-e.timeStamp)/1000):null;
+      openCirclePopup(drawerId, null, instId, touchTime>0?touchTime:null);
+    },{passive:false});
+  });
 
   document.getElementById('boot').addEventListener('click',e=>{
     init();
