@@ -200,7 +200,7 @@
 
     /* CMR BUTTONS (clear / mute / random on drawer headers) */
     .cmr-row{ display:flex; gap:4px; align-items:center; }
-    .cmr{ font-size:7px; font-weight:900; padding:4px 7px; border-radius:5px;
+    .cmr{ font-size:9px; font-weight:900; padding:6px 10px; border-radius:6px;
       border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.08);
       color:#bbb; cursor:pointer; letter-spacing:0.5px;
       touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
@@ -898,85 +898,92 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
             <button class="cmr" id="muteB" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('B');event.stopPropagation()">RND</button>
           </div>
+          <button class="imode-btn" id="imBA" onclick="toggleInstMode('BA',event)">DEEP</button>
           <span class="arr">▼</span>
         </div>
       </div>
       <div class="drawer-body">
         <div class="grid" id="gB"></div>
 
-        <div class="sec">PRESETS</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
-          <button class="bass-preset-btn on" style="background:rgba(255,204,0,0.2);border:1px solid rgba(255,204,0,0.4);color:#ffcc00;font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(0,this)">DEFAULT</button>
-          <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(1,this)">ACID</button>
-          <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(2,this)">DEEP</button>
-          <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(3,this)">WOBBLE</button>
-          <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(4,this)">PLUCK</button>
-          <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(5,this)">808</button>
+        <!-- PRESET MODE (default) -->
+        <div id="BA-preset-section">
+          <div class="sec">PRESETS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+            <button class="bass-preset-btn on" style="background:rgba(255,204,0,0.2);border:1px solid rgba(255,204,0,0.4);color:#ffcc00;font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(0,this)">DEFAULT</button>
+            <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(1,this)">ACID</button>
+            <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(2,this)">DEEP</button>
+            <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(3,this)">WOBBLE</button>
+            <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(4,this)">PLUCK</button>
+            <button class="bass-preset-btn"    style="background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.25);color:rgba(255,204,0,0.7);font-size:8px;font-weight:900;padding:5px 9px;border-radius:6px;cursor:pointer;letter-spacing:.8px" onclick="loadBassPreset(5,this)">808</button>
+          </div>
+
+          <div class="sec">NOTE LENGTH</div>
+          <div class="barr-div-row">
+            <button class="barr-div"    onclick="setBassNoteLen(1,this)">1/16</button>
+            <button class="barr-div"    onclick="setBassNoteLen(2,this)">1/8</button>
+            <button class="barr-div on" onclick="setBassNoteLen(4,this)">1/4</button>
+            <button class="barr-div"    onclick="setBassNoteLen(8,this)">1/2</button>
+            <button class="barr-div"    onclick="setBassNoteLen(16,this)">1 BAR</button>
+            <button class="barr-div on" id="bass-one-note-btn" onclick="toggleBassOneNote(this)" style="border-color:rgba(0,242,255,0.4);color:rgba(0,242,255,0.7)">ONE NOTE</button>
+          </div>
+          <div class="pg2" style="margin-bottom:10px">
+            <div class="ctrl"><label>Gate %</label><input type="range" id="BA-Gate" min="0" max="100" value="72"><div class="dv" id="BA-Gate-v">72</div></div>
+            <div class="ctrl"><label>Vol</label>   <input type="range" id="BA-Vol"  min="0" max="100" value="60"><div class="dv" id="BA-Vol-v">60</div></div>
+          </div>
+
+          <div class="sec">BASS LINE</div>
+          <div class="pg3">
+            <div class="ctrl"><label>Pattern</label><input type="range" id="BA-Pattern" min="0" max="100" value="0"> <div class="dv" id="BA-Pattern-v" style="font-size:8px">UP</div></div>
+            <div class="ctrl"><label>Chord</label>  <input type="range" id="BA-Chord"   min="0" max="100" value="0"> <div class="dv" id="BA-Chord-v"   style="font-size:7px">Em9</div></div>
+            <div class="ctrl"><label>Octaves</label><input type="range" id="BA-Octaves" min="0" max="100" value="33"><div class="dv" id="BA-Octaves-v">33</div></div>
+          </div>
+
+          <div class="sec">LOW OCTAVE</div>
+          <div id="bassLowRow" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap"></div>
+
+          <div class="sec">FX SEND</div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="BA-Rev" min="0" max="100" value="42"><div class="dv" id="BA-Rev-v">42</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="BA-Dly" min="0" max="100" value="18"><div class="dv" id="BA-Dly-v">18</div></div>
+          </div>
         </div>
 
-        <div class="sec">NOTE LENGTH</div>
-        <div class="barr-div-row">
-          <button class="barr-div"    onclick="setBassNoteLen(1,this)">1/16</button>
-          <button class="barr-div"    onclick="setBassNoteLen(2,this)">1/8</button>
-          <button class="barr-div on" onclick="setBassNoteLen(4,this)">1/4</button>
-          <button class="barr-div"    onclick="setBassNoteLen(8,this)">1/2</button>
-          <button class="barr-div"    onclick="setBassNoteLen(16,this)">1 BAR</button>
-          <button class="barr-div on" id="bass-one-note-btn" onclick="toggleBassOneNote(this)" style="border-color:rgba(0,242,255,0.4);color:rgba(0,242,255,0.7)">ONE NOTE</button>
-        </div>
-        <div class="pg2" style="margin-bottom:10px">
-          <div class="ctrl"><label>Gate %</label><input type="range" id="BA-Gate" min="0" max="100" value="72"><div class="dv" id="BA-Gate-v">72</div></div>
-          <div class="ctrl"><label>Vol</label>   <input type="range" id="BA-Vol"  min="0" max="100" value="60"><div class="dv" id="BA-Vol-v">60</div></div>
-        </div>
+        <!-- DEEP MODE -->
+        <div id="BA-deep-section" style="display:none">
+          <div class="sec">OSCILLATOR</div>
+          <div class="pg4">
+            <div class="ctrl"><label>Wave</label>  <input type="range" id="BA-Wave"   min="0" max="100" value="75"><div class="dv" id="BA-Wave-v"  style="font-size:8px">SIN</div></div>
+            <div class="ctrl"><label>Oct</label>   <input type="range" id="BA-Oct"    min="0" max="100" value="50"><div class="dv" id="BA-Oct-v">0</div></div>
+            <div class="ctrl"><label>Detune</label><input type="range" id="BA-Detune" min="0" max="100" value="8"> <div class="dv" id="BA-Detune-v">8</div></div>
+            <div class="ctrl"><label>Sub</label>   <input type="range" id="BA-Sub"    min="0" max="100" value="62"><div class="dv" id="BA-Sub-v">62</div></div>
+          </div>
 
-        <div class="sec">OSCILLATOR</div>
-        <div class="pg4">
-          <div class="ctrl"><label>Wave</label>  <input type="range" id="BA-Wave"   min="0" max="100" value="75"><div class="dv" id="BA-Wave-v"  style="font-size:8px">SIN</div></div>
-          <div class="ctrl"><label>Oct</label>   <input type="range" id="BA-Oct"    min="0" max="100" value="50"><div class="dv" id="BA-Oct-v">0</div></div>
-          <div class="ctrl"><label>Detune</label><input type="range" id="BA-Detune" min="0" max="100" value="8"> <div class="dv" id="BA-Detune-v">8</div></div>
-          <div class="ctrl"><label>Sub</label>   <input type="range" id="BA-Sub"    min="0" max="100" value="62"><div class="dv" id="BA-Sub-v">62</div></div>
-        </div>
+          <div class="sec">FILTER</div>
+          <div class="pg3">
+            <div class="ctrl"><label>Cutoff</label><input type="range" id="BA-Cut"  min="0" max="100" value="38"><div class="dv" id="BA-Cut-v">38</div></div>
+            <div class="ctrl"><label>Reso</label>  <input type="range" id="BA-Res"  min="0" max="100" value="18"><div class="dv" id="BA-Res-v">18</div></div>
+            <div class="ctrl"><label>F.Env</label> <input type="range" id="BA-FEnv" min="0" max="100" value="45"><div class="dv" id="BA-FEnv-v">45</div></div>
+          </div>
 
-        <div class="sec">FILTER</div>
-        <div class="pg3">
-          <div class="ctrl"><label>Cutoff</label><input type="range" id="BA-Cut"  min="0" max="100" value="38"><div class="dv" id="BA-Cut-v">38</div></div>
-          <div class="ctrl"><label>Reso</label>  <input type="range" id="BA-Res"  min="0" max="100" value="18"><div class="dv" id="BA-Res-v">18</div></div>
-          <div class="ctrl"><label>F.Env</label> <input type="range" id="BA-FEnv" min="0" max="100" value="45"><div class="dv" id="BA-FEnv-v">45</div></div>
-        </div>
+          <div class="sec">ENVELOPE</div>
+          <div class="pg4">
+            <div class="ctrl"><label>Atk</label><input type="range" id="BA-Atk" min="0" max="100" value="6"> <div class="dv" id="BA-Atk-v">6</div></div>
+            <div class="ctrl"><label>Dcy</label><input type="range" id="BA-Dcy" min="0" max="100" value="48"><div class="dv" id="BA-Dcy-v">48</div></div>
+            <div class="ctrl"><label>Sus</label><input type="range" id="BA-Sus" min="0" max="100" value="72"><div class="dv" id="BA-Sus-v">72</div></div>
+            <div class="ctrl"><label>Rel</label><input type="range" id="BA-Rel" min="0" max="100" value="32"><div class="dv" id="BA-Rel-v">32</div></div>
+          </div>
 
-        <div class="sec">ENVELOPE</div>
-        <div class="pg4">
-          <div class="ctrl"><label>Atk</label><input type="range" id="BA-Atk" min="0" max="100" value="6"> <div class="dv" id="BA-Atk-v">6</div></div>
-          <div class="ctrl"><label>Dcy</label><input type="range" id="BA-Dcy" min="0" max="100" value="48"><div class="dv" id="BA-Dcy-v">48</div></div>
-          <div class="ctrl"><label>Sus</label><input type="range" id="BA-Sus" min="0" max="100" value="72"><div class="dv" id="BA-Sus-v">72</div></div>
-          <div class="ctrl"><label>Rel</label><input type="range" id="BA-Rel" min="0" max="100" value="32"><div class="dv" id="BA-Rel-v">32</div></div>
-        </div>
+          <div class="sec">FILTER ENVELOPE</div>
+          <div class="pg2">
+            <div class="ctrl"><label>F.Atk</label><input type="range" id="BA-FAtk" min="0" max="100" value="10"><div class="dv" id="BA-FAtk-v">10</div></div>
+            <div class="ctrl"><label>F.Dcy</label><input type="range" id="BA-FDcy" min="0" max="100" value="45"><div class="dv" id="BA-FDcy-v">45</div></div>
+          </div>
 
-        <div class="sec">FILTER ENVELOPE</div>
-        <div class="pg2">
-          <div class="ctrl"><label>F.Atk</label><input type="range" id="BA-FAtk" min="0" max="100" value="10"><div class="dv" id="BA-FAtk-v">10</div></div>
-          <div class="ctrl"><label>F.Dcy</label><input type="range" id="BA-FDcy" min="0" max="100" value="45"><div class="dv" id="BA-FDcy-v">45</div></div>
-        </div>
-
-        <div class="sec">LFO</div>
-        <div class="pg2">
-          <div class="ctrl"><label>Rate</label> <input type="range" id="BA-LRate" min="0" max="100" value="22"><div class="dv" id="BA-LRate-v">22</div></div>
-          <div class="ctrl"><label>Depth</label><input type="range" id="BA-LDpth" min="0" max="100" value="10"><div class="dv" id="BA-LDpth-v">10</div></div>
-        </div>
-
-        <div class="sec">BASS LINE</div>
-        <div class="pg3">
-          <div class="ctrl"><label>Pattern</label><input type="range" id="BA-Pattern" min="0" max="100" value="0"> <div class="dv" id="BA-Pattern-v" style="font-size:8px">UP</div></div>
-          <div class="ctrl"><label>Chord</label>  <input type="range" id="BA-Chord"   min="0" max="100" value="0"> <div class="dv" id="BA-Chord-v"   style="font-size:7px">Em9</div></div>
-          <div class="ctrl"><label>Octaves</label><input type="range" id="BA-Octaves" min="0" max="100" value="33"><div class="dv" id="BA-Octaves-v">33</div></div>
-        </div>
-
-        <div class="sec">LOW OCTAVE</div>
-        <div id="bassLowRow" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap"></div>
-
-        <div class="sec">FX SEND</div>
-        <div class="pg2">
-          <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="BA-Rev" min="0" max="100" value="42"><div class="dv" id="BA-Rev-v">42</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="BA-Dly" min="0" max="100" value="18"><div class="dv" id="BA-Dly-v">18</div></div>
+          <div class="sec">LFO</div>
+          <div class="pg2">
+            <div class="ctrl"><label>Rate</label> <input type="range" id="BA-LRate" min="0" max="100" value="22"><div class="dv" id="BA-LRate-v">22</div></div>
+            <div class="ctrl"><label>Depth</label><input type="range" id="BA-LDpth" min="0" max="100" value="10"><div class="dv" id="BA-LDpth-v">10</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1154,6 +1161,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
             <button class="cmr muted" id="muteARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
           </div>
           <button id="arpBtn" class="imode-btn" onclick="toggleArp();event.stopPropagation()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ ARM</button>
+          <button class="imode-btn" id="imARP" onclick="toggleInstMode('ARP',event)">DEEP</button>
           <span class="arr">▼</span>
         </div>
       </div>
@@ -1163,76 +1171,82 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span id="arpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,0,110,0.5);letter-spacing:2px">UP</span>
         </div>
 
-        <div class="sec">PRESETS</div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
-          <button class="cmr arp-preset-btn on" onclick="loadArpPreset(0,this)">DEFAULT</button>
-          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(1,this)">ACID</button>
-          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(2,this)">DREAMY</button>
-          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(3,this)">PLUCK</button>
-          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(4,this)">CRYSTALS</button>
-          <button class="cmr arp-preset-btn"    onclick="loadArpPreset(5,this)">BASS ARP</button>
+        <!-- PRESET MODE (default) -->
+        <div id="ARP-preset-section">
+          <div class="sec">PRESETS</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="cmr arp-preset-btn on" onclick="loadArpPreset(0,this)">DEFAULT</button>
+            <button class="cmr arp-preset-btn"    onclick="loadArpPreset(1,this)">ACID</button>
+            <button class="cmr arp-preset-btn"    onclick="loadArpPreset(2,this)">DREAMY</button>
+            <button class="cmr arp-preset-btn"    onclick="loadArpPreset(3,this)">PLUCK</button>
+            <button class="cmr arp-preset-btn"    onclick="loadArpPreset(4,this)">CRYSTALS</button>
+            <button class="cmr arp-preset-btn"    onclick="loadArpPreset(5,this)">BASS ARP</button>
+          </div>
+
+          <div class="sec">CLOCK — TEMPO SYNC</div>
+          <div class="arp-div-row">
+            <button class="arp-div"    onclick="setArpDiv(0.125,this)">1/32</button>
+            <button class="arp-div on" onclick="setArpDiv(0.25,this)">1/16</button>
+            <button class="arp-div"    onclick="setArpDiv(0.333,this)">1/8T</button>
+            <button class="arp-div"    onclick="setArpDiv(0.5,this)">1/8</button>
+            <button class="arp-div"    onclick="setArpDiv(0.667,this)">1/4T</button>
+            <button class="arp-div"    onclick="setArpDiv(1.0,this)">1/4</button>
+          </div>
+          <div class="pg2" style="margin-bottom:10px">
+            <div class="ctrl"><label>Gate %</label><input type="range" id="ARP-Gate"    min="0" max="100" value="65"><div class="dv" id="ARP-Gate-v">65</div></div>
+            <div class="ctrl"><label>Vol</label>   <input type="range" id="ARP-Vol"     min="0" max="100" value="60"><div class="dv" id="ARP-Vol-v">60</div></div>
+          </div>
+
+          <div class="sec">ARPEGGIO</div>
+          <div class="pg3">
+            <div class="ctrl"><label>Pattern</label><input type="range" id="ARP-Pattern" min="0" max="100" value="0"> <div class="dv" id="ARP-Pattern-v" style="font-size:8px">UP</div></div>
+            <div class="ctrl"><label>Chord</label>  <input type="range" id="ARP-Chord"   min="0" max="100" value="0"> <div class="dv" id="ARP-Chord-v"   style="font-size:7px">Em9</div></div>
+            <div class="ctrl"><label>Octaves</label><input type="range" id="ARP-Octaves" min="0" max="100" value="33"><div class="dv" id="ARP-Octaves-v">33</div></div>
+          </div>
+
+          <div class="sec">FX SEND</div>
+          <div class="pg2">
+            <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="ARP-Rev" min="0" max="100" value="38"><div class="dv" id="ARP-Rev-v">38</div></div>
+            <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="ARP-Dly" min="0" max="100" value="58"><div class="dv" id="ARP-Dly-v">58</div></div>
+          </div>
         </div>
 
-        <div class="sec">CLOCK — TEMPO SYNC</div>
-        <div class="arp-div-row">
-          <button class="arp-div"    onclick="setArpDiv(0.125,this)">1/32</button>
-          <button class="arp-div on" onclick="setArpDiv(0.25,this)">1/16</button>
-          <button class="arp-div"    onclick="setArpDiv(0.333,this)">1/8T</button>
-          <button class="arp-div"    onclick="setArpDiv(0.5,this)">1/8</button>
-          <button class="arp-div"    onclick="setArpDiv(0.667,this)">1/4T</button>
-          <button class="arp-div"    onclick="setArpDiv(1.0,this)">1/4</button>
-        </div>
-        <div class="pg2" style="margin-bottom:10px">
-          <div class="ctrl"><label>Gate %</label><input type="range" id="ARP-Gate"    min="0" max="100" value="65"><div class="dv" id="ARP-Gate-v">65</div></div>
-          <div class="ctrl"><label>Vol</label>   <input type="range" id="ARP-Vol"     min="0" max="100" value="60"><div class="dv" id="ARP-Vol-v">60</div></div>
-        </div>
+        <!-- DEEP MODE -->
+        <div id="ARP-deep-section" style="display:none">
+          <div class="sec">OSCILLATOR</div>
+          <div class="pg4">
+            <div class="ctrl"><label>Wave</label>  <input type="range" id="ARP-Wave"   min="0" max="100" value="75"><div class="dv" id="ARP-Wave-v"  style="font-size:8px">SIN</div></div>
+            <div class="ctrl"><label>Oct</label>   <input type="range" id="ARP-Oct"    min="0" max="100" value="75"><div class="dv" id="ARP-Oct-v">+1</div></div>
+            <div class="ctrl"><label>Detune</label><input type="range" id="ARP-Detune" min="0" max="100" value="28"><div class="dv" id="ARP-Detune-v">28</div></div>
+            <div class="ctrl"><label>Sub</label>   <input type="range" id="ARP-Sub"    min="0" max="100" value="22"><div class="dv" id="ARP-Sub-v">22</div></div>
+          </div>
 
-        <div class="sec">OSCILLATOR</div>
-        <div class="pg4">
-          <div class="ctrl"><label>Wave</label>  <input type="range" id="ARP-Wave"   min="0" max="100" value="75"><div class="dv" id="ARP-Wave-v"  style="font-size:8px">SIN</div></div>
-          <div class="ctrl"><label>Oct</label>   <input type="range" id="ARP-Oct"    min="0" max="100" value="75"><div class="dv" id="ARP-Oct-v">+1</div></div>
-          <div class="ctrl"><label>Detune</label><input type="range" id="ARP-Detune" min="0" max="100" value="28"><div class="dv" id="ARP-Detune-v">28</div></div>
-          <div class="ctrl"><label>Sub</label>   <input type="range" id="ARP-Sub"    min="0" max="100" value="22"><div class="dv" id="ARP-Sub-v">22</div></div>
-        </div>
+          <div class="sec">FILTER</div>
+          <div class="pg3">
+            <div class="ctrl"><label>Cutoff</label><input type="range" id="ARP-Cut"  min="0" max="100" value="62"><div class="dv" id="ARP-Cut-v">62</div></div>
+            <div class="ctrl"><label>Reso</label>  <input type="range" id="ARP-Res"  min="0" max="100" value="22"><div class="dv" id="ARP-Res-v">22</div></div>
+            <div class="ctrl"><label>F.Env</label> <input type="range" id="ARP-FEnv" min="0" max="100" value="55"><div class="dv" id="ARP-FEnv-v">55</div></div>
+          </div>
 
-        <div class="sec">FILTER</div>
-        <div class="pg3">
-          <div class="ctrl"><label>Cutoff</label><input type="range" id="ARP-Cut"  min="0" max="100" value="62"><div class="dv" id="ARP-Cut-v">62</div></div>
-          <div class="ctrl"><label>Reso</label>  <input type="range" id="ARP-Res"  min="0" max="100" value="22"><div class="dv" id="ARP-Res-v">22</div></div>
-          <div class="ctrl"><label>F.Env</label> <input type="range" id="ARP-FEnv" min="0" max="100" value="55"><div class="dv" id="ARP-FEnv-v">55</div></div>
-        </div>
+          <div class="sec">ENVELOPE</div>
+          <div class="pg4">
+            <div class="ctrl"><label>Atk</label><input type="range" id="ARP-Atk" min="0" max="100" value="10"><div class="dv" id="ARP-Atk-v">10</div></div>
+            <div class="ctrl"><label>Dcy</label><input type="range" id="ARP-Dcy" min="0" max="100" value="40"><div class="dv" id="ARP-Dcy-v">40</div></div>
+            <div class="ctrl"><label>Sus</label><input type="range" id="ARP-Sus" min="0" max="100" value="65"><div class="dv" id="ARP-Sus-v">65</div></div>
+            <div class="ctrl"><label>Rel</label><input type="range" id="ARP-Rel" min="0" max="100" value="35"><div class="dv" id="ARP-Rel-v">35</div></div>
+          </div>
 
-        <div class="sec">ENVELOPE</div>
-        <div class="pg4">
-          <div class="ctrl"><label>Atk</label><input type="range" id="ARP-Atk" min="0" max="100" value="10"><div class="dv" id="ARP-Atk-v">10</div></div>
-          <div class="ctrl"><label>Dcy</label><input type="range" id="ARP-Dcy" min="0" max="100" value="40"><div class="dv" id="ARP-Dcy-v">40</div></div>
-          <div class="ctrl"><label>Sus</label><input type="range" id="ARP-Sus" min="0" max="100" value="65"><div class="dv" id="ARP-Sus-v">65</div></div>
-          <div class="ctrl"><label>Rel</label><input type="range" id="ARP-Rel" min="0" max="100" value="35"><div class="dv" id="ARP-Rel-v">35</div></div>
-        </div>
+          <div class="sec">FILTER ENVELOPE</div>
+          <div class="pg2">
+            <div class="ctrl"><label>F.Atk</label><input type="range" id="ARP-FAtk" min="0" max="100" value="8"> <div class="dv" id="ARP-FAtk-v">8</div></div>
+            <div class="ctrl"><label>F.Dcy</label><input type="range" id="ARP-FDcy" min="0" max="100" value="38"><div class="dv" id="ARP-FDcy-v">38</div></div>
+          </div>
 
-        <div class="sec">FILTER ENVELOPE</div>
-        <div class="pg2">
-          <div class="ctrl"><label>F.Atk</label><input type="range" id="ARP-FAtk" min="0" max="100" value="8"> <div class="dv" id="ARP-FAtk-v">8</div></div>
-          <div class="ctrl"><label>F.Dcy</label><input type="range" id="ARP-FDcy" min="0" max="100" value="38"><div class="dv" id="ARP-FDcy-v">38</div></div>
-        </div>
-
-        <div class="sec">LFO</div>
-        <div class="pg2">
-          <div class="ctrl"><label>Rate</label> <input type="range" id="ARP-LRate" min="0" max="100" value="25"><div class="dv" id="ARP-LRate-v">25</div></div>
-          <div class="ctrl"><label>Depth</label><input type="range" id="ARP-LDpth" min="0" max="100" value="18"><div class="dv" id="ARP-LDpth-v">18</div></div>
-        </div>
-
-        <div class="sec">ARPEGGIO</div>
-        <div class="pg3">
-          <div class="ctrl"><label>Pattern</label><input type="range" id="ARP-Pattern" min="0" max="100" value="0"> <div class="dv" id="ARP-Pattern-v" style="font-size:8px">UP</div></div>
-          <div class="ctrl"><label>Chord</label>  <input type="range" id="ARP-Chord"   min="0" max="100" value="0"> <div class="dv" id="ARP-Chord-v"   style="font-size:7px">Em9</div></div>
-          <div class="ctrl"><label>Octaves</label><input type="range" id="ARP-Octaves" min="0" max="100" value="33"><div class="dv" id="ARP-Octaves-v">33</div></div>
-        </div>
-
-        <div class="sec">FX SEND</div>
-        <div class="pg2">
-          <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="ARP-Rev" min="0" max="100" value="38"><div class="dv" id="ARP-Rev-v">38</div></div>
-          <div class="ctrl fx-ctrl"><label>→ Dly</label><input type="range" id="ARP-Dly" min="0" max="100" value="58"><div class="dv" id="ARP-Dly-v">58</div></div>
+          <div class="sec">LFO</div>
+          <div class="pg2">
+            <div class="ctrl"><label>Rate</label> <input type="range" id="ARP-LRate" min="0" max="100" value="25"><div class="dv" id="ARP-LRate-v">25</div></div>
+            <div class="ctrl"><label>Depth</label><input type="range" id="ARP-LDpth" min="0" max="100" value="18"><div class="dv" id="ARP-LDpth-v">18</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1764,7 +1778,7 @@ function currentZoneName(px){
   return NEBULA_ZONES[Math.min(Math.floor(px*NEBULA_ZONES.length),NEBULA_ZONES.length-1)].name;
 }
 const activePre={DR:0,B:0,D:0,H:0,K:0,SN:0};
-const instDeep={X:false,DR:false,B:false,D:false,H:false};
+const instDeep={X:false,DR:false,B:false,D:false,H:false,ARP:false,BA:false};
 
 let nextBarTime=0; // set by sequencer each bar
 
