@@ -5099,6 +5099,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Convert event.timeStamp to AudioContext time for accurate seq rec quantization.
   document.querySelectorAll('.circ-body').forEach(el=>{
     el.addEventListener('touchstart', function(e){
+      // Let child buttons (mute, etc.) handle their own taps
+      if(e.target.closest('.circ-mute-btn')) return;
       e.preventDefault();
       e.stopPropagation();
       // Extract drawerId and instId from the onclick attribute
