@@ -199,6 +199,10 @@
       touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .cmr.muted{ background:rgba(255,40,40,0.45); color:#ff7777;
       border-color:#ff4444; box-shadow:0 0 10px rgba(255,50,50,0.55); }
+    .ab-edit-btn.on{ background:rgba(0,180,255,0.35); color:#00ccff;
+      border-color:rgba(0,180,255,0.6); box-shadow:0 0 8px rgba(0,180,255,0.4); }
+    .ab-edit-btn[data-sec="B"].on{ background:rgba(255,100,0,0.35); color:#ff6600;
+      border-color:rgba(255,100,0,0.6); box-shadow:0 0 8px rgba(255,100,0,0.4); }
 
     /* RANGE */
     input[type=range]{ -webkit-appearance:none; appearance:none; background:#222; height:4px; border-radius:2px; width:100%; cursor:pointer; }
@@ -333,7 +337,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <button id="seqrec-btn" onclick="seqRecToggle()">⊙ SEQ REC</button>
   </div>
   <div class="top-bar">
-    <button id="kill"    class="m-btn" onclick="location.reload()">HARD RESET</button>
+    <button id="abSwitch" class="m-btn" onclick="toggleABSection()" style="background:rgba(0,180,255,0.25);border:1px solid rgba(0,180,255,0.5);color:#00ccff;font-weight:900;letter-spacing:2px">● A</button>
     <button id="silence" class="m-btn" onclick="clearSeq()">CLEAR STEPS</button>
   </div>
   <button id="seqModeBtn" onclick="enterSeqMode()">⊞ SEQ MODE</button>
@@ -608,7 +612,11 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <!-- GUITAR LOOPER -->
     <div class="drawer" id="drGLOOP">
       <div class="drawer-hdr" onclick="toggleD('drGLOOP')" style="color:#ff9944">
-        <span>GUITAR LOOP</span><span class="arr">▼</span>
+        <span>GUITAR LOOP</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="cmr" id="gloopFollowBtn" onclick="toggleLoopFollow('gloop');event.stopPropagation()" style="font-size:6px;letter-spacing:1px">A/B: STAY A</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
 
@@ -704,7 +712,11 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     <!-- TOUCHPAD LOOPER -->
     <div class="drawer" id="drPADLOOP">
       <div class="drawer-hdr" onclick="toggleD('drPADLOOP')" style="color:#4ecdc4">
-        <span>PAD LOOP</span><span class="arr">▼</span>
+        <span>PAD LOOP</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="cmr" id="padloopFollowBtn" onclick="toggleLoopFollow('padloop');event.stopPropagation()" style="font-size:6px;letter-spacing:1px">A/B: STAY A</button>
+          <span class="arr">▼</span>
+        </div>
       </div>
       <div class="drawer-body">
         <div style="font-size:8px;color:rgba(78,205,196,0.5);letter-spacing:1px;text-align:center;padding:2px 0 8px">records nebula · sampler · hologram</div>
@@ -832,6 +844,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <span>DRONE — STRING FIELD</span>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="cmr-row">
+            <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
+            <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
             <button class="cmr" onclick="instClear('DR');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteDR" onclick="instMute('DR',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('DR');event.stopPropagation()">RND</button>
@@ -874,6 +888,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <span id="bassArpChordLbl" style="font-size:9px;font-weight:900;color:var(--bass);letter-spacing:2px">Em9</span>
           <span id="bassArpPatLbl"   style="font-size:9px;font-weight:900;color:rgba(255,204,0,0.45);letter-spacing:2px">UP</span>
           <div class="cmr-row">
+            <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
+            <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
             <button class="cmr" onclick="instClear('B');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteB" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('B');event.stopPropagation()">RND</button>
@@ -901,7 +917,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <button class="barr-div on" onclick="setBassNoteLen(4,this)">1/4</button>
           <button class="barr-div"    onclick="setBassNoteLen(8,this)">1/2</button>
           <button class="barr-div"    onclick="setBassNoteLen(16,this)">1 BAR</button>
-          <button class="barr-div" id="bass-one-note-btn" onclick="toggleBassOneNote(this)" style="border-color:rgba(0,242,255,0.4);color:rgba(0,242,255,0.7)">ONE NOTE</button>
+          <button class="barr-div on" id="bass-one-note-btn" onclick="toggleBassOneNote(this)" style="border-color:rgba(0,242,255,0.4);color:rgba(0,242,255,0.7)">ONE NOTE</button>
         </div>
         <div class="pg2" style="margin-bottom:10px">
           <div class="ctrl"><label>Gate %</label><input type="range" id="BA-Gate" min="0" max="100" value="72"><div class="dv" id="BA-Gate-v">72</div></div>
@@ -967,6 +983,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <span>DRUMS</span>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="cmr-row">
+            <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
+            <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
             <button class="cmr" onclick="instClear('DRMS');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteDRMS" onclick="instMute('DRMS',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('DRMS');event.stopPropagation()">RND</button>
@@ -1215,6 +1233,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <span>SAMPLER</span>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="cmr-row">
+            <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
+            <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
             <button class="cmr" onclick="instClear('SMP');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteSMP" onclick="instMute('SMP',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('SMP');event.stopPropagation()">RND</button>
@@ -1339,7 +1359,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
 <script>
 // ═══ STATE ═══════════════════════════════════════
-let ctx, master, masterEQ, revNode, revPre, revWet, revHP, revLP, shimGain,
+let ctx, master, masterEQ, masterClipNode, revNode, revPre, revWet, revHP, revLP, shimGain,
     delNode, delFb, delDamp, delHP, delSat, delWet, waveshaper, driveMix;
 let delSyncDiv=null; // null=free, 0.25=1/16, 0.5=1/8, 1.0=1/4, 2.0=1/2
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
@@ -1393,6 +1413,73 @@ const MOODS=[
 let moodIdx=0, moodT=0;
 const bS=Array(64).fill(0), dS=Array(64).fill(0), hS=Array(64).fill(0), drS=Array(64).fill(0);
 const kS=Array(64).fill(0), snS=Array(64).fill(0);
+// Section B sequencer arrays (A arrays are the originals above)
+const bS_B=Array(64).fill(0), dS_B=Array(64).fill(0), hS_B=Array(64).fill(0), drS_B=Array(64).fill(0);
+const kS_B=Array(64).fill(0), snS_B=Array(64).fill(0);
+const smpS_B=new Array(16).fill(0);
+let seqEditSec='A'; // which section's patterns the grids show/edit
+// Map instrument key → {A array, B array}
+const SEQ_AB={
+  DR:{a:drS,b:drS_B}, B:{a:bS,b:bS_B}, K:{a:kS,b:kS_B},
+  SN:{a:snS,b:snS_B}, D:{a:dS,b:dS_B}, H:{a:hS,b:hS_B}, SMP:{a:smpS,b:smpS_B}
+};
+function seqArr(key){ return seqEditSec==='A'?SEQ_AB[key].a:SEQ_AB[key].b; }
+function playArr(key){ return currentSection==='A'?SEQ_AB[key].a:SEQ_AB[key].b; }
+// Looper A/B follow
+let gloopFollowAB=false, padloopFollowAB=false;
+
+// ── A/B SECTION SWITCHING ────────────────────────────
+function toggleABSection(){
+  // If there's a pending switch, cancel it; otherwise toggle
+  const target=pendingSection||(currentSection==='A'?'B':'A');
+  if(pendingSection){ pendingSection=null; updateSectionUI(); return; }
+  gotoSection(target);
+  // Also switch edit section to match
+  setSeqEditSec(target);
+  updateABSwitchUI();
+}
+function setSeqEditSec(sec){
+  seqEditSec=sec;
+  refreshAllGridsForSection();
+  // Update per-drawer A/B edit buttons
+  document.querySelectorAll('.ab-edit-btn').forEach(b=>{
+    b.classList.toggle('on', b.dataset.sec===seqEditSec);
+  });
+}
+function refreshAllGridsForSection(){
+  const grids=[
+    {gid:'gDR',key:'DR',cls:'dr-on'}, {gid:'gB',key:'B',cls:'b-on'},
+    {gid:'gK',key:'K',cls:'k-on'}, {gid:'gSN',key:'SN',cls:'sn-on'},
+    {gid:'gD',key:'D',cls:'d-on'}, {gid:'gH',key:'H',cls:'h-on'},
+    {gid:'gSMPLR',key:'SMP',cls:'smp-on'}
+  ];
+  grids.forEach(({gid,key,cls})=>refreshGrid(gid,cls,seqArr(key)));
+  // Refresh seq mode grids too
+  if(typeof smRefreshGrid==='function') smRefreshGrid();
+}
+function updateABSwitchUI(){
+  const btn=document.getElementById('abSwitch');
+  if(!btn) return;
+  const sec=pendingSection||currentSection;
+  const isPending=!!pendingSection;
+  btn.textContent=isPending?('→ '+sec+' …'):('● '+sec);
+  btn.style.background=sec==='A'?'rgba(0,180,255,0.25)':'rgba(255,100,0,0.25)';
+  btn.style.borderColor=sec==='A'?'rgba(0,180,255,0.5)':'rgba(255,100,0,0.5)';
+  btn.style.color=sec==='A'?'#00ccff':'#ff6600';
+}
+function toggleLoopFollow(which){
+  if(which==='gloop'){
+    gloopFollowAB=!gloopFollowAB;
+    const btn=document.getElementById('gloopFollowBtn');
+    if(btn) btn.textContent=gloopFollowAB?'A/B: FOLLOW':'A/B: STAY A';
+    if(btn) btn.classList.toggle('on',gloopFollowAB);
+  } else {
+    padloopFollowAB=!padloopFollowAB;
+    const btn=document.getElementById('padloopFollowBtn');
+    if(btn) btn.textContent=padloopFollowAB?'A/B: FOLLOW':'A/B: STAY A';
+    if(btn) btn.classList.toggle('on',padloopFollowAB);
+  }
+}
 
 // ── CHORD SEQUENCE ─────────────────────────────────
 let currentChordIdx=0, chordSeqStep=0, chordBarCount=0, bassChordStep=0;
@@ -1682,46 +1769,69 @@ class GloopProcessor extends AudioWorkletProcessor {
     this._chunks=[]; this._accumulated=0;
     this._decay=1.0;
     this._rtt=0;
-    this._rate=1; this._recBPM=120; this._curBPM=120;
-    // OLA pitch-preserving time-stretch
-    this._G=4096; this._H=2048; // grain size, hop (50% overlap)
-    this._hp=0; this._rdA=0; this._rdB=0; this._wPos=0;
+    this._recBPM=120; this._curBPM=120;
+    this._hp=0; this._rdA=0; this._wPos=0;
     this._hann=new Float32Array(4096);
     for(let i=0;i<4096;i++) this._hann[i]=0.5*(1-Math.cos(2*Math.PI*i/4095));
     this.port.onmessage=({data})=>{
       const cmd=data.cmd;
       if(cmd==='record'){
         this._state='recording'; this._chunks=[]; this._accumulated=0;
-        this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0;
+        this._rdA=0; this._wPos=0;
         this._targetLen=data.targetLen; this._recStart=data.recStart;
         this._recStartAbsolute=-1; this._rtt=data.rtt||0;
-        this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rate=1;
+        this._recBPM=data.bpm||120; this._curBPM=data.bpm||120;
       } else if(cmd==='stop_record'){ this._finalize(); }
       else if(cmd==='play'){ if(this._buf){ this._syncPos(); this._state='playing'; } }
       else if(cmd==='stop'){ this._state='idle'; }
       else if(cmd==='overdub'){ if(this._buf){ this._syncPos(); this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; this._rate=1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._len=0; this._rdA=0; this._wPos=0; this._chunks=[]; this._accumulated=0; this._recStartAbsolute=-1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
-      else if(cmd==='set_bpm'){ this._curBPM=data.bpm; this._rate=this._recBPM>0?this._curBPM/this._recBPM:1; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
+      else if(cmd==='set_bpm'){
+        const newBPM=data.bpm;
+        if(this._buf&&this._len>0&&this._recBPM>0&&newBPM!==this._recBPM){
+          this._resampleBuf(newBPM);
+        }
+        this._curBPM=newBPM; this._recBPM=newBPM;
+        if(this._state==='playing'||this._state==='overdubbing') this._syncPos();
+      }
     };
   }
   _syncPos(){
-    if(this._recStartAbsolute<0||this._len===0){ this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; return; }
+    if(this._recStartAbsolute<0||this._len===0){ this._rdA=0; this._wPos=0; return; }
     const adj=this._recStartAbsolute-this._rtt;
     const el=currentTime-adj;
-    const tot=Math.max(0,el*sampleRate);
-    const len=this._len, H=this._H, r=this._rate;
-    if(r===1){
-      this._rdA=((Math.round(tot)%len)+len)%len; this._rdB=this._rdA; this._hp=0;
-    } else {
-      const hI=H*r, hn=Math.floor(tot/H);
-      this._hp=Math.round(tot)%H;
-      this._rdA=((hn*hI)%len+len)%len;
-      this._rdB=(((hn-1)*hI)%len+len)%len;
+    const tot=Math.max(0,Math.round(el*sampleRate));
+    this._rdA=((tot%this._len)+this._len)%this._len;
+    this._wPos=this._rdA;
+  }
+  _resampleBuf(newBPM){
+    // Offline OLA time-stretch: resample buffer to new length, pitch preserved
+    const oldBuf=this._buf, oldLen=this._len;
+    const rate=newBPM/this._recBPM; // >1 = faster = shorter buffer
+    const newLen=Math.round(oldLen/rate);
+    if(newLen<128) return; // safety
+    const newBuf=new Float32Array(newLen);
+    const G=4096, H=2048, hann=this._hann;
+    const hI=H*rate; // input hop
+    let rdA=0, rdB=0, hp=0;
+    for(let i=0;i<newLen;i++){
+      const a=((rdA+hp|0)%oldLen+oldLen)%oldLen;
+      const c=((rdB+hp+H|0)%oldLen+oldLen)%oldLen;
+      newBuf[i]=oldBuf[a]*hann[hp]+oldBuf[c]*hann[hp+H];
+      hp++;
+      if(hp>=H){ hp=0; rdB=rdA; rdA=((rdA+hI)%oldLen+oldLen)%oldLen; }
     }
-    this._wPos=((tot*r)%len+len)%len;
+    this._buf=newBuf; this._len=newLen;
+    // Shift recStartAbsolute so position sync stays correct with new length
+    const now=currentTime;
+    const adj=this._recStartAbsolute-this._rtt;
+    const elSamples=Math.max(0,(now-adj)*sampleRate);
+    const frac=(elSamples%oldLen)/oldLen;
+    this._recStartAbsolute=now-this._rtt-(frac*newLen)/sampleRate;
+    this.port.postMessage({type:'resized',len:newLen});
   }
   _finalize(){
     const target=this._targetLen>0?this._targetLen:this._accumulated;
@@ -1740,17 +1850,6 @@ class GloopProcessor extends AudioWorkletProcessor {
     } else {
       this._chunks=[]; this._state='idle';
       this.port.postMessage({type:'done',len:0});
-    }
-  }
-  _readOLA(out,blockSize){
-    const b=this._buf,len=this._len,H=this._H,hann=this._hann,hI=H*this._rate;
-    for(let i=0;i<blockSize;i++){
-      const p=this._hp;
-      const a=((this._rdA+p|0)%len+len)%len;
-      const c=((this._rdB+p+H|0)%len+len)%len;
-      out[i]=b[a]*hann[p]+b[c]*hann[p+H];
-      this._hp++;
-      if(this._hp>=H){ this._hp=0; this._rdB=this._rdA; this._rdA=((this._rdA+hI)%len+len)%len; }
     }
   }
   process(inputs,outputs){
@@ -1774,29 +1873,17 @@ class GloopProcessor extends AudioWorkletProcessor {
     }
     if(this._state==='playing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      if(this._rate===1){
-        const len=this._len;
-        for(let i=0;i<blockSize;i++){ out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len; }
-      } else { this._readOLA(out,blockSize); }
+      const len=this._len;
+      for(let i=0;i<blockSize;i++){ out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len; }
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const d=this._decay,len=this._len,rate=this._rate;
+      const d=this._decay,len=this._len;
       const writeOff=Math.round(this._rtt*sampleRate);
-      if(rate===1){
-        for(let i=0;i<blockSize;i++){
-          const inp=ch?ch[i]:0;
-          const wp=((this._rdA-writeOff)%len+len)%len;
-          b[wp]=b[wp]*d+inp;
-          out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
-        }
-      } else {
-        this._readOLA(out,blockSize);
-        for(let i=0;i<blockSize;i++){
-          const inp=ch?ch[i]:0;
-          const wp=((Math.round(this._wPos)-writeOff)%len+len)%len;
-          b[wp]=b[wp]*d+inp;
-          this._wPos=(this._wPos+rate)%len;
-        }
+      for(let i=0;i<blockSize;i++){
+        const inp=ch?ch[i]:0;
+        const wp=((this._rdA-writeOff)%len+len)%len;
+        b[wp]=b[wp]*d+inp;
+        out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
       }
     } else { out.fill(0); }
     return true;
@@ -1843,6 +1930,8 @@ async function initGloop(){
           gloopWorklet.port.postMessage({cmd:'overdub',decay});
         }
         updateGloopUI();
+      } else if(data.type==='resized'){
+        gloopLen=data.len; updateGloopUI();
       }
     };
     gloopWorklet.connect(gloopOutGain);
@@ -1861,41 +1950,63 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     this._state='idle'; this._buf=null;
     this._targetLen=0; this._recStart=0; this._recStartAbsolute=-1; this._decay=1.0;
     this._rtt=0; this._chunks=[]; this._accumulated=0;
-    this._rate=1; this._recBPM=120; this._curBPM=120;
-    // OLA pitch-preserving time-stretch
-    this._G=4096; this._H=2048;
-    this._hp=0; this._rdA=0; this._rdB=0; this._wPos=0;
+    this._recBPM=120; this._curBPM=120;
+    this._hp=0; this._rdA=0; this._wPos=0;
     this._hann=new Float32Array(4096);
     for(let i=0;i<4096;i++) this._hann[i]=0.5*(1-Math.cos(2*Math.PI*i/4095));
     this.port.onmessage=({data})=>{
       const cmd=data.cmd;
-      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; this._rtt=data.rtt||0; this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rate=1; this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; }
+      if(cmd==='record'){ this._state='recording'; this._chunks=[]; this._accumulated=0; this._targetLen=data.targetLen; this._recStart=data.recStart; this._recStartAbsolute=-1; this._rtt=data.rtt||0; this._recBPM=data.bpm||120; this._curBPM=data.bpm||120; this._rdA=0; this._wPos=0; }
       else if(cmd==='stop_record'){ this._finalize(); }
       else if(cmd==='overdub'){ if(this._buf){ this._state='overdubbing'; this._decay=data.decay; } }
       else if(cmd==='stop_overdub'){ this._state='playing'; }
       else if(cmd==='play'){ if(this._buf){ this._syncPos(); this._state='playing'; } }
       else if(cmd==='stop'){ this._state='idle'; }
-      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; this._recStartAbsolute=-1; this._rate=1; }
+      else if(cmd==='clear'){ this._state='idle'; this._buf=null; this._rdA=0; this._wPos=0; this._recStartAbsolute=-1; }
       else if(cmd==='set_decay'){ this._decay=data.decay; }
       else if(cmd==='set_rtt'){ this._rtt=data.rtt; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
-      else if(cmd==='set_bpm'){ this._curBPM=data.bpm; this._rate=this._recBPM>0?this._curBPM/this._recBPM:1; if(this._state==='playing'||this._state==='overdubbing') this._syncPos(); }
+      else if(cmd==='set_bpm'){
+        const newBPM=data.bpm;
+        if(this._buf&&this._buf.length>0&&this._recBPM>0&&newBPM!==this._recBPM){
+          this._resampleBuf(newBPM);
+        }
+        this._curBPM=newBPM; this._recBPM=newBPM;
+        if(this._state==='playing'||this._state==='overdubbing') this._syncPos();
+      }
     };
   }
   _syncPos(){
-    if(this._recStartAbsolute<0||!this._buf){ this._rdA=0; this._rdB=0; this._hp=0; this._wPos=0; return; }
+    if(this._recStartAbsolute<0||!this._buf){ this._rdA=0; this._wPos=0; return; }
     const adj=this._recStartAbsolute-this._rtt;
     const el=currentTime-adj;
-    const tot=Math.max(0,el*sampleRate);
-    const len=this._buf.length, H=this._H, r=this._rate;
-    if(r===1){
-      this._rdA=((Math.round(tot)%len)+len)%len; this._rdB=this._rdA; this._hp=0;
-    } else {
-      const hI=H*r, hn=Math.floor(tot/H);
-      this._hp=Math.round(tot)%H;
-      this._rdA=((hn*hI)%len+len)%len;
-      this._rdB=(((hn-1)*hI)%len+len)%len;
+    const tot=Math.max(0,Math.round(el*sampleRate));
+    const len=this._buf.length;
+    this._rdA=((tot%len)+len)%len;
+    this._wPos=this._rdA;
+  }
+  _resampleBuf(newBPM){
+    const oldBuf=this._buf, oldLen=oldBuf.length;
+    const rate=newBPM/this._recBPM;
+    const newLen=Math.round(oldLen/rate);
+    if(newLen<128) return;
+    const newBuf=new Float32Array(newLen);
+    const G=4096, H=2048, hann=this._hann;
+    const hI=H*rate;
+    let rdA=0, rdB=0, hp=0;
+    for(let i=0;i<newLen;i++){
+      const a=((rdA+hp|0)%oldLen+oldLen)%oldLen;
+      const c=((rdB+hp+H|0)%oldLen+oldLen)%oldLen;
+      newBuf[i]=oldBuf[a]*hann[hp]+oldBuf[c]*hann[hp+H];
+      hp++;
+      if(hp>=H){ hp=0; rdB=rdA; rdA=((rdA+hI)%oldLen+oldLen)%oldLen; }
     }
-    this._wPos=((tot*r)%len+len)%len;
+    this._buf=newBuf;
+    const now=currentTime;
+    const adj=this._recStartAbsolute-this._rtt;
+    const elSamples=Math.max(0,(now-adj)*sampleRate);
+    const frac=(elSamples%oldLen)/oldLen;
+    this._recStartAbsolute=now-this._rtt-(frac*newLen)/sampleRate;
+    this.port.postMessage({type:'resized',len:newLen});
   }
   _finalize(){
     const target=this._targetLen>0?this._targetLen:this._accumulated;
@@ -1913,17 +2024,6 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     } else {
       this._chunks=[]; this._state='idle';
       this.port.postMessage({type:'done',len:0});
-    }
-  }
-  _readOLA(out,blockSize){
-    const b=this._buf,len=b.length,H=this._H,hann=this._hann,hI=H*this._rate;
-    for(let i=0;i<blockSize;i++){
-      const p=this._hp;
-      const a=((this._rdA+p|0)%len+len)%len;
-      const c=((this._rdB+p+H|0)%len+len)%len;
-      out[i]=b[a]*hann[p]+b[c]*hann[p+H];
-      this._hp++;
-      if(this._hp>=H){ this._hp=0; this._rdB=this._rdA; this._rdA=((this._rdA+hI)%len+len)%len; }
     }
   }
   process(inputs,outputs){
@@ -1947,29 +2047,17 @@ class PadLoopProcessor extends AudioWorkletProcessor {
     }
     if(this._state==='playing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      if(this._rate===1){
-        const len=b.length;
-        for(let i=0;i<out.length;i++){ out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len; }
-      } else { this._readOLA(out,out.length); }
+      const len=b.length;
+      for(let i=0;i<out.length;i++){ out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len; }
     } else if(this._state==='overdubbing'){
       const b=this._buf; if(!b){ out.fill(0); return true; }
-      const d=this._decay,len=b.length,rate=this._rate;
+      const d=this._decay,len=b.length;
       const writeOff=Math.round(this._rtt*sampleRate);
-      if(rate===1){
-        for(let i=0;i<out.length;i++){
-          const inp=ch?ch[i]:0;
-          const wp=((this._rdA-writeOff)%len+len)%len;
-          b[wp]=b[wp]*d+inp;
-          out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
-        }
-      } else {
-        this._readOLA(out,out.length);
-        for(let i=0;i<out.length;i++){
-          const inp=ch?ch[i]:0;
-          const wp=((Math.round(this._wPos)-writeOff)%len+len)%len;
-          b[wp]=b[wp]*d+inp;
-          this._wPos=(this._wPos+rate)%len;
-        }
+      for(let i=0;i<out.length;i++){
+        const inp=ch?ch[i]:0;
+        const wp=((this._rdA-writeOff)%len+len)%len;
+        b[wp]=b[wp]*d+inp;
+        out[i]=b[this._rdA]; this._rdA=(this._rdA+1)%len;
       }
     } else { out.fill(0); }
     return true;
@@ -1997,6 +2085,8 @@ async function initPadloop(){
           padloopWorklet.port.postMessage({cmd:'overdub',decay});
         }
         updatePadloopUI();
+      } else if(data.type==='resized'){
+        padloopLen=data.len; updatePadloopUI();
       }
     };
     // Capture bus
@@ -2029,7 +2119,9 @@ let sessionDest=null;
 function initSessionRec(){
   if(!ctx) return;
   sessionDest=ctx.createMediaStreamDestination();
-  master.connect(sessionDest);
+  // Tap after limiter+clip for clean recording
+  if(masterClipNode) masterClipNode.connect(sessionDest);
+  else master.connect(sessionDest);
 }
 
 function sessionRecToggle(){
@@ -2131,7 +2223,8 @@ function seqRecTap(inst,stepOverride){
   if(!seqRecActive) return;
   const step=(stepOverride!==undefined)?stepOverride:(isPlaying?seqStep:seqViewBar*16);
   const grids=INST_CFG[inst]; if(!grids) return;
-  grids.forEach(({s,cls,gid})=>{
+  grids.forEach(({key:k,cls,gid})=>{
+    const s=seqArr(k);
     s[step]=1;
     // Redraw the full drawer grid (always bar 0) so display is always accurate
     refreshGrid(gid,cls,s);
@@ -2528,11 +2621,10 @@ function rSend(inst,type){
 
 function toggleD(id){ document.getElementById(id).classList.toggle('open'); }
 function clearSeq(){
-  [dS,hS,drS,kS,snS].forEach(a=>a.fill(0));
-  bS.fill(1); // bass resets to all-on
-  document.querySelectorAll('.step').forEach(e=>e.classList.remove('b-on','d-on','h-on','dr-on','k-on','sn-on'));
-  // re-light bass steps
-  document.querySelectorAll('#gB .step').forEach(el=>el.classList.add('b-on'));
+  ['D','H','DR','K','SN'].forEach(k=>seqArr(k).fill(0));
+  seqArr('B').fill(1); // bass resets to all-on
+  seqArr('SMP').fill(0);
+  refreshAllGridsForSection();
 }
 function setBpm(val){
   bpm=val;
@@ -2676,6 +2768,7 @@ function updateSectionUI(){
     btn.classList.toggle('on', isActive);
     btn.textContent=isActive?('● '+s):(isPending?('→ '+s+' …'):('→ '+s));
   });
+  updateABSwitchUI();
 }
 function gotoSection(s){
   if(s===currentSection){ pendingSection=null; updateSectionUI(); return; }
@@ -2715,13 +2808,18 @@ function init(){
   ctx=new(window.AudioContext||window.webkitAudioContext)();
   ctx.resume();
 
-  master=ctx.createGain(); master.gain.value=0.75;
+  master=ctx.createGain(); master.gain.value=0.55;
   masterEQ=ctx.createBiquadFilter(); masterEQ.type='lowpass'; masterEQ.frequency.value=16000;
   // Master limiter — prevents digital clipping when many instruments play together
   const masterLimiter=ctx.createDynamicsCompressor();
-  masterLimiter.threshold.value=-3; masterLimiter.knee.value=0;
-  masterLimiter.ratio.value=20; masterLimiter.attack.value=0.001; masterLimiter.release.value=0.08;
-  masterEQ.connect(master); master.connect(masterLimiter); masterLimiter.connect(ctx.destination);
+  masterLimiter.threshold.value=-6; masterLimiter.knee.value=3;
+  masterLimiter.ratio.value=20; masterLimiter.attack.value=0.001; masterLimiter.release.value=0.1;
+  // Hard-clip safety net — catches any transients the compressor misses
+  masterClipNode=ctx.createWaveShaper();
+  const clipCurve=new Float32Array(65536);
+  for(let i=0;i<65536;i++){ const x=(i/65536)*2-1; clipCurve[i]=Math.max(-0.98,Math.min(0.98,x)); }
+  masterClipNode.curve=clipCurve; masterClipNode.oversample='2x';
+  masterEQ.connect(master); master.connect(masterLimiter); masterLimiter.connect(masterClipNode); masterClipNode.connect(ctx.destination);
 
   // Reverb with shimmer return
   revPre=ctx.createDelay(0.5); revPre.delayTime.value=0.01;
@@ -3410,7 +3508,7 @@ function _holoSpawnCore(p, px, py, schedT, vol){
 }
 
 // ─── SMPLR 4-BAR GRID BUILDER ────────────────────
-function buildSmpGrid(cid,state,cls){
+function buildSmpGrid(cid,stateA,stateB,cls){
   const c=document.getElementById(cid); if(!c) return;
   const row=document.createElement('div'); row.className='smp-bar-grid';
   for(let bar=0;bar<4;bar++){
@@ -3421,8 +3519,12 @@ function buildSmpGrid(cid,state,cls){
       const i=bar*4+beat;
       const el=document.createElement('div');
       el.className=`step smp-step s-${i}`;
-      if(state[i]) el.classList.add(cls);
-      el.addEventListener('click',()=>{ state[i]=!state[i]; el.classList.toggle(cls); });
+      const initSt=seqEditSec==='A'?stateA:stateB;
+      if(initSt[i]) el.classList.add(cls);
+      el.addEventListener('click',()=>{
+        const st=seqEditSec==='A'?stateA:stateB;
+        st[i]=st[i]?0:1; el.classList.toggle(cls);
+      });
       br.appendChild(el);
     }
     bg.appendChild(lbl); bg.appendChild(br); row.appendChild(bg);
@@ -3766,7 +3868,7 @@ function spawnGrain(){
 
 // ═══ BASS SYNTH ARP (grid-driven) ═════════════════
 let bassArpStep=0, bassNoteSteps=4; // 4 = 1 quarter note per triggered step
-let bassOneNote=false; // one-note mode: root note, one per bar
+let bassOneNote=true; // one-note mode: root note, one per bar (default on)
 const bassLowSteps=new Array(8).fill(false); // per-chord-step octave drop
 
 function buildBassLowRow(){
@@ -3828,7 +3930,7 @@ function playBassArpNote(t, freq, stepLen){
   const lowDrop=bassLowSteps[chordSeqStep]?-1:0;
   const f=Math.max(30.87,freq*Math.pow(2,octShift+lowDrop)); // never below B0
   const detHz=f*(Math.pow(2,n('BA-Detune')*80/1200)-1);
-  const subLvl=n('BA-Sub')*0.60;   // heavier sub than synth arp
+  const subLvl=n('BA-Sub')*0.45;   // heavier sub than synth arp
   const gate=0.08+n('BA-Gate')*0.92;
   const noteDur=stepLen*gate;
   // Amp ADSR — decay clipped to release-start so no instantaneous jump ever occurs
@@ -3846,7 +3948,7 @@ function playBassArpNote(t, freq, stepLen){
   const fEnvAmt=n('BA-FEnv')*4200;
   const fAtk=0.003+n('BA-FAtk')*0.12;
   const fDcy=0.02 +n('BA-FDcy')*0.58;
-  const res=n('BA-Res')*14;
+  const res=n('BA-Res')*8;
   const lfoRate=0.1+n('BA-LRate')*12;
   const lfoDepth=n('BA-LDpth')*700;
   const filt=ctx.createBiquadFilter(); filt.type='lowpass'; filt.Q.value=res;
@@ -3874,17 +3976,20 @@ function playBassArpNote(t, freq, stepLen){
   o1.type=wave; o1.frequency.value=f; og1.gain.value=0.50;
   const o2=ctx.createOscillator(),og2=ctx.createGain();
   o2.type=wave; o2.frequency.value=f+detHz; og2.gain.value=0.26;
-  // Sub octave (more weight than synth arp)
+  // Sub octave (more weight than synth arp) — clamped above 25 Hz
   const o3=ctx.createOscillator(),og3=ctx.createGain();
-  o3.type='sine'; o3.frequency.value=f*0.5; og3.gain.value=subLvl;
-  // Sub-sub for rumble on heavy settings
+  o3.type='sine'; o3.frequency.value=Math.max(25,f*0.5); og3.gain.value=subLvl;
+  // Sub-sub for rumble on heavy settings — clamped above 25 Hz
   const o4=ctx.createOscillator(),og4=ctx.createGain();
-  o4.type='sine'; o4.frequency.value=f*0.25; og4.gain.value=subLvl*0.38;
+  const subSubF=Math.max(25,f*0.25);
+  o4.type='sine'; o4.frequency.value=subSubF; og4.gain.value=subLvl*0.22;
   o1.connect(og1); og1.connect(filt);
   o2.connect(og2); og2.connect(filt);
   o3.connect(og3); og3.connect(filt);
   o4.connect(og4); og4.connect(filt);
-  filt.connect(env); env.connect(pan);
+  // Highpass to kill inaudible sub-bass that eats headroom
+  const bassHP=ctx.createBiquadFilter(); bassHP.type='highpass'; bassHP.frequency.value=28; bassHP.Q.value=0.707;
+  filt.connect(bassHP); bassHP.connect(env); env.connect(pan);
   send(pan,n('BA-Rev'),n('BA-Dly'));
   const stopT=noteEnd+0.02;
   o1.start(t); o2.start(t); o3.start(t); o4.start(t);
@@ -4380,15 +4485,15 @@ function loop(){
       }
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
       const _sk=':'+seqStep;
-      if(drS[seqStep]  &&!seqRecSkipOnce.delete('DR'+_sk)) playDR(nextT+swOff);
-      if(bassOneNote?seqStep%16===0:(bS[seqStep]&&!seqRecSkipOnce.delete('B'+_sk))){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
-      if(kS[seqStep]   &&!seqRecSkipOnce.delete('K' +_sk)) playKick(nextT+swOff);
-      if(snS[seqStep]  &&!seqRecSkipOnce.delete('SN'+_sk)) playSnare(nextT+swOff);
-      if(dS[seqStep]   &&!seqRecSkipOnce.delete('D' +_sk)) playD(nextT+swOff);
-      if(hS[seqStep]   &&!seqRecSkipOnce.delete('H' +_sk)) playH(nextT+swOff);
+      if(playArr('DR')[seqStep]  &&!seqRecSkipOnce.delete('DR'+_sk)) playDR(nextT+swOff);
+      if(bassOneNote?seqStep%16===0:(playArr('B')[seqStep]&&!seqRecSkipOnce.delete('B'+_sk))){ playBassArpNote(nextT+swOff, bassArpFreq(), sl*bassNoteSteps); bassArpStep++; }
+      if(playArr('K')[seqStep]   &&!seqRecSkipOnce.delete('K' +_sk)) playKick(nextT+swOff);
+      if(playArr('SN')[seqStep]  &&!seqRecSkipOnce.delete('SN'+_sk)) playSnare(nextT+swOff);
+      if(playArr('D')[seqStep]   &&!seqRecSkipOnce.delete('D' +_sk)) playD(nextT+swOff);
+      if(playArr('H')[seqStep]   &&!seqRecSkipOnce.delete('H' +_sk)) playH(nextT+swOff);
       // SMPLR: 16 steps over 4 bars — fires on every quarter note (every 4 main steps)
       if(seqStep%4===0){
-        if(smpS[smpBeatCount]&&!muted.SMP) playSamplerStep(nextT+swOff);
+        if(playArr('SMP')[smpBeatCount]&&!muted.SMP) playSamplerStep(nextT+swOff);
         document.querySelectorAll('#gSMPLR .smp-step').forEach(e=>e.classList.remove('playing'));
         const smpEl=document.querySelector('#gSMPLR .s-'+smpBeatCount);
         if(smpEl) smpEl.classList.add('playing');
@@ -4454,23 +4559,24 @@ function refreshGrid(gid,cls,state){
 }
 // Per-instrument clear / random / mute ─────────────────
 const INST_CFG={
-  DR:  [{s:drS,cls:'dr-on',gid:'gDR'}],
-  B:   [{s:bS, cls:'b-on', gid:'gB'}],
-  K:   [{s:kS, cls:'k-on', gid:'gK'}],
-  SN:  [{s:snS,cls:'sn-on',gid:'gSN'}],
-  D:   [{s:dS, cls:'d-on', gid:'gD'}],
-  H:   [{s:hS, cls:'h-on', gid:'gH'}],
-  DRMS:[{s:kS, cls:'k-on', gid:'gK'},{s:snS,cls:'sn-on',gid:'gSN'},
-        {s:dS, cls:'d-on', gid:'gD'},{s:hS, cls:'h-on', gid:'gH'}],
-  SMP: [{s:smpS,cls:'smp-on',gid:'gSMPLR'}],
+  DR:  [{key:'DR', cls:'dr-on',gid:'gDR'}],
+  B:   [{key:'B',  cls:'b-on', gid:'gB'}],
+  K:   [{key:'K',  cls:'k-on', gid:'gK'}],
+  SN:  [{key:'SN', cls:'sn-on',gid:'gSN'}],
+  D:   [{key:'D',  cls:'d-on', gid:'gD'}],
+  H:   [{key:'H',  cls:'h-on', gid:'gH'}],
+  DRMS:[{key:'K',  cls:'k-on', gid:'gK'},{key:'SN',cls:'sn-on',gid:'gSN'},
+        {key:'D',  cls:'d-on', gid:'gD'},{key:'H', cls:'h-on', gid:'gH'}],
+  SMP: [{key:'SMP',cls:'smp-on',gid:'gSMPLR'}],
 };
 function instClear(key){
   const grids=INST_CFG[key]; if(!grids) return;
-  grids.forEach(({s,cls,gid})=>{ s.fill(0); refreshGrid(gid,cls,s); });
+  grids.forEach(({key:k,cls,gid})=>{ const s=seqArr(k); s.fill(0); refreshGrid(gid,cls,s); });
 }
 function instRandom(key){
   const grids=INST_CFG[key]; if(!grids) return;
-  grids.forEach(({s,cls,gid},gi)=>{
+  grids.forEach(({key:k,cls,gid},gi)=>{
+    const s=seqArr(k);
     // musical density varies: drone sparse, bass medium, drums weighted by position
     const density=key==='DR'?0.4 : key==='B'?0.5 :
                   key==='K'?0.55 : key==='SN'?0.45 : key==='D'?0.6 : key==='H'?0.7 :
@@ -4504,25 +4610,33 @@ function instMute(key,btn){
   // sync muteAll indicator
   const allKeys=['X','DR','B','K','SN','D','H','ARP','SMP'];
   muteAllActive=allKeys.every(k=>intendedMute(k));
-  const mab=document.getElementById('muteAllBtn'); if(mab) mab.classList.toggle('muted',muteAllActive);
+  syncMuteAllUI();
 }
 function muteAll(){
   const allKeys=['X','DR','B','K','SN','D','H','ARP','SMP'];
   muteAllActive=!allKeys.every(k=>intendedMute(k));
   allKeys.forEach(k=>queueMute(k,muteAllActive));
   const mb=document.getElementById('muteDRMS'); if(mb) mb.classList.toggle('muted',muteAllActive);
-  const mab=document.getElementById('muteAllBtn'); if(mab) mab.classList.toggle('muted',muteAllActive);
+  syncMuteAllUI();
+}
+function syncMuteAllUI(){
+  const mab=document.getElementById('muteAllBtn');
+  if(mab){ mab.classList.toggle('muted',muteAllActive); mab.textContent=muteAllActive?'⊘ MUTED':'MUTE ALL'; }
 }
 
-function buildGrid(cid,state,cls){
+function buildGrid(cid,stateA,stateB,cls){
   const c=document.getElementById(cid);
   for(let g=0;g<4;g++){
     const grp=document.createElement('div'); grp.className='beat-group';
     for(let s=0;s<4;s++){
       const i=g*4+s, el=document.createElement('div');
       el.className=`step s-${i}`;
-      if(state[i]) el.classList.add(cls);
-      el.addEventListener('click',()=>{ state[i]=!state[i]; el.classList.toggle(cls); });
+      const initSt=seqEditSec==='A'?stateA:stateB;
+      if(initSt[i]) el.classList.add(cls);
+      el.addEventListener('click',()=>{
+        const st=seqEditSec==='A'?stateA:stateB;
+        st[i]=st[i]?0:1; el.classList.toggle(cls);
+      });
       grp.appendChild(el);
     }
     c.appendChild(grp);
@@ -4590,12 +4704,12 @@ function padPos(e){
 // ═══ SEQ MODE ═════════════════════════════════════
 // Track definitions for SEQ MODE
 const SM_TRACKS=[
-  {id:'K',  label:'KICK',   state:kS,  cls:'k-on',  color:'var(--kick)'},
-  {id:'SN', label:'SNARE',  state:snS, cls:'sn-on', color:'var(--snare)'},
-  {id:'D',  label:'BONGO',  state:dS,  cls:'d-on',  color:'var(--drum)'},
-  {id:'H',  label:'HI-HAT', state:hS,  cls:'h-on',  color:'var(--hihat)'},
-  {id:'B',  label:'BASS',   state:bS,  cls:'b-on',  color:'var(--bass)'},
-  {id:'DR', label:'DRONE',  state:drS, cls:'dr-on', color:'var(--drone)'},
+  {id:'K',  label:'KICK',   get state(){ return seqArr('K'); },  cls:'k-on',  color:'var(--kick)'},
+  {id:'SN', label:'SNARE',  get state(){ return seqArr('SN'); }, cls:'sn-on', color:'var(--snare)'},
+  {id:'D',  label:'BONGO',  get state(){ return seqArr('D'); },  cls:'d-on',  color:'var(--drum)'},
+  {id:'H',  label:'HI-HAT', get state(){ return seqArr('H'); },  cls:'h-on',  color:'var(--hihat)'},
+  {id:'B',  label:'BASS',   get state(){ return seqArr('B'); },  cls:'b-on',  color:'var(--bass)'},
+  {id:'DR', label:'DRONE',  get state(){ return seqArr('DR'); }, cls:'dr-on', color:'var(--drone)'},
 ];
 
 function buildSeqMode(){
@@ -4771,10 +4885,10 @@ function exitSeqMode(){
 // ═══ BOOT ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
   buildParams('pDR','DR',PDEFS.DR);
-  buildGrid('gDR',drS,'dr-on'); buildGrid('gB',bS,'b-on');
-  buildGrid('gK',kS,'k-on');    buildGrid('gSN',snS,'sn-on');
-  buildGrid('gD',dS,'d-on');    buildGrid('gH',hS,'h-on');
-  buildSmpGrid('gSMPLR',smpS,'smp-on');
+  buildGrid('gDR',drS,drS_B,'dr-on'); buildGrid('gB',bS,bS_B,'b-on');
+  buildGrid('gK',kS,kS_B,'k-on');    buildGrid('gSN',snS,snS_B,'sn-on');
+  buildGrid('gD',dS,dS_B,'d-on');    buildGrid('gH',hS,hS_B,'h-on');
+  buildSmpGrid('gSMPLR',smpS,smpS_B,'smp-on');
   buildPresets('DR'); buildPresets('K'); buildPresets('SN');
   buildPresets('D');  buildPresets('H');
 
