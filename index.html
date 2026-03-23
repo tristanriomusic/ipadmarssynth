@@ -4159,32 +4159,62 @@ function playSnare(t){
   triggerEnergy(vol*0.45);
   flashCircle('SN');
   const snap=n('SN-Snap'), body=n('SN-Body'), dec=n('SN-Decay');
-  const decayT=0.07+dec*0.32;
-  const pan=ctx.createStereoPanner(); pan.pan.value=0;
-  // Tonal body — sine sweep
+  const decayT=0.10+dec*0.38;
+  // Subtle humanize — random velocity & timing micro-shift
+  const vel=0.92+Math.random()*0.08;
+  const drift=(Math.random()-0.5)*0.003;
+  const t0=t+drift;
+  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.08;
+  // 1. Punchy tonal body — sine pitch sweep (drum head thump)
   if(body>0.02){
     const o=ctx.createOscillator(), eg=ctx.createGain();
-    o.type='triangle'; o.frequency.value=150+body*120;
-    o.frequency.exponentialRampToValueAtTime(Math.max(40,70+body*40),t+0.04+dec*0.08);
-    eg.gain.value=0;
-    eg.gain.setValueAtTime(0,t); eg.gain.linearRampToValueAtTime(body*vol*0.62,t+0.003);
-    eg.gain.exponentialRampToValueAtTime(0.0001,t+0.05+dec*0.14);
-    eg.gain.linearRampToValueAtTime(0,t+0.05+dec*0.14+0.004);
-    o.connect(eg); eg.connect(pan); o.start(t); o.stop(t+0.05+dec*0.14+0.05);
+    o.type='sine'; o.frequency.setValueAtTime(260+body*140,t0);
+    o.frequency.exponentialRampToValueAtTime(Math.max(50,80+body*50),t0+0.045+dec*0.06);
+    eg.gain.setValueAtTime(0,t0);
+    eg.gain.linearRampToValueAtTime(body*vol*vel*0.85,t0+0.001);
+    eg.gain.exponentialRampToValueAtTime(0.001,t0+0.06+dec*0.16);
+    eg.gain.linearRampToValueAtTime(0,t0+0.06+dec*0.16+0.004);
+    o.connect(eg); eg.connect(pan); o.start(t0); o.stop(t0+0.06+dec*0.16+0.05);
   }
-  // Noise component (snare rattle)
-  const nlen=Math.ceil(ctx.sampleRate*(0.10+dec*0.38));
-  const nbuf=ctx.createBuffer(1,nlen,ctx.sampleRate);
-  const nd=nbuf.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
-  const ns=ctx.createBufferSource(), np=ctx.createBiquadFilter(), ng=ctx.createGain();
-  ns.buffer=nbuf; np.type='highpass'; np.frequency.value=1600+snap*3000;
-  ng.gain.value=0;
-  ng.gain.setValueAtTime(0,t); ng.gain.linearRampToValueAtTime(vol*0.58,t+0.003);
-  ng.gain.exponentialRampToValueAtTime(0.0001,t+decayT);
-  ng.gain.linearRampToValueAtTime(0,t+decayT+0.004);
-  ns.connect(np); np.connect(ng); ng.connect(pan);
+  // 2. Click transient — very short burst for attack
+  {
+    const cLen=Math.ceil(ctx.sampleRate*0.008);
+    const cBuf=ctx.createBuffer(1,cLen,ctx.sampleRate);
+    const cd=cBuf.getChannelData(0);
+    for(let i=0;i<cd.length;i++) cd[i]=(Math.random()*2-1)*Math.pow(1-i/cd.length,2);
+    const cs=ctx.createBufferSource(), cg=ctx.createGain();
+    cs.buffer=cBuf;
+    cg.gain.setValueAtTime(vol*vel*snap*0.55,t0);
+    cg.gain.exponentialRampToValueAtTime(0.0001,t0+0.008);
+    cs.connect(cg); cg.connect(pan); cs.start(t0);
+  }
+  // 3. Noise body — mid-frequency crunch for weight
+  const nlen=Math.ceil(ctx.sampleRate*(decayT+0.08));
+  const nbuf=ctx.createBuffer(2,nlen,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){
+    const nd=nbuf.getChannelData(ch);
+    for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
+  }
+  const ns=ctx.createBufferSource(); ns.buffer=nbuf;
+  // Bandpass for midrange thud
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.value=800+body*600; bp.Q.value=0.6;
+  const bg=ctx.createGain();
+  bg.gain.setValueAtTime(0,t0); bg.gain.linearRampToValueAtTime(vol*vel*0.42,t0+0.002);
+  bg.gain.exponentialRampToValueAtTime(0.0001,t0+decayT*0.7);
+  bg.gain.linearRampToValueAtTime(0,t0+decayT*0.7+0.004);
+  ns.connect(bp); bp.connect(bg); bg.connect(pan);
+  // 4. Highpass noise — snare wire rattle
+  const ns2=ctx.createBufferSource(); ns2.buffer=nbuf;
+  const hp=ctx.createBiquadFilter(); hp.type='highpass';
+  hp.frequency.value=2200+snap*3400;
+  const hg=ctx.createGain();
+  hg.gain.setValueAtTime(0,t0); hg.gain.linearRampToValueAtTime(vol*vel*0.52,t0+0.002);
+  hg.gain.exponentialRampToValueAtTime(0.0001,t0+decayT);
+  hg.gain.linearRampToValueAtTime(0,t0+decayT+0.004);
+  ns2.connect(hp); hp.connect(hg); hg.connect(pan);
   send(pan,n('SN-Rev'),n('SN-Dly'));
-  ns.start(t);
+  ns.start(t0); ns2.start(t0);
 }
 
 // ═══ ARPEGGIATOR ══════════════════════════════════
@@ -4553,36 +4583,50 @@ function playD(t){
 }
 function playH(t){
   const vol=nv('H-Vol'); if(vol<0.01||muted.H) return;
-  triggerEnergy(vol*0.15);
+  triggerEnergy(vol*0.12);
   flashCircle('H');
-  const color=n('H-Color'), dec=0.06+n('H-Decay')*0.72, jitt=n('H-Jitter'), shine=n('H-Shine');
-  const pan=ctx.createStereoPanner(); pan.pan.value=n('H-Pan')*2-1;
-  const dur=Math.max(0.02,dec);
-  // Brush/cymbal: shaped noise through gentle bandpass + soft lowpass
-  const nlen=Math.ceil(ctx.sampleRate*(dur+0.25));
-  const nbuf=ctx.createBuffer(2,nlen,ctx.sampleRate); // stereo for width
+  const color=n('H-Color'), dec=0.03+n('H-Decay')*0.42, jitt=n('H-Jitter'), shine=n('H-Shine');
+  // Humanize — subtle velocity & timing variation
+  const vel=0.88+Math.random()*0.12;
+  const drift=(Math.random()-0.5)*0.002;
+  const t0=t+drift;
+  const pan=ctx.createStereoPanner(); pan.pan.value=(n('H-Pan')*2-1)+(Math.random()-0.5)*0.12;
+  const dur=Math.max(0.015,dec);
+  // Short, tight noise burst — lighter than before
+  const nlen=Math.ceil(ctx.sampleRate*(dur+0.06));
+  const nbuf=ctx.createBuffer(2,nlen,ctx.sampleRate);
   for(let ch=0;ch<2;ch++){
     const nd=nbuf.getChannelData(ch);
-    for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1)*(0.7+0.3*Math.random());
+    for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
   }
   const nsrc=ctx.createBufferSource(); nsrc.buffer=nbuf;
-  // Bandpass centered in cymbal/brush range — much lower than 808
-  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
-  bp.frequency.value=1800+color*3500; bp.Q.value=0.35+shine*0.4;
-  // Gentle lowpass to round off harshness
-  const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=7000+color*5000;
-  // Soft attack (brush landing) then long shimmer tail
+  // Highpass to keep it thin and airy
+  const hp=ctx.createBiquadFilter(); hp.type='highpass';
+  hp.frequency.value=5500+color*3000; hp.Q.value=0.5;
+  // Gentle lowpass to tame harshness
+  const lp=ctx.createBiquadFilter(); lp.type='lowpass';
+  lp.frequency.value=9000+color*4000+shine*2000;
+  // Quick attack, fast decay — delicate tap
   const env=ctx.createGain();
-  env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(vol*0.14,t+0.01+jitt*0.02);
-  env.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  // Thin shimmer overtone — very soft sine for the "shimmer" quality
-  const shimO=ctx.createOscillator(), shimG=ctx.createGain();
-  shimO.type='sine'; shimO.frequency.value=2800+color*4200+(Math.random()-0.5)*jitt*400;
-  shimG.gain.setValueAtTime(shine*vol*0.07,t); shimG.gain.exponentialRampToValueAtTime(0.0001,t+dur*0.7);
-  shimO.connect(shimG); shimG.connect(pan); shimO.start(t); shimO.stop(t+dur+0.05);
-  nsrc.connect(bp); bp.connect(lp); lp.connect(env); env.connect(pan);
-  routeEQ(pan,'H',rSend('H','Rev')*0.85,rSend('H','Dly')*0.55);
-  nsrc.start(t);
+  env.gain.setValueAtTime(0,t0);
+  env.gain.linearRampToValueAtTime(vol*vel*0.09,t0+0.001+jitt*0.004);
+  env.gain.exponentialRampToValueAtTime(vol*vel*0.04,t0+0.008);
+  env.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  // Very subtle metallic shimmer — pair of detuned high sines
+  if(shine>0.05){
+    const f1=6200+color*4000+(Math.random()-0.5)*jitt*300;
+    const f2=f1*1.414+(Math.random()-0.5)*80;
+    for(const f of [f1,f2]){
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(shine*vol*vel*0.018,t0);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+dur*0.5);
+      o.connect(g); g.connect(pan); o.start(t0); o.stop(t0+dur+0.02);
+    }
+  }
+  nsrc.connect(hp); hp.connect(lp); lp.connect(env); env.connect(pan);
+  routeEQ(pan,'H',rSend('H','Rev')*0.7,rSend('H','Dly')*0.4);
+  nsrc.start(t0);
 }
 
 // ═══ MAIN LOOP ════════════════════════════════════
