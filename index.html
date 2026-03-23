@@ -846,6 +846,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="cmr-row">
             <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
             <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
+            <button class="cmr ab-copy-btn" data-dir="b2a" onclick="copySectionBtoA();event.stopPropagation()" style="font-size:6px;display:inline-block">CP B</button>
+            <button class="cmr ab-copy-btn" data-dir="a2b" onclick="copySectionAtoB();event.stopPropagation()" style="font-size:6px;display:none">CP A</button>
             <button class="cmr" onclick="instClear('DR');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteDR" onclick="instMute('DR',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('DR');event.stopPropagation()">RND</button>
@@ -890,6 +892,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="cmr-row">
             <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
             <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
+            <button class="cmr ab-copy-btn" data-dir="b2a" onclick="copySectionBtoA();event.stopPropagation()" style="font-size:6px;display:inline-block">CP B</button>
+            <button class="cmr ab-copy-btn" data-dir="a2b" onclick="copySectionAtoB();event.stopPropagation()" style="font-size:6px;display:none">CP A</button>
             <button class="cmr" onclick="instClear('B');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteB" onclick="instMute('B',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('B');event.stopPropagation()">RND</button>
@@ -985,6 +989,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="cmr-row">
             <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
             <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
+            <button class="cmr ab-copy-btn" data-dir="b2a" onclick="copySectionBtoA();event.stopPropagation()" style="font-size:6px;display:inline-block">CP B</button>
+            <button class="cmr ab-copy-btn" data-dir="a2b" onclick="copySectionAtoB();event.stopPropagation()" style="font-size:6px;display:none">CP A</button>
             <button class="cmr" onclick="instClear('DRMS');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteDRMS" onclick="instMute('DRMS',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('DRMS');event.stopPropagation()">RND</button>
@@ -1141,6 +1147,10 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <span>ARPEGGIATOR — PROPHET</span>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="cmr-row">
+            <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
+            <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
+            <button class="cmr ab-copy-btn" data-dir="b2a" onclick="copySectionBtoA();event.stopPropagation()" style="font-size:6px;display:inline-block">CP B</button>
+            <button class="cmr ab-copy-btn" data-dir="a2b" onclick="copySectionAtoB();event.stopPropagation()" style="font-size:6px;display:none">CP A</button>
             <button class="cmr muted" id="muteARP" onclick="instMute('ARP',this);event.stopPropagation()">MUTE</button>
           </div>
           <button id="arpBtn" class="imode-btn" onclick="toggleArp();event.stopPropagation()" style="border-color:rgba(255,0,110,0.5);min-width:72px">▶ ARM</button>
@@ -1235,6 +1245,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="cmr-row">
             <button class="cmr ab-edit-btn on" data-sec="A" onclick="setSeqEditSec('A');event.stopPropagation()" style="font-weight:900;min-width:22px">A</button>
             <button class="cmr ab-edit-btn" data-sec="B" onclick="setSeqEditSec('B');event.stopPropagation()" style="font-weight:900;min-width:22px">B</button>
+            <button class="cmr ab-copy-btn" data-dir="b2a" onclick="copySectionBtoA();event.stopPropagation()" style="font-size:6px;display:inline-block">CP B</button>
+            <button class="cmr ab-copy-btn" data-dir="a2b" onclick="copySectionAtoB();event.stopPropagation()" style="font-size:6px;display:none">CP A</button>
             <button class="cmr" onclick="instClear('SMP');event.stopPropagation()">CLR</button>
             <button class="cmr" id="muteSMP" onclick="instMute('SMP',this);event.stopPropagation()">MUTE</button>
             <button class="cmr" onclick="instRandom('SMP');event.stopPropagation()">RND</button>
@@ -1425,6 +1437,49 @@ const SEQ_AB={
 };
 function seqArr(key){ return seqEditSec==='A'?SEQ_AB[key].a:SEQ_AB[key].b; }
 function playArr(key){ return currentSection==='A'?SEQ_AB[key].a:SEQ_AB[key].b; }
+// A/B parameter snapshots for ARP and Bass Arp
+const ARP_PARAM_IDS=['ARP-Gate','ARP-Vol','ARP-Wave','ARP-Oct','ARP-Detune','ARP-Sub','ARP-Cut','ARP-Res','ARP-FEnv','ARP-Atk','ARP-Dcy','ARP-Sus','ARP-Rel','ARP-FAtk','ARP-FDcy','ARP-LRate','ARP-LDpth','ARP-Pattern','ARP-Octaves','ARP-Rev','ARP-Dly'];
+const BA_PARAM_IDS=['BA-Wave','BA-Oct','BA-Detune','BA-Sub','BA-Cut','BA-Res','BA-FEnv','BA-Atk','BA-Dcy','BA-Sus','BA-Rel','BA-FAtk','BA-FDcy','BA-LRate','BA-LDpth','BA-Gate','BA-Rev','BA-Dly','BA-Vol'];
+const AB_PARAM_IDS=[...ARP_PARAM_IDS,...BA_PARAM_IDS];
+const paramSnaps={A:{},B:{}}; // section→{id→value}
+let paramSecLoaded='A';
+function saveCurrentParams(){
+  AB_PARAM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) paramSnaps[paramSecLoaded][id]=+el.value; });
+}
+function loadParamSec(sec){
+  if(sec===paramSecLoaded) return;
+  saveCurrentParams();
+  paramSecLoaded=sec;
+  const snap=paramSnaps[sec];
+  AB_PARAM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el&&id in snap){ el.value=snap[id]; el.dispatchEvent(new Event('input')); } });
+}
+function copyParamsAtoB(){
+  saveCurrentParams();
+  AB_PARAM_IDS.forEach(id=>{ paramSnaps.B[id]=paramSnaps.A[id]; });
+  if(paramSecLoaded==='B'){ const snap=paramSnaps.B; AB_PARAM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el&&id in snap){ el.value=snap[id]; el.dispatchEvent(new Event('input')); } }); }
+}
+function copyParamsBtoA(){
+  saveCurrentParams();
+  AB_PARAM_IDS.forEach(id=>{ paramSnaps.A[id]=paramSnaps.B[id]; });
+  if(paramSecLoaded==='A'){ const snap=paramSnaps.A; AB_PARAM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el&&id in snap){ el.value=snap[id]; el.dispatchEvent(new Event('input')); } }); }
+}
+// Copy section arrays for sequencer instruments
+function copySeqSection(from,to){
+  Object.keys(SEQ_AB).forEach(key=>{
+    const src=from==='A'?SEQ_AB[key].a:SEQ_AB[key].b;
+    const dst=to==='A'?SEQ_AB[key].a:SEQ_AB[key].b;
+    dst.set?dst.set(src):src.forEach((v,i)=>dst[i]=v);
+  });
+  refreshAllGridsForSection();
+}
+function copySectionAtoB(){
+  copySeqSection('A','B');
+  copyParamsAtoB();
+}
+function copySectionBtoA(){
+  copySeqSection('B','A');
+  copyParamsBtoA();
+}
 // Looper A/B follow
 let gloopFollowAB=false, padloopFollowAB=false;
 
@@ -1441,9 +1496,15 @@ function toggleABSection(){
 function setSeqEditSec(sec){
   seqEditSec=sec;
   refreshAllGridsForSection();
+  loadParamSec(sec);
   // Update per-drawer A/B edit buttons
   document.querySelectorAll('.ab-edit-btn').forEach(b=>{
     b.classList.toggle('on', b.dataset.sec===seqEditSec);
+  });
+  // Toggle copy buttons: on A show "CP B", on B show "CP A"
+  document.querySelectorAll('.ab-copy-btn').forEach(b=>{
+    if(b.dataset.dir==='b2a') b.style.display=sec==='A'?'inline-block':'none';
+    if(b.dataset.dir==='a2b') b.style.display=sec==='B'?'inline-block':'none';
   });
 }
 function refreshAllGridsForSection(){
@@ -4513,6 +4574,7 @@ function loop(){
           // Switch section at wrap-around point
           if(nextStep===0&&pendingSection&&pendingSection!==currentSection){
             currentSection=pendingSection; pendingSection=null;
+            loadParamSec(currentSection);
             updateSectionUI();
           }
           chordSeqStep=nextStep;
@@ -4912,6 +4974,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   { const sl=document.getElementById('loop-lat-comp'); if(sl){ sl.value=loopLatencyComp; document.getElementById('loop-lat-comp-v').textContent=(loopLatencyComp>0?'+':'')+loopLatencyComp+' ms'; } }
   // Sync all mute UI indicators with initial muted state
   for(const k of Object.keys(muted)) syncMuteUI(k,muted[k]);
+  // Initialize A/B param snapshots from DOM defaults (both A and B start identical)
+  AB_PARAM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el){ paramSnaps.A[id]=+el.value; paramSnaps.B[id]=+el.value; } });
+  // ARP armed by default (but muted — unmute via mute button)
+  arpActive=true;
+  { const btn=document.getElementById('arpBtn'); if(btn){ btn.textContent='■ ARMED'; btn.classList.add('playing'); } }
 
   document.getElementById('boot').addEventListener('click',e=>{
     init();
