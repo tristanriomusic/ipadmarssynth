@@ -1882,7 +1882,15 @@ class GloopProcessor extends AudioWorkletProcessor {
           this._resampleBuf(newBPM);
         }
         this._curBPM=newBPM; this._recBPM=newBPM;
-        if(this._state==='playing'||this._state==='overdubbing') this._syncPos();
+        // Sync read position from sequencer step — direct and reliable after tempo change
+        if(this._buf&&this._len>0&&data.loopSteps>0){
+          const phase=(data.step%data.loopSteps)/data.loopSteps;
+          this._rdA=Math.round(phase*this._len)%this._len;
+          this._wPos=this._rdA;
+          this._recStartAbsolute=currentTime+this._rtt-(this._rdA/sampleRate);
+        } else if(this._state==='playing'||this._state==='overdubbing'){
+          this._syncPos();
+        }
       }
     };
   }
@@ -1895,14 +1903,13 @@ class GloopProcessor extends AudioWorkletProcessor {
     this._wPos=this._rdA;
   }
   _resampleBuf(newBPM){
-    // Offline OLA time-stretch: resample buffer to new length, pitch preserved
     const oldBuf=this._buf, oldLen=this._len;
-    const rate=newBPM/this._recBPM; // >1 = faster = shorter buffer
+    const rate=newBPM/this._recBPM;
     const newLen=Math.round(oldLen/rate);
-    if(newLen<128) return; // safety
+    if(newLen<128) return;
     const newBuf=new Float32Array(newLen);
     const G=4096, H=2048, hann=this._hann;
-    const hI=H*rate; // input hop
+    const hI=H*rate;
     let rdA=0, rdB=0, hp=0;
     for(let i=0;i<newLen;i++){
       const a=((rdA+hp|0)%oldLen+oldLen)%oldLen;
@@ -1912,12 +1919,6 @@ class GloopProcessor extends AudioWorkletProcessor {
       if(hp>=H){ hp=0; rdB=rdA; rdA=((rdA+hI)%oldLen+oldLen)%oldLen; }
     }
     this._buf=newBuf; this._len=newLen;
-    // Shift recStartAbsolute so position sync stays correct with new length
-    const now=currentTime;
-    const adj=this._recStartAbsolute-this._rtt;
-    const elSamples=Math.max(0,(now-adj)*sampleRate);
-    const frac=(elSamples%oldLen)/oldLen;
-    this._recStartAbsolute=now-this._rtt-(frac*newLen)/sampleRate;
     this.port.postMessage({type:'resized',len:newLen});
   }
   _finalize(){
@@ -2070,7 +2071,15 @@ class PadLoopProcessor extends AudioWorkletProcessor {
           this._resampleBuf(newBPM);
         }
         this._curBPM=newBPM; this._recBPM=newBPM;
-        if(this._state==='playing'||this._state==='overdubbing') this._syncPos();
+        if(this._buf&&this._buf.length>0&&data.loopSteps>0){
+          const phase=(data.step%data.loopSteps)/data.loopSteps;
+          const len=this._buf.length;
+          this._rdA=Math.round(phase*len)%len;
+          this._wPos=this._rdA;
+          this._recStartAbsolute=currentTime+this._rtt-(this._rdA/sampleRate);
+        } else if(this._state==='playing'||this._state==='overdubbing'){
+          this._syncPos();
+        }
       }
     };
   }
@@ -2100,11 +2109,6 @@ class PadLoopProcessor extends AudioWorkletProcessor {
       if(hp>=H){ hp=0; rdB=rdA; rdA=((rdA+hI)%oldLen+oldLen)%oldLen; }
     }
     this._buf=newBuf;
-    const now=currentTime;
-    const adj=this._recStartAbsolute-this._rtt;
-    const elSamples=Math.max(0,(now-adj)*sampleRate);
-    const frac=(elSamples%oldLen)/oldLen;
-    this._recStartAbsolute=now-this._rtt-(frac*newLen)/sampleRate;
     this.port.postMessage({type:'resized',len:newLen});
   }
   _finalize(){
@@ -2765,9 +2769,10 @@ function setBpm(val){
   if(delNode) delNode.delayTime.setTargetAtTime(60/bpm/2, ctx.currentTime, 0.05);
   if(delSyncDiv!==null && delNode) delNode.delayTime.setTargetAtTime((60/bpm)*delSyncDiv, ctx.currentTime, 0.05);
   if(holoDelNode) holoDelNode.delayTime.setTargetAtTime((60/bpm)*holoDelayDiv, ctx.currentTime, 0.05);
-  // Time-stretch loops to match new tempo
-  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val});
-  if(padloopWorklet) padloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val});
+  // Time-stretch loops to match new tempo — send sequencer step for precise sync
+  // Each looper may have different bar counts, so send step + looper bars
+  if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val,step:seqStep,loopSteps:gloopBars*16});
+  if(padloopWorklet) padloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val,step:seqStep,loopSteps:padloopBars*16});
 }
 function setPadMode(mode,btn){
   padMode=mode;
