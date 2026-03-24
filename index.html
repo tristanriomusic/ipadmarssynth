@@ -4173,62 +4173,32 @@ function playSnare(t){
   triggerEnergy(vol*0.45);
   flashCircle('SN');
   const snap=n('SN-Snap'), body=n('SN-Body'), dec=n('SN-Decay');
-  const decayT=0.10+dec*0.38;
-  // Subtle humanize — random velocity & timing micro-shift
-  const vel=0.92+Math.random()*0.08;
-  const drift=(Math.random()-0.5)*0.003;
-  const t0=t+drift;
-  const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()-0.5)*0.08;
-  // 1. Punchy tonal body — sine pitch sweep (drum head thump)
+  const decayT=0.07+dec*0.32;
+  const pan=ctx.createStereoPanner(); pan.pan.value=0;
+  // Tonal body — sine sweep
   if(body>0.02){
     const o=ctx.createOscillator(), eg=ctx.createGain();
-    o.type='sine'; o.frequency.setValueAtTime(260+body*140,t0);
-    o.frequency.exponentialRampToValueAtTime(Math.max(50,80+body*50),t0+0.045+dec*0.06);
-    eg.gain.setValueAtTime(0,t0);
-    eg.gain.linearRampToValueAtTime(body*vol*vel*0.85,t0+0.001);
-    eg.gain.exponentialRampToValueAtTime(0.001,t0+0.06+dec*0.16);
-    eg.gain.linearRampToValueAtTime(0,t0+0.06+dec*0.16+0.004);
-    o.connect(eg); eg.connect(pan); o.start(t0); o.stop(t0+0.06+dec*0.16+0.05);
+    o.type='triangle'; o.frequency.value=150+body*120;
+    o.frequency.exponentialRampToValueAtTime(Math.max(40,70+body*40),t+0.04+dec*0.08);
+    eg.gain.value=0;
+    eg.gain.setValueAtTime(0,t); eg.gain.linearRampToValueAtTime(body*vol*0.62,t+0.003);
+    eg.gain.exponentialRampToValueAtTime(0.0001,t+0.05+dec*0.14);
+    eg.gain.linearRampToValueAtTime(0,t+0.05+dec*0.14+0.004);
+    o.connect(eg); eg.connect(pan); o.start(t); o.stop(t+0.05+dec*0.14+0.05);
   }
-  // 2. Click transient — very short burst for attack
-  {
-    const cLen=Math.ceil(ctx.sampleRate*0.008);
-    const cBuf=ctx.createBuffer(1,cLen,ctx.sampleRate);
-    const cd=cBuf.getChannelData(0);
-    for(let i=0;i<cd.length;i++) cd[i]=(Math.random()*2-1)*Math.pow(1-i/cd.length,2);
-    const cs=ctx.createBufferSource(), cg=ctx.createGain();
-    cs.buffer=cBuf;
-    cg.gain.setValueAtTime(vol*vel*snap*0.55,t0);
-    cg.gain.exponentialRampToValueAtTime(0.0001,t0+0.008);
-    cs.connect(cg); cg.connect(pan); cs.start(t0);
-  }
-  // 3. Noise body — mid-frequency crunch for weight
-  const nlen=Math.ceil(ctx.sampleRate*(decayT+0.08));
-  const nbuf=ctx.createBuffer(2,nlen,ctx.sampleRate);
-  for(let ch=0;ch<2;ch++){
-    const nd=nbuf.getChannelData(ch);
-    for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
-  }
-  const ns=ctx.createBufferSource(); ns.buffer=nbuf;
-  // Bandpass for midrange thud
-  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
-  bp.frequency.value=800+body*600; bp.Q.value=0.6;
-  const bg=ctx.createGain();
-  bg.gain.setValueAtTime(0,t0); bg.gain.linearRampToValueAtTime(vol*vel*0.42,t0+0.002);
-  bg.gain.exponentialRampToValueAtTime(0.0001,t0+decayT*0.7);
-  bg.gain.linearRampToValueAtTime(0,t0+decayT*0.7+0.004);
-  ns.connect(bp); bp.connect(bg); bg.connect(pan);
-  // 4. Highpass noise — snare wire rattle
-  const ns2=ctx.createBufferSource(); ns2.buffer=nbuf;
-  const hp=ctx.createBiquadFilter(); hp.type='highpass';
-  hp.frequency.value=2200+snap*3400;
-  const hg=ctx.createGain();
-  hg.gain.setValueAtTime(0,t0); hg.gain.linearRampToValueAtTime(vol*vel*0.52,t0+0.002);
-  hg.gain.exponentialRampToValueAtTime(0.0001,t0+decayT);
-  hg.gain.linearRampToValueAtTime(0,t0+decayT+0.004);
-  ns2.connect(hp); hp.connect(hg); hg.connect(pan);
+  // Noise component (snare rattle)
+  const nlen=Math.ceil(ctx.sampleRate*(0.10+dec*0.38));
+  const nbuf=ctx.createBuffer(1,nlen,ctx.sampleRate);
+  const nd=nbuf.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=(Math.random()*2-1);
+  const ns=ctx.createBufferSource(), np=ctx.createBiquadFilter(), ng=ctx.createGain();
+  ns.buffer=nbuf; np.type='highpass'; np.frequency.value=1600+snap*3000;
+  ng.gain.value=0;
+  ng.gain.setValueAtTime(0,t); ng.gain.linearRampToValueAtTime(vol*0.58,t+0.003);
+  ng.gain.exponentialRampToValueAtTime(0.0001,t+decayT);
+  ng.gain.linearRampToValueAtTime(0,t+decayT+0.004);
+  ns.connect(np); np.connect(ng); ng.connect(pan);
   send(pan,n('SN-Rev'),n('SN-Dly'));
-  ns.start(t0); ns2.start(t0);
+  ns.start(t);
 }
 
 // ═══ ARPEGGIATOR ══════════════════════════════════
