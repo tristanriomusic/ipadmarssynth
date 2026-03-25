@@ -271,6 +271,10 @@
 /* INSTRUMENT CIRCLES */
 #popup-bg{ display:none; position:fixed; inset:0; z-index:499; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); touch-action:none; }
 #popup-bg.active{ display:block; }
+    #rec-border{ display:none; position:fixed; inset:0; z-index:9999; pointer-events:none; border:5px solid transparent; border-radius:0; }
+    #rec-border.gloop-rec{ display:block; border-color:#ff2222; box-shadow:inset 0 0 30px rgba(255,34,34,0.3); }
+    #rec-border.seq-rec{ display:block; border-color:#ff8800; box-shadow:inset 0 0 25px rgba(255,136,0,0.25); }
+    #rec-border.gloop-rec.seq-rec{ border-color:#ff2222; box-shadow:inset 0 0 30px rgba(255,34,34,0.3); }
 .drawer.popup-mode{ position:fixed!important; top:50%!important; left:50%!important; transform:translate(-50%,-50%)!important; z-index:500!important; max-height:88vh!important; overflow-y:auto!important; width:96vw!important; display:block!important; -webkit-overflow-scrolling:touch; }
 .drawer.popup-mode .drawer-body{ display:block!important; }
 #circles-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:10px 3vw 8px; justify-items:center; }
@@ -394,6 +398,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
   <!-- POPUP BACKDROP -->
   <div id="popup-bg" onclick="closeCirclePopup()"></div>
+  <!-- RECORDING BORDER OVERLAY -->
+  <div id="rec-border"></div>
 
   <!-- INSTRUMENT CIRCLES -->
   <div id="circles-grid">
@@ -2607,6 +2613,7 @@ function updateGloopUI(){
     pgr.style.boxShadow=active?'0 0 12px rgba(255,68,68,0.6)':gloopPlay?'0 0 10px rgba(0,255,136,0.4)':'none';
     pgr.textContent=gloopOverdub?'◉ GTR OVR':gloopRec?'● GTR REC':gloopPlay?'▶ GTR':'● GTR';
   }
+  updateRecBorder();
 }
 function drawGloopVU(){
   const canvas=document.getElementById('gloop-vu'); if(!canvas||!gloopAnalyser) return;
@@ -5121,6 +5128,11 @@ function smRndBar(id){
   if(seqViewBar===0) refreshGrid(INST_CFG[t.id]?.[0]?.gid, t.cls, t.state);
 }
 
+function updateRecBorder(){
+  const el=document.getElementById('rec-border'); if(!el) return;
+  el.classList.toggle('gloop-rec', gloopRec||gloopOverdub);
+  el.classList.toggle('seq-rec', seqRecActive&&!gloopRec&&!gloopOverdub);
+}
 function smRecToggle(){
   seqRecActive=!seqRecActive;
   const btn=document.getElementById('sm-rec-btn');
@@ -5128,6 +5140,7 @@ function smRecToggle(){
   // Keep the top-bar SEQ REC button in sync
   const topBtn=document.getElementById('seqrec-btn');
   if(topBtn){ topBtn.classList.toggle('active',seqRecActive); topBtn.textContent=seqRecActive?'⊙ RECORDING...':'⊙ SEQ REC'; }
+  updateRecBorder();
 }
 
 function enterSeqMode(){
