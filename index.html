@@ -2386,11 +2386,10 @@ function openCirclePopup(drawerId, evt, instId, touchTime){
   const now=Date.now();
   if(now-(_circTapTimes[tapKey]||0)<30) return;
   _circTapTimes[tapKey]=now;
-  // Always play the sound and flash on tap for immediate feedback
-  if(instId&&ctx&&['K','SN','D','H','DR','B'].includes(instId)){
-    _circPlayAndFlash(instId, touchTime);
-  }
   if(seqRecActive){
+    if(instId&&ctx&&['K','SN','D','H','DR','B'].includes(instId)){
+      _circPlayAndFlash(instId, touchTime);
+    }
     if(instId) seqRecTapAndPlay(instId, touchTime);
     return;
   }
