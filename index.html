@@ -2315,6 +2315,7 @@ function seqRecToggle(){
   // Keep SEQ MODE REC button in sync
   const smBtn=document.getElementById('sm-rec-btn');
   if(smBtn) smBtn.classList.toggle('active',seqRecActive);
+  updateRecBorder();
 }
 
 function seqRecTapAndPlay(inst, touchTime){
