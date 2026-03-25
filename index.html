@@ -1044,10 +1044,10 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="grid" id="gSN"></div>
           <div class="preset-row" id="preSN"></div>
           <div class="pg4">
-            <div class="ctrl"><label>Vol</label>  <input type="range" id="SN-Vol"   min="0" max="100" value="60"><div class="dv" id="SN-Vol-v">60</div></div>
-            <div class="ctrl"><label>Snap</label> <input type="range" id="SN-Snap"  min="0" max="100" value="55"><div class="dv" id="SN-Snap-v">55</div></div>
-            <div class="ctrl"><label>Body</label> <input type="range" id="SN-Body"  min="0" max="100" value="50"><div class="dv" id="SN-Body-v">50</div></div>
-            <div class="ctrl"><label>Decay</label><input type="range" id="SN-Decay" min="0" max="100" value="45"><div class="dv" id="SN-Decay-v">45</div></div>
+            <div class="ctrl"><label>Vol</label>  <input type="range" id="SN-Vol"   min="0" max="100" value="68"><div class="dv" id="SN-Vol-v">68</div></div>
+            <div class="ctrl"><label>Snap</label> <input type="range" id="SN-Snap"  min="0" max="100" value="18"><div class="dv" id="SN-Snap-v">18</div></div>
+            <div class="ctrl"><label>Body</label> <input type="range" id="SN-Body"  min="0" max="100" value="82"><div class="dv" id="SN-Body-v">82</div></div>
+            <div class="ctrl"><label>Decay</label><input type="range" id="SN-Decay" min="0" max="100" value="68"><div class="dv" id="SN-Decay-v">68</div></div>
           </div>
           <div class="pg2">
             <div class="ctrl fx-ctrl"><label>→ Rev</label><input type="range" id="SN-Rev" min="0" max="100" value="35"><div class="dv" id="SN-Rev-v">35</div></div>
@@ -2733,11 +2733,11 @@ const PRESETS={
       {Vol:70,Tune:55,Decay:18,Punch:42}, // TIGHT — short, controlled, no tail
       {Vol:82,Tune:8, Decay:88,Punch:72}, // BOOM — sub-heavy, very long decay
     ]},
-  SN:{ color:'#ffaa44', names:['CRACK','SNAPPY','FATBACK','BRUSH','GHOST'],
+  SN:{ color:'#ffaa44', names:['FATBACK','SNAPPY','CRACK','BRUSH','GHOST'],
     data:[
-      {Vol:72,Snap:80,Body:32,Decay:22}, // CRACK — sharp all-noise crack
-      {Vol:65,Snap:55,Body:50,Decay:45}, // SNAPPY — balanced tone + noise
       {Vol:68,Snap:18,Body:82,Decay:68}, // FATBACK — warm tonal body, low snap
+      {Vol:65,Snap:55,Body:50,Decay:45}, // SNAPPY — balanced tone + noise
+      {Vol:72,Snap:80,Body:32,Decay:22}, // CRACK — sharp all-noise crack
       {Vol:45,Snap:12,Body:35,Decay:55}, // BRUSH — soft brushed hit
       {Vol:30,Snap:45,Body:40,Decay:28}, // GHOST — quiet ghost note
     ]}
