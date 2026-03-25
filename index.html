@@ -2312,14 +2312,8 @@ function seqRecToggle(){
 function seqRecTapAndPlay(inst, touchTime){
   const t=touchTime||ctx.currentTime;
   const sl=60/bpm/4;
-  // 1. Instant audio feedback on tap
-  if(inst==='K'  ||inst==='DRMS') playKick(t);
-  if(inst==='SN' ||inst==='DRMS') playSnare(t);
-  if(inst==='D'  ||inst==='DRMS') playD(t);
-  if(inst==='H'  ||inst==='DRMS') playH(t);
-  if(inst==='DR') playDR(t);
-  if(inst==='B'){ playBassArpNote(t,bassArpFreq(),sl*bassNoteSteps); bassArpStep++; }
-  // 2. Quantize tap to nearest 16th-note grid position
+  // Sound is already played by _circPlayAndFlash — just quantize and record
+  // Quantize tap to nearest 16th-note grid position
   let targetStep;
   if(isPlaying){
     const totalSteps=seqBarCount*16;
@@ -2372,14 +2366,30 @@ const DRAWER_GRIDS={
   drDR:  [{gid:'gDR',cls:'dr-on',s:drS}],
 };
 
+function _circPlayAndFlash(instId, touchTime){
+  if(!instId||!ctx) return;
+  const t=touchTime||ctx.currentTime;
+  const sl=60/bpm/4;
+  if(instId==='K')  playKick(t);
+  if(instId==='SN') playSnare(t);
+  if(instId==='D')  playD(t);
+  if(instId==='H')  playH(t);
+  if(instId==='DR') playDR(t);
+  if(instId==='B'){ playBassArpNote(t,bassArpFreq(),sl*bassNoteSteps); bassArpStep++; }
+  flashCircle(instId);
+}
 function openCirclePopup(drawerId, evt, instId, touchTime){
   if(evt){ evt.stopPropagation(); evt.preventDefault(); }
   // Debounce: block ghost clicks / double-fire from iOS touch events
   // Key by instId so K and SN can be tapped within the same step; fallback to drawerId for null instId
   const tapKey=instId||drawerId;
   const now=Date.now();
-  if(now-(_circTapTimes[tapKey]||0)<50) return;
+  if(now-(_circTapTimes[tapKey]||0)<30) return;
   _circTapTimes[tapKey]=now;
+  // Always play the sound and flash on tap for immediate feedback
+  if(instId&&ctx&&['K','SN','D','H','DR','B'].includes(instId)){
+    _circPlayAndFlash(instId, touchTime);
+  }
   if(seqRecActive){
     if(instId) seqRecTapAndPlay(instId, touchTime);
     return;
