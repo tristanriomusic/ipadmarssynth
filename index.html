@@ -357,6 +357,19 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
     </div>
   </div>
 
+  <!-- TIMELINE -->
+  <div id="timeline" style="margin:0 3vw 6px;padding:6px 10px;background:rgba(5,5,25,0.5);border-radius:10px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span id="tl-section" style="font-size:9px;font-weight:900;letter-spacing:2px;color:rgba(0,180,255,0.8)">A</span>
+      <span id="tl-bar-lbl" style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,0.45)">BAR 1 / 1</span>
+      <span id="tl-step-lbl" style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,0.35)">1.1</span>
+    </div>
+    <div id="tl-track" style="position:relative;height:14px;background:rgba(255,255,255,0.06);border-radius:7px;overflow:hidden">
+      <div id="tl-head" style="position:absolute;top:0;left:0;width:3px;height:100%;background:#00f2ff;border-radius:2px;box-shadow:0 0 8px #00f2ff,0 0 16px rgba(0,242,255,0.4);transition:left 0.06s linear;z-index:2"></div>
+      <div id="tl-bars" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;z-index:1"></div>
+    </div>
+  </div>
+
   <!-- PAD ASSIGNMENT — quick switch above pad -->
   <div class="pad-assign-row">
     <button class="pad-assign-btn on" data-assign="xs"      onclick="setPadAssign('xs',this)">XS NEBULA</button>
@@ -2791,7 +2804,7 @@ function togglePlay(){
     if(arpActive){ arpNextT=nextT; arpStep=0; } // re-sync arp to sequencer
     btn.textContent='■  STOP'; btn.classList.add('playing');
   }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); smpBeatCount=0; bassArpStep=0; }
+  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing'); document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); smpBeatCount=0; bassArpStep=0; tlUpdate(0); }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
@@ -4618,6 +4631,41 @@ function playH(t){
   nsrc.start(t0);
 }
 
+// ═══ TIMELINE ════════════════════════════════════
+let _tlBars=0;
+function tlBuild(){
+  const c=document.getElementById('tl-bars'); if(!c) return;
+  c.innerHTML='';
+  _tlBars=seqBarCount;
+  for(let i=0;i<seqBarCount;i++){
+    const seg=document.createElement('div');
+    seg.style.cssText=`flex:1;border-right:${i<seqBarCount-1?'1px solid rgba(255,255,255,0.15)':'none'};position:relative`;
+    // Beat markers within each bar (4 beats = steps 0,4,8,12)
+    for(let b=1;b<4;b++){
+      const tick=document.createElement('div');
+      tick.style.cssText=`position:absolute;top:0;left:${b*25}%;width:1px;height:100%;background:rgba(255,255,255,0.07)`;
+      seg.appendChild(tick);
+    }
+    c.appendChild(seg);
+  }
+}
+function tlUpdate(step){
+  const total=seqBarCount*16;
+  const pct=(step/total)*100;
+  const head=document.getElementById('tl-head');
+  if(head) head.style.left=`calc(${pct}% - 1px)`;
+  const bar=Math.floor(step/16)+1;
+  const beat=Math.floor((step%16)/4)+1;
+  const sub=(step%4)+1;
+  const lbl=document.getElementById('tl-bar-lbl');
+  if(lbl) lbl.textContent=`BAR ${bar} / ${seqBarCount}`;
+  const sl=document.getElementById('tl-step-lbl');
+  if(sl) sl.textContent=`${beat}.${sub}`;
+  const sec=document.getElementById('tl-section');
+  if(sec){ sec.textContent=currentSection; sec.style.color=currentSection==='A'?'rgba(0,180,255,0.8)':'rgba(255,100,60,0.8)'; }
+  if(_tlBars!==seqBarCount) tlBuild();
+}
+
 // ═══ MAIN LOOP ════════════════════════════════════
 function loop(){
   if(isPlaying){
@@ -4626,6 +4674,8 @@ function loop(){
       // Global playhead — exclude smp-step (has its own beat-based playhead)
       document.querySelectorAll('.step:not(.smp-step)').forEach(e=>e.classList.remove('playing'));
       document.querySelectorAll(`.s-${seqStep}:not(.smp-step)`).forEach(e=>e.classList.add('playing'));
+      // Timeline
+      tlUpdate(seqStep);
       // SEQ MODE playhead — auto-follow playing bar, highlight local step
       if(seqModeActive){
         const playBar=Math.floor(seqStep/16), localStep=seqStep%16;
@@ -4960,7 +5010,7 @@ function smAddBar(){
   if(seqBarCount>=4) return;
   seqBarCount++;
   seqViewBar=seqBarCount-1;
-  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots();
+  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots(); tlBuild();
 }
 
 function smRemBar(){
@@ -4969,9 +5019,8 @@ function smRemBar(){
   SM_TRACKS.forEach(t=>{ const off=(seqBarCount-1)*16; for(let i=0;i<16;i++) t.state[off+i]=0; });
   seqBarCount--;
   if(seqViewBar>=seqBarCount) seqViewBar=seqBarCount-1;
-  // Reset seqStep if it's now out of range
   if(seqStep>=seqBarCount*16) seqStep=0;
-  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots();
+  smRefreshBarLabel(); smRefreshGrid(); smUpdateAllDots(); tlBuild();
 }
 
 function smCopyBar(){
@@ -5059,6 +5108,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   buildChordSeq();
   buildSeqMode();
+  tlBuild();
   // Restore loop latency compensation slider
   { const sl=document.getElementById('loop-lat-comp'); if(sl){ sl.value=loopLatencyComp; document.getElementById('loop-lat-comp-v').textContent=(loopLatencyComp>0?'+':'')+loopLatencyComp+' ms'; } }
   // Sync all mute UI indicators with initial muted state
