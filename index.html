@@ -507,7 +507,6 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-K" style="border-color:#ff2200"></div>
           <div class="circ-name">KICK</div>
           <button class="circ-mute-btn" id="cmute-K" onclick="instMute('K',this);event.stopPropagation()">MUTE</button>
-          <button class="circ-mute-btn" onclick="instClear('K');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="18" style="accent-color:#ff2200" oninput="syncCircVol('K-Rev',this.value)">
@@ -523,7 +522,6 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-SN" style="border-color:#ffaa44"></div>
           <div class="circ-name">SNARE</div>
           <button class="circ-mute-btn" id="cmute-SN" onclick="instMute('SN',this);event.stopPropagation()">MUTE</button>
-          <button class="circ-mute-btn" onclick="instClear('SN');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="35" style="accent-color:#ffaa44" oninput="syncCircVol('SN-Rev',this.value)">
@@ -539,7 +537,6 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-D" style="border-color:#ff6600"></div>
           <div class="circ-name">BONGO</div>
           <button class="circ-mute-btn" id="cmute-D" onclick="instMute('D',this);event.stopPropagation()">MUTE</button>
-          <button class="circ-mute-btn" onclick="instClear('D');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="32" style="accent-color:#ff6600" oninput="syncCircVol('D-Rev',this.value)">
@@ -555,7 +552,6 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-H" style="border-color:#00d2ff"></div>
           <div class="circ-name">HI-HAT</div>
           <button class="circ-mute-btn" id="cmute-H" onclick="instMute('H',this);event.stopPropagation()">MUTE</button>
-          <button class="circ-mute-btn" onclick="instClear('H');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="48" style="accent-color:#00d2ff" oninput="syncCircVol('H-Rev',this.value)">
@@ -1027,7 +1023,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- KICK -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--kick);display:flex;justify-content:space-between;align-items:center"><span>KICK</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="K" onclick="copyInstBtoA('K')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="K" onclick="copyInstAtoB('K')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteK" onclick="instMute('K',this)">MUTE</button><button class="cmr" onclick="instRandom('K')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--kick);display:flex;justify-content:space-between;align-items:center"><span>KICK</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="K" onclick="copyInstBtoA('K')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="K" onclick="copyInstAtoB('K')" style="font-size:6px;display:none">CP A</button><button class="cmr" onclick="instClear('K')">CLR</button><button class="cmr" id="muteK" onclick="instMute('K',this)">MUTE</button><button class="cmr" onclick="instRandom('K')">RND</button></div></div>
           <div class="grid" id="gK"></div>
           <div class="preset-row" id="preK"></div>
           <div class="pg4">
@@ -1044,7 +1040,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- SNARE -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--snare);display:flex;justify-content:space-between;align-items:center"><span>SNARE</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="SN" onclick="copyInstBtoA('SN')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="SN" onclick="copyInstAtoB('SN')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteSN" onclick="instMute('SN',this)">MUTE</button><button class="cmr" onclick="instRandom('SN')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--snare);display:flex;justify-content:space-between;align-items:center"><span>SNARE</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="SN" onclick="copyInstBtoA('SN')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="SN" onclick="copyInstAtoB('SN')" style="font-size:6px;display:none">CP A</button><button class="cmr" onclick="instClear('SN')">CLR</button><button class="cmr" id="muteSN" onclick="instMute('SN',this)">MUTE</button><button class="cmr" onclick="instRandom('SN')">RND</button></div></div>
           <div class="grid" id="gSN"></div>
           <div class="preset-row" id="preSN"></div>
           <div class="pg4">
@@ -1061,7 +1057,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- BONGO -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--drum);display:flex;justify-content:space-between;align-items:center"><span>BONGO</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="D" onclick="copyInstBtoA('D')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="D" onclick="copyInstAtoB('D')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteD" onclick="instMute('D',this)">MUTE</button><button class="cmr" onclick="instRandom('D')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--drum);display:flex;justify-content:space-between;align-items:center"><span>BONGO</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="D" onclick="copyInstBtoA('D')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="D" onclick="copyInstAtoB('D')" style="font-size:6px;display:none">CP A</button><button class="cmr" onclick="instClear('D')">CLR</button><button class="cmr" id="muteD" onclick="instMute('D',this)">MUTE</button><button class="cmr" onclick="instRandom('D')">RND</button></div></div>
           <div class="grid" id="gD"></div>
           <div class="preset-row" id="preD"></div>
           <div class="pg4">
@@ -1079,7 +1075,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
         <!-- HI-HAT -->
         <div class="drum-sec">
-          <div class="drum-sec-lbl" style="color:var(--hihat);display:flex;justify-content:space-between;align-items:center"><span>HI-HAT</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="H" onclick="copyInstBtoA('H')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="H" onclick="copyInstAtoB('H')" style="font-size:6px;display:none">CP A</button><button class="cmr" id="muteH" onclick="instMute('H',this)">MUTE</button><button class="cmr" onclick="instRandom('H')">RND</button></div></div>
+          <div class="drum-sec-lbl" style="color:var(--hihat);display:flex;justify-content:space-between;align-items:center"><span>HI-HAT</span><div style="display:flex;gap:4px"><button class="cmr ab-copy-btn" data-dir="b2a" data-inst="H" onclick="copyInstBtoA('H')" style="font-size:6px">CP B</button><button class="cmr ab-copy-btn" data-dir="a2b" data-inst="H" onclick="copyInstAtoB('H')" style="font-size:6px;display:none">CP A</button><button class="cmr" onclick="instClear('H')">CLR</button><button class="cmr" id="muteH" onclick="instMute('H',this)">MUTE</button><button class="cmr" onclick="instRandom('H')">RND</button></div></div>
           <div class="grid" id="gH"></div>
           <div class="preset-row" id="preH"></div>
           <div class="pg4">
@@ -4835,6 +4831,8 @@ function instRandom(key){
   });
 }
 function instMute(key,btn){
+  // Block muting percussion during seq recording
+  if(seqRecActive&&(key==='DRMS'||['K','SN','D','H'].includes(key))) return;
   if(key==='DRMS'){
     const allMuted=['K','SN','D','H'].every(k=>intendedMute(k));
     const s=!allMuted;
