@@ -507,6 +507,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-K" style="border-color:#ff2200"></div>
           <div class="circ-name">KICK</div>
           <button class="circ-mute-btn" id="cmute-K" onclick="instMute('K',this);event.stopPropagation()">MUTE</button>
+          <button class="circ-mute-btn" onclick="instClear('K');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="18" style="accent-color:#ff2200" oninput="syncCircVol('K-Rev',this.value)">
@@ -522,6 +523,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-SN" style="border-color:#ffaa44"></div>
           <div class="circ-name">SNARE</div>
           <button class="circ-mute-btn" id="cmute-SN" onclick="instMute('SN',this);event.stopPropagation()">MUTE</button>
+          <button class="circ-mute-btn" onclick="instClear('SN');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="35" style="accent-color:#ffaa44" oninput="syncCircVol('SN-Rev',this.value)">
@@ -537,6 +539,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-D" style="border-color:#ff6600"></div>
           <div class="circ-name">BONGO</div>
           <button class="circ-mute-btn" id="cmute-D" onclick="instMute('D',this);event.stopPropagation()">MUTE</button>
+          <button class="circ-mute-btn" onclick="instClear('D');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="32" style="accent-color:#ff6600" oninput="syncCircVol('D-Rev',this.value)">
@@ -552,6 +555,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="circ-ring" id="cring-H" style="border-color:#00d2ff"></div>
           <div class="circ-name">HI-HAT</div>
           <button class="circ-mute-btn" id="cmute-H" onclick="instMute('H',this);event.stopPropagation()">MUTE</button>
+          <button class="circ-mute-btn" onclick="instClear('H');event.stopPropagation()">CLR</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="48" style="accent-color:#00d2ff" oninput="syncCircVol('H-Rev',this.value)">
@@ -1432,7 +1436,7 @@ function applyPendingMutes(){
   for(const k in pendingMutes){ muted[k]=pendingMutes[k]; if(k==='X'&&muted[k]) stopPadVoice(true); }
   for(const k in pendingMutes) delete pendingMutes[k];
 }
-let seqBarCount=1; // 1–4: how many bars the loop cycles through
+let seqBarCount=4; // 1–4: how many bars the loop cycles through
 let seqViewBar=0;  // 0–3: which bar is shown in SEQ MODE editor
 let seqModeActive=false;
 let omniRandT=0;
@@ -4709,12 +4713,13 @@ function loop(){
       document.querySelectorAll(`.s-${seqStep}:not(.smp-step)`).forEach(e=>e.classList.add('playing'));
       // Timeline
       tlUpdate(seqStep);
-      // SEQ MODE playhead — auto-follow playing bar, highlight local step
+      // SEQ MODE playhead — highlight playing step only if viewing the playing bar
       if(seqModeActive){
         const playBar=Math.floor(seqStep/16), localStep=seqStep%16;
-        if(playBar!==seqViewBar){ seqViewBar=playBar; smRefreshGrid(); smRefreshBarLabel(); }
         document.querySelectorAll('#seqMode .sm-step.playing').forEach(e=>e.classList.remove('playing'));
-        document.querySelectorAll(`#seqMode .sm-step-${localStep}`).forEach(e=>e.classList.add('playing'));
+        if(playBar===seqViewBar){
+          document.querySelectorAll(`#seqMode .sm-step-${localStep}`).forEach(e=>e.classList.add('playing'));
+        }
       }
       const swOff=(seqStep%2===1)?swingAmount*sl*0.33:0;
       const _sk=':'+seqStep;
