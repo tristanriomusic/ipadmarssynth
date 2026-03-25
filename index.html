@@ -361,12 +361,13 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   <div id="timeline" style="margin:0 3vw 6px;padding:6px 10px;background:rgba(5,5,25,0.5);border-radius:10px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <span id="tl-section" style="font-size:9px;font-weight:900;letter-spacing:2px;color:rgba(0,180,255,0.8)">A</span>
-      <span id="tl-bar-lbl" style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,0.45)">BAR 1 / 1</span>
+      <span id="tl-bar-lbl" style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,0.45)">BAR 1</span>
       <span id="tl-step-lbl" style="font-size:9px;font-weight:900;letter-spacing:1.5px;color:rgba(255,255,255,0.35)">1.1</span>
     </div>
-    <div id="tl-track" style="position:relative;height:14px;background:rgba(255,255,255,0.06);border-radius:7px;overflow:hidden">
-      <div id="tl-head" style="position:absolute;top:0;left:0;width:3px;height:100%;background:#00f2ff;border-radius:2px;box-shadow:0 0 8px #00f2ff,0 0 16px rgba(0,242,255,0.4);transition:left 0.06s linear;z-index:2"></div>
-      <div id="tl-bars" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;z-index:1"></div>
+    <div id="tl-track" style="position:relative;height:18px;background:rgba(255,255,255,0.04);border-radius:4px;overflow:hidden">
+      <div id="tl-fill" style="position:absolute;top:0;left:0;width:0;height:100%;background:linear-gradient(90deg,rgba(0,242,255,0.25),rgba(0,242,255,0.4));border-radius:4px 0 0 4px;transition:width 0.06s linear;z-index:1"></div>
+      <div id="tl-head" style="position:absolute;top:0;left:0;width:3px;height:100%;background:#00f2ff;border-radius:1px;box-shadow:0 0 8px #00f2ff,0 0 16px rgba(0,242,255,0.5);transition:left 0.06s linear;z-index:3"></div>
+      <div id="tl-divs" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none"></div>
     </div>
   </div>
 
@@ -2929,13 +2930,14 @@ function setChordLen(n,btn){
   document.querySelectorAll('.chd-btn').forEach(b=>{
     if(['2','4','8'].includes(b.textContent)) b.classList.toggle('on',b===btn);
   });
-  updateChordUI();
+  updateChordUI(); tlBuild();
 }
 function setChordBars(n,btn){
   chordBarsPerStep=n;
   document.querySelectorAll('.chd-btn').forEach(b=>{
     if(['1','2','4'].includes(b.textContent)) b.classList.toggle('on',b===btn);
   });
+  tlBuild();
 }
 // Get current bass note from the active chord in sequence
 function bassChordNote(){
@@ -4632,38 +4634,69 @@ function playH(t){
 }
 
 // ═══ TIMELINE ════════════════════════════════════
-let _tlBars=0;
+let _tlTotalBars=0;
 function tlBuild(){
-  const c=document.getElementById('tl-bars'); if(!c) return;
+  const c=document.getElementById('tl-divs'); if(!c) return;
   c.innerHTML='';
-  _tlBars=seqBarCount;
-  for(let i=0;i<seqBarCount;i++){
-    const seg=document.createElement('div');
-    seg.style.cssText=`flex:1;border-right:${i<seqBarCount-1?'1px solid rgba(255,255,255,0.15)':'none'};position:relative`;
-    // Beat markers within each bar (4 beats = steps 0,4,8,12)
-    for(let b=1;b<4;b++){
-      const tick=document.createElement('div');
-      tick.style.cssText=`position:absolute;top:0;left:${b*25}%;width:1px;height:100%;background:rgba(255,255,255,0.07)`;
-      seg.appendChild(tick);
+  const totalBars=chordSeqLen*chordBarsPerStep;
+  _tlTotalBars=totalBars;
+  // Bar dividers (thick) and beat dividers (thin)
+  for(let bar=0;bar<totalBars;bar++){
+    // Beat subdivisions within each bar (4 beats, so 3 inner lines)
+    for(let beat=1;beat<4;beat++){
+      const pct=((bar+beat/4)/totalBars)*100;
+      const d=document.createElement('div');
+      d.style.cssText=`position:absolute;top:0;left:${pct}%;width:1px;height:100%;background:rgba(255,255,255,0.08)`;
+      c.appendChild(d);
     }
-    c.appendChild(seg);
+    // Bar divider (skip first)
+    if(bar>0){
+      const pct=(bar/totalBars)*100;
+      const d=document.createElement('div');
+      d.style.cssText=`position:absolute;top:0;left:${pct}%;width:1px;height:100%;background:rgba(255,255,255,0.25)`;
+      c.appendChild(d);
+      // Bar number label
+      const lbl=document.createElement('div');
+      lbl.style.cssText=`position:absolute;top:1px;left:calc(${pct}% + 3px);font-size:7px;font-weight:900;color:rgba(255,255,255,0.18);letter-spacing:0.5px;line-height:1`;
+      lbl.textContent=bar+1;
+      c.appendChild(lbl);
+    }
+    // Chord step boundary — highlight every chordBarsPerStep bars
+    if(chordBarsPerStep>1&&bar>0&&bar%chordBarsPerStep===0){
+      const pct=(bar/totalBars)*100;
+      const d=document.createElement('div');
+      d.style.cssText=`position:absolute;top:0;left:${pct}%;width:2px;height:100%;background:rgba(255,136,204,0.35)`;
+      c.appendChild(d);
+    }
   }
+  // First bar label
+  const lbl1=document.createElement('div');
+  lbl1.style.cssText='position:absolute;top:1px;left:3px;font-size:7px;font-weight:900;color:rgba(255,255,255,0.18);letter-spacing:0.5px;line-height:1';
+  lbl1.textContent='1';
+  c.appendChild(lbl1);
 }
 function tlUpdate(step){
-  const total=seqBarCount*16;
-  const pct=(step/total)*100;
+  const totalBars=chordSeqLen*chordBarsPerStep;
+  const totalSteps=totalBars*16;
+  // Global position within the chord cycle
+  const barInChord=chordBarCount%chordBarsPerStep;
+  const globalStep=chordSeqStep*chordBarsPerStep*16+barInChord*16+(step%16);
+  const pct=Math.min(100,(globalStep/totalSteps)*100);
+  const fill=document.getElementById('tl-fill');
+  if(fill) fill.style.width=pct+'%';
   const head=document.getElementById('tl-head');
   if(head) head.style.left=`calc(${pct}% - 1px)`;
-  const bar=Math.floor(step/16)+1;
+  // Labels
+  const globalBar=chordSeqStep*chordBarsPerStep+barInChord+1;
   const beat=Math.floor((step%16)/4)+1;
   const sub=(step%4)+1;
   const lbl=document.getElementById('tl-bar-lbl');
-  if(lbl) lbl.textContent=`BAR ${bar} / ${seqBarCount}`;
+  if(lbl) lbl.textContent=`BAR ${globalBar} / ${totalBars}`;
   const sl=document.getElementById('tl-step-lbl');
   if(sl) sl.textContent=`${beat}.${sub}`;
   const sec=document.getElementById('tl-section');
   if(sec){ sec.textContent=currentSection; sec.style.color=currentSection==='A'?'rgba(0,180,255,0.8)':'rgba(255,100,60,0.8)'; }
-  if(_tlBars!==seqBarCount) tlBuild();
+  if(_tlTotalBars!==totalBars) tlBuild();
 }
 
 // ═══ MAIN LOOP ════════════════════════════════════
