@@ -271,10 +271,11 @@
 /* INSTRUMENT CIRCLES */
 #popup-bg{ display:none; position:fixed; inset:0; z-index:499; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); touch-action:none; }
 #popup-bg.active{ display:block; }
-    #rec-border{ display:none; position:fixed; inset:0; z-index:9999; pointer-events:none; border:5px solid transparent; border-radius:0; }
-    #rec-border.gloop-rec{ display:block; border-color:#ff2222; box-shadow:inset 0 0 30px rgba(255,34,34,0.3); }
-    #rec-border.seq-rec{ display:block; border-color:#ff8800; box-shadow:inset 0 0 25px rgba(255,136,0,0.25); }
-    #rec-border.gloop-rec.seq-rec{ border-color:#ff2222; box-shadow:inset 0 0 30px rgba(255,34,34,0.3); }
+    #rec-border-gloop{ display:none; position:fixed; inset:0; z-index:9999; pointer-events:none; border:5px solid #ff2222; box-shadow:inset 0 0 30px rgba(255,34,34,0.3); }
+    #rec-border-gloop.active{ display:block; }
+    #rec-border-seq{ display:none; position:fixed; inset:5px; z-index:9998; pointer-events:none; border:4px solid #ff8800; box-shadow:inset 0 0 25px rgba(255,136,0,0.25); }
+    #rec-border-seq.solo{ inset:0; border-width:5px; }
+    #rec-border-seq.active{ display:block; }
 .drawer.popup-mode{ position:fixed!important; top:50%!important; left:50%!important; transform:translate(-50%,-50%)!important; z-index:500!important; max-height:88vh!important; overflow-y:auto!important; width:96vw!important; display:block!important; -webkit-overflow-scrolling:touch; }
 .drawer.popup-mode .drawer-body{ display:block!important; }
 #circles-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:10px 3vw 8px; justify-items:center; }
@@ -398,8 +399,9 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
   <!-- POPUP BACKDROP -->
   <div id="popup-bg" onclick="closeCirclePopup()"></div>
-  <!-- RECORDING BORDER OVERLAY -->
-  <div id="rec-border"></div>
+  <!-- RECORDING BORDER OVERLAYS -->
+  <div id="rec-border-gloop"></div>
+  <div id="rec-border-seq"></div>
 
   <!-- INSTRUMENT CIRCLES -->
   <div id="circles-grid">
@@ -5129,9 +5131,11 @@ function smRndBar(id){
 }
 
 function updateRecBorder(){
-  const el=document.getElementById('rec-border'); if(!el) return;
-  el.classList.toggle('gloop-rec', gloopRec||gloopOverdub);
-  el.classList.toggle('seq-rec', seqRecActive&&!gloopRec&&!gloopOverdub);
+  const gl=document.getElementById('rec-border-gloop');
+  const sq=document.getElementById('rec-border-seq');
+  const gloopActive=gloopRec||gloopOverdub;
+  if(gl) gl.classList.toggle('active', gloopActive);
+  if(sq){ sq.classList.toggle('active', seqRecActive); sq.classList.toggle('solo', seqRecActive&&!gloopActive); }
 }
 function smRecToggle(){
   seqRecActive=!seqRecActive;
