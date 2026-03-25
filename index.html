@@ -4737,7 +4737,8 @@ function loop(){
       seqStep=(seqStep+1)%(seqBarCount*16);
       // Update nextBarTime at every bar boundary so loopers always get the next 1-bar snap point
       if(seqStep%16===0) nextBarTime=nextT;
-      if(wasLast){
+      // Advance chord sequencer on every bar boundary (every 16 steps), independent of seqBarCount
+      if(seqStep%16===0&&(seqStep>0||wasLast)){
         chordBarCount++;
         if(chordBarCount%chordBarsPerStep===0){
           const nextStep=(chordSeqStep+1)%chordSeqLen;
@@ -4870,6 +4871,7 @@ function buildGrid(cid,stateA,stateB,cls){
       el.addEventListener('click',()=>{
         const st=seqEditSec==='A'?stateA:stateB;
         st[i]=st[i]?0:1; el.classList.toggle(cls);
+        for(let b=1;b<seqBarCount;b++){ const idx=i+b*16; if(idx<st.length) st[idx]=st[i]; }
       });
       grp.appendChild(el);
     }
