@@ -2408,8 +2408,8 @@ function openCirclePopup(drawerId, evt, instId, touchTime){
   if(activeCircleDrawer===drawerId){ closeCirclePopup(); return; }
   closeCirclePopup();
   const d=document.getElementById(drawerId); if(!d) return;
-  // Sync drawer grid display with current state before showing
-  (DRAWER_GRIDS[drawerId]||[]).forEach(({gid,cls,s})=>refreshGrid(gid,cls,s));
+  // Sync edit section to current playback section and refresh all grids
+  setSeqEditSec(currentSection);
   d.classList.add('popup-mode');
   document.getElementById('popup-bg').classList.add('active');
   activeCircleDrawer=drawerId;
@@ -4840,7 +4840,7 @@ function loop(){
           // Switch section at wrap-around point
           if(nextStep===0&&pendingSection&&pendingSection!==currentSection){
             currentSection=pendingSection; pendingSection=null;
-            loadParamSec(currentSection);
+            setSeqEditSec(currentSection);
             updateSectionUI();
           }
           chordSeqStep=nextStep;
