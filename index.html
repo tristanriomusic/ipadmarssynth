@@ -44,8 +44,6 @@
     @keyframes bootPulse{ 0%,100%{opacity:0.4} 50%{opacity:1} }
     @keyframes irisOut{ 0%{clip-path:circle(150% at 50% 50%)} 100%{clip-path:circle(0% at 50% 50%)} }
     #boot.iris-out{ animation:irisOut 1.4s cubic-bezier(0.4,0,0.2,1) forwards; pointer-events:none; }
-    #boot.iris-out .boot-bg, #boot.iris-out .boot-overlay, #boot.iris-out .boot-content{ opacity:0; transition:opacity 0.3s; }
-    #boot.iris-out::after{ content:''; position:absolute; inset:0; background:#000; z-index:0; }
     #ui{ display:none; position:relative; z-index:3; }
 
     /* PLAY */
