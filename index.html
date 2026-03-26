@@ -3442,103 +3442,75 @@ function _smpSpeedRate(px){ return Math.pow(4, px*0.9-0.45); } // ~0.35x→2.3x
 // Sample is auto-sliced into 16 equal parts.
 // X = pattern complexity (left=simple → right=complex/fast)
 // Y = slice region focus (top=start of sample → bottom=end)
-// Each pattern step plays a different slice, cycling through them musically.
-let _rhythmTimer=null, _rhythmSrc=null, _rhythmGain=null, _rhythmStep=0, _rhythmActive=false;
+// Quantized to main sequencer clock — _rhythmSeqStep called from main loop().
+let _rhythmSrc=null, _rhythmGain=null, _rhythmActive=false;
 const _NUM_SLICES=16;
 // Patterns: each entry is [16th-step, sliceOffset, velocityMult]
-// sliceOffset is added to the base slice index for variation; vel<1 = ghost note
 const _RHYTHM_PATTERNS=[
-  // 0: half notes — spacious, alternating slices
   [[0,0,1],[8,4,1]],
-  // 1: quarter notes — walk through slices
   [[0,0,1],[4,2,1],[8,4,1],[12,6,1]],
-  // 2: boom-bap swing — kick/snare feel with ghost
   [[0,0,1],[3,1,0.5],[4,3,0.9],[6,2,0.45],[8,4,1],[11,5,0.5],[12,6,0.9],[14,7,0.45]],
-  // 3: driving eighths — slices fan out across sample
   [[0,0,1],[2,1,0.8],[4,3,1],[6,2,0.7],[8,5,1],[10,4,0.8],[12,7,1],[14,6,0.7]],
-  // 4: broken beat — off-grid accents, wide slice jumps
   [[0,0,1],[2,5,0.6],[3,1,0.9],[6,3,1],[7,7,0.5],[8,4,1],[10,6,0.6],[11,2,0.9],[14,5,1],[15,0,0.5]],
-  // 5: jungle chops — rapid slices, big jumps
   [[0,0,1],[1,4,0.6],[3,1,1],[4,7,0.8],[5,2,0.5],[6,5,1],[8,3,1],[9,6,0.6],[10,0,0.7],[11,4,1],[12,7,0.9],[14,1,1],[15,5,0.55]],
-  // 6: glitch — every 16th, cycling all slices
   [[0,0,1],[1,4,0.55],[2,1,0.8],[3,5,0.5],[4,2,1],[5,6,0.55],[6,3,0.85],[7,7,0.5],
    [8,0,1],[9,5,0.55],[10,2,0.8],[11,6,0.5],[12,3,1],[13,7,0.55],[14,1,0.85],[15,4,0.5]],
 ];
 function _rhythmGetPattern(px){
-  const idx=Math.min(_RHYTHM_PATTERNS.length-1, Math.floor(px*_RHYTHM_PATTERNS.length));
-  return _RHYTHM_PATTERNS[idx];
+  return _RHYTHM_PATTERNS[Math.min(_RHYTHM_PATTERNS.length-1, Math.floor(px*_RHYTHM_PATTERNS.length))];
 }
 function _rhythmSliceOffset(sliceIdx, py){
-  // py shifts the base slice region: 0=start, 1=end of sample
-  // sliceIdx offsets within that region, wrapping around
   const base=Math.floor(py*(_NUM_SLICES-1));
   return ((base+sliceIdx)%_NUM_SLICES)/_NUM_SLICES;
 }
-function _rhythmFireSlice(patEntry, py, nextStepDist){
-  if(!samplerBuf||!ctx) return;
-  if(_rhythmSrc){ try{_rhythmSrc.stop();}catch(e){} _rhythmSrc=null; }
-  const [step, sliceOff, vel]=patEntry;
-  const dur=samplerBuf.duration;
+// Called from main scheduler loop with precise AudioContext time
+function _rhythmSeqStep(stepInBar, schedTime, swOff){
+  if(!_rhythmActive||!samplerBuf||!ctx) return;
+  const px=smpPadLockX!=null?smpPadLockX:0.5;
+  const py=smpPadLockY!=null?smpPadLockY:0.5;
+  const pat=_rhythmGetPattern(px);
+  const entry=pat.find(e=>e[0]===stepInBar);
+  if(!entry) return;
+  // Calculate gate duration until next hit
+  const curIdx=pat.indexOf(entry);
+  const nextIdx=(curIdx+1)%pat.length;
+  const nextStep=nextIdx>curIdx?pat[nextIdx][0]:pat[nextIdx][0]+16;
+  const dist=nextStep-stepInBar;
   const sixteenth=60/bpm/4;
+  const [,sliceOff,vel]=entry;
+  const dur=samplerBuf.duration;
   const sliceDur=dur/_NUM_SLICES;
-  // Pick which slice of the sample to play
   const offset=_rhythmSliceOffset(sliceOff, py)*dur;
-  // Gate: play until next hit or full slice, whichever is shorter
-  const gateDur=Math.min(sliceDur, nextStepDist*sixteenth);
+  const gateDur=Math.min(sliceDur, dist*sixteenth);
   const vol=r('SMP-Vol')/100*vel;
+  const t=schedTime+swOff;
+  // Stop previous slice
+  if(_rhythmSrc){ try{_rhythmSrc.stop(t);}catch(e){} _rhythmSrc=null; }
   const src=ctx.createBufferSource();
   src.buffer=samplerBuf; src.playbackRate.value=1;
-  const g=ctx.createGain(); g.gain.value=vol;
+  const g=ctx.createGain();
   const fadeT=Math.min(0.015, gateDur*0.1);
-  g.gain.setValueAtTime(vol, ctx.currentTime);
-  g.gain.setTargetAtTime(0, ctx.currentTime+Math.max(0.005,gateDur-fadeT), fadeT);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.setTargetAtTime(0, t+Math.max(0.005,gateDur-fadeT), fadeT);
   src.connect(g); g.connect(masterEQ);
   if(padloopCapBus&&(padloopRec||padloopOverdub)) g.connect(padloopCapBus);
   const rv=ctx.createGain(); rv.gain.value=r('SMP-Rev')/100; g.connect(rv); rv.connect(revPre);
   const dl=ctx.createGain(); dl.gain.value=r('SMP-Dly')/100; g.connect(dl); dl.connect(delNode);
-  src.start(0, offset, gateDur+0.03);
+  src.start(t, offset, gateDur+0.03);
   _rhythmSrc=src; _rhythmGain=g;
 }
-function _rhythmTick(){
-  if(!_rhythmActive) return;
-  const sixteenth=60/bpm/4;
-  const px=smpPadLockX!=null?smpPadLockX:0.5;
-  const py=smpPadLockY!=null?smpPadLockY:0.5;
-  const pat=_rhythmGetPattern(px);
-  const stepInBar=_rhythmStep%16;
-  // Check if this step has a hit
-  const entry=pat.find(e=>e[0]===stepInBar);
-  if(entry){
-    const curIdx=pat.indexOf(entry);
-    const nextIdx=(curIdx+1)%pat.length;
-    const nextStep=nextIdx>curIdx?pat[nextIdx][0]:pat[nextIdx][0]+16;
-    const dist=nextStep-stepInBar;
-    _rhythmFireSlice(entry, py, dist);
-  }
-  _rhythmStep=(_rhythmStep+1)%16;
-  _rhythmTimer=setTimeout(_rhythmTick, sixteenth*1000);
-}
 function _rhythmStart(px,py){
-  _rhythmStop();
   _rhythmActive=true;
-  if(isPlaying){ _rhythmStep=seqStep%16; } else { _rhythmStep=0; }
-  // Fire first slice immediately
-  const pat=_rhythmGetPattern(px);
-  const stepInBar=_rhythmStep%16;
-  let entry=pat.find(e=>e[0]===stepInBar);
-  if(!entry) entry=pat.reduce((best,e)=>Math.abs(e[0]-stepInBar)<Math.abs(best[0]-stepInBar)?e:best, pat[0]);
-  const curIdx=pat.indexOf(entry);
-  const nextIdx=(curIdx+1)%pat.length;
-  const nextStep=nextIdx>curIdx?pat[nextIdx][0]:pat[nextIdx][0]+16;
-  _rhythmFireSlice(entry, py, nextStep-entry[0]);
-  _rhythmStep=(entry[0]+1)%16;
-  const sixteenth=60/bpm/4;
-  _rhythmTimer=setTimeout(_rhythmTick, sixteenth*1000);
+  // Fire first slice immediately if sequencer is playing
+  if(isPlaying){
+    const stepInBar=seqStep%16;
+    _rhythmSeqStep(stepInBar, ctx.currentTime, 0);
+  } else {
+    _rhythmSeqStep(0, ctx.currentTime, 0);
+  }
 }
 function _rhythmStop(){
   _rhythmActive=false;
-  if(_rhythmTimer) clearTimeout(_rhythmTimer);
-  _rhythmTimer=null;
   if(_rhythmSrc){ try{_rhythmSrc.stop();}catch(e){} _rhythmSrc=null; }
   _rhythmGain=null;
 }
@@ -4841,6 +4813,8 @@ function loop(){
       if(playArr('SN')[seqStep]  &&!seqRecSkipOnce.delete('SN'+_sk)) playSnare(nextT+swOff);
       if(playArr('D')[seqStep]   &&!seqRecSkipOnce.delete('D' +_sk)) playD(nextT+swOff);
       if(playArr('H')[seqStep]   &&!seqRecSkipOnce.delete('H' +_sk)) playH(nextT+swOff);
+      // Rhythm slicer — quantized to sequencer clock
+      if(_rhythmActive) _rhythmSeqStep(seqStep%16, nextT, swOff);
       // SMPLR: 16 steps over 4 bars — fires on every quarter note (every 4 main steps)
       if(seqStep%4===0){
         if(playArr('SMP')[smpBeatCount]&&!muted.SMP) playSamplerStep(nextT+swOff);
