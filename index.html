@@ -43,7 +43,9 @@
     @keyframes bootHue{ 0%{filter:hue-rotate(0deg) saturate(1.4) brightness(0.8)} 25%{filter:hue-rotate(40deg) saturate(1.8) brightness(1.0)} 50%{filter:hue-rotate(220deg) saturate(2.2) brightness(0.95)} 75%{filter:hue-rotate(300deg) saturate(2.0) brightness(1.0)} 100%{filter:hue-rotate(360deg) saturate(1.4) brightness(0.8)} }
     @keyframes bootPulse{ 0%,100%{opacity:0.4} 50%{opacity:1} }
     @keyframes irisOut{ 0%{clip-path:circle(150% at 50% 50%)} 100%{clip-path:circle(0% at 50% 50%)} }
-    #boot.iris-out{ animation:irisOut 0.8s cubic-bezier(0.4,0,0.2,1) forwards; pointer-events:none; }
+    #boot.iris-out{ animation:irisOut 1.4s cubic-bezier(0.4,0,0.2,1) forwards; pointer-events:none; }
+    #boot.iris-out .boot-bg, #boot.iris-out .boot-overlay, #boot.iris-out .boot-content{ opacity:0; transition:opacity 0.3s; }
+    #boot.iris-out::after{ content:''; position:absolute; inset:0; background:#000; z-index:0; }
     #ui{ display:none; position:relative; z-index:3; }
 
     /* PLAY */
