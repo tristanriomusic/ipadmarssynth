@@ -272,6 +272,8 @@
 
 /* INSTRUMENT CIRCLES */
 #popup-bg{ display:none; position:fixed; inset:0; z-index:499; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); touch-action:none; }
+    input[type=range].midi-learn-candidate{ outline:2px dashed rgba(255,68,136,0.5); outline-offset:2px; }
+    input[type=range].midi-learn-selected{ outline:2px solid #ff4488; outline-offset:2px; box-shadow:0 0 12px rgba(255,68,136,0.6); }
 #popup-bg.active{ display:block; }
     #rec-border-seq{ display:none; position:fixed; inset:0; z-index:9998; pointer-events:none; border:5px solid #ff8800; box-shadow:inset 0 0 25px rgba(255,136,0,0.25); }
     #rec-border-seq.active{ display:block; }
@@ -860,6 +862,15 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <div class="ctrl fx-ctrl"><label>Hi Damp</label> <input type="range" id="FX-DlyDamp" min="0" max="100" value="45"><div class="dv" id="FX-DlyDamp-v">45</div></div>
           <div class="ctrl fx-ctrl"><label>Drive</label>   <input type="range" id="FX-Drive"   min="0" max="100" value="0"> <div class="dv" id="FX-Drive-v">0</div></div>
         </div>
+
+        <div class="sec">MIDI</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 0 8px">
+          <button class="cmr" id="midiConnectBtn" onclick="midiConnect()">⚡ CONNECT</button>
+          <button class="cmr" id="midiLearnBtn" onclick="midiLearnToggle()">🎛 LEARN</button>
+          <button class="cmr" onclick="midiClearAll()">✕ CLEAR MAP</button>
+        </div>
+        <div id="midiStatus" style="font-size:8px;color:rgba(255,68,136,0.5);letter-spacing:.8px;padding:0 0 6px"></div>
+        <div id="midiMapList" style="font-size:7px;color:rgba(255,255,255,0.4);letter-spacing:.5px;max-height:120px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -4867,6 +4878,135 @@ function loop(){
   drawGloopVU();
   drawPadloopVU();
   requestAnimationFrame(loop);
+}
+
+// ═══ MIDI LEARN ══════════════════════════════════
+let midiAccess=null, midiLearnActive=false, midiLearnTarget=null;
+// Map: "ch:cc" → sliderId
+let midiMap=JSON.parse(localStorage.getItem('lm_midiMap')||'{}');
+
+function midiConnect(){
+  const st=document.getElementById('midiStatus');
+  if(!navigator.requestMIDIAccess){ if(st) st.textContent='MIDI not supported in this browser'; return; }
+  navigator.requestMIDIAccess().then(access=>{
+    midiAccess=access;
+    access.inputs.forEach(input=>{ input.onmidimessage=onMidiMsg; });
+    access.onstatechange=e=>{
+      if(e.port.type==='input'&&e.port.state==='connected') e.port.onmidimessage=onMidiMsg;
+      midiUpdateStatus();
+    };
+    midiUpdateStatus();
+    const btn=document.getElementById('midiConnectBtn');
+    if(btn){ btn.style.background='rgba(0,255,136,0.2)'; btn.style.color='#00ff88'; }
+  }).catch(err=>{
+    if(st) st.textContent='MIDI access denied';
+  });
+}
+
+function midiUpdateStatus(){
+  const st=document.getElementById('midiStatus'); if(!st||!midiAccess) return;
+  const names=[]; midiAccess.inputs.forEach(i=>{ if(i.state==='connected') names.push(i.name); });
+  st.textContent=names.length?'Connected: '+names.join(', '):'No MIDI devices found';
+  midiRefreshMapList();
+}
+
+function midiLearnToggle(){
+  midiLearnActive=!midiLearnActive;
+  const btn=document.getElementById('midiLearnBtn');
+  if(btn){
+    btn.style.background=midiLearnActive?'rgba(255,68,136,0.35)':'';
+    btn.style.color=midiLearnActive?'#ff4488':'';
+    btn.textContent=midiLearnActive?'🎛 LEARNING...':'🎛 LEARN';
+  }
+  if(midiLearnActive){
+    midiLearnTarget=null;
+    // Highlight all sliders
+    document.querySelectorAll('input[type=range]').forEach(el=>{
+      el.classList.add('midi-learn-candidate');
+      el._midiLearnClick=()=>{ midiSelectTarget(el); };
+      el.addEventListener('mousedown', el._midiLearnClick);
+      el.addEventListener('touchstart', el._midiLearnClick, {passive:true});
+    });
+    const st=document.getElementById('midiStatus');
+    if(st) st.textContent='Tap a slider to map...';
+  } else {
+    midiLearnCleanup();
+  }
+}
+
+function midiSelectTarget(el){
+  if(!midiLearnActive) return;
+  midiLearnTarget=el.id;
+  document.querySelectorAll('.midi-learn-selected').forEach(e=>e.classList.remove('midi-learn-selected'));
+  el.classList.add('midi-learn-selected');
+  const st=document.getElementById('midiStatus');
+  if(st) st.textContent='Now move a CC on your controller → '+el.id;
+}
+
+function midiLearnCleanup(){
+  document.querySelectorAll('input[type=range]').forEach(el=>{
+    el.classList.remove('midi-learn-candidate','midi-learn-selected');
+    if(el._midiLearnClick){
+      el.removeEventListener('mousedown', el._midiLearnClick);
+      el.removeEventListener('touchstart', el._midiLearnClick);
+      delete el._midiLearnClick;
+    }
+  });
+  midiLearnTarget=null;
+  midiUpdateStatus();
+}
+
+function onMidiMsg(e){
+  const [status, cc, val]=e.data;
+  const ch=status&0x0F;
+  const type=status&0xF0;
+  if(type!==0xB0) return; // only CC messages
+  const key=ch+':'+cc;
+  // Learn mode: map this CC to the selected slider
+  if(midiLearnActive&&midiLearnTarget){
+    // Remove any existing mapping to this CC
+    Object.keys(midiMap).forEach(k=>{ if(midiMap[k]===midiLearnTarget) delete midiMap[k]; });
+    midiMap[key]=midiLearnTarget;
+    localStorage.setItem('lm_midiMap',JSON.stringify(midiMap));
+    const st=document.getElementById('midiStatus');
+    if(st) st.textContent='Mapped CC'+cc+' → '+midiLearnTarget+'. Tap another slider or exit LEARN.';
+    document.querySelectorAll('.midi-learn-selected').forEach(e=>e.classList.remove('midi-learn-selected'));
+    midiLearnTarget=null;
+    midiRefreshMapList();
+    return;
+  }
+  // Normal mode: apply CC value to mapped slider
+  const sliderId=midiMap[key];
+  if(!sliderId) return;
+  const el=document.getElementById(sliderId);
+  if(!el) return;
+  const min=+el.min, max=+el.max;
+  el.value=Math.round(min+(val/127)*(max-min));
+  el.dispatchEvent(new Event('input'));
+}
+
+function midiClearAll(){
+  midiMap={};
+  localStorage.removeItem('lm_midiMap');
+  midiRefreshMapList();
+  const st=document.getElementById('midiStatus');
+  if(st) st.textContent='All MIDI mappings cleared';
+}
+
+function midiRefreshMapList(){
+  const el=document.getElementById('midiMapList'); if(!el) return;
+  const entries=Object.entries(midiMap);
+  if(!entries.length){ el.innerHTML='<span style="opacity:0.4">No mappings</span>'; return; }
+  el.innerHTML=entries.map(([k,v])=>{
+    const [ch,cc]=k.split(':');
+    return `<div style="padding:2px 0">CC${cc} (ch${+ch+1}) → ${v} <button onclick="midiUnmap('${k}')" style="font-size:6px;background:none;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);border-radius:3px;cursor:pointer;padding:1px 4px">✕</button></div>`;
+  }).join('');
+}
+
+function midiUnmap(key){
+  delete midiMap[key];
+  localStorage.setItem('lm_midiMap',JSON.stringify(midiMap));
+  midiRefreshMapList();
 }
 
 // ═══ UI BUILDERS ══════════════════════════════════
