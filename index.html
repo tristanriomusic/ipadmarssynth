@@ -1357,7 +1357,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         </div>
         <div class="smp-pad-preset-row" id="smpPadPresetRow" style="padding:0 0 10px">
           <button class="spp on" onclick="setSmpPadPreset('speed',this)">⚡ SPEED+EQ</button>
-          <button class="spp"    onclick="setSmpPadPreset('echo',this)">◎ ECHO</button>
+          <button class="spp"    onclick="setSmpPadPreset('rhythm',this)">♬ RHYTHM</button>
           <button class="spp"    onclick="setSmpPadPreset('pitch',this)">♦ PITCH+REV</button>
         </div>
         <div class="sec">HOLOGRAM</div>
@@ -1421,7 +1421,7 @@ let samplerGain=null; // live gain reference for SMP-Vol circle knob
 let smpPadLockX=null, smpPadLockY=null; // last touched pad position — persists between steps
 let smpBeatCount=0;
 let lastHoloGrain=0, holoPresetIdx=0;
-let smpPadPreset='speed'; // 'speed' | 'echo' | 'pitch'
+let smpPadPreset='speed'; // 'speed' | 'rhythm' | 'pitch'
 let samplerEchoDelay=null, samplerEchoFbGain=null, samplerRevSend=null;
 let holoRevWet=0.72, holoDelayDiv=0.5;
 let holoDelNode=null, holoDelFb=null, holoDelWet=null;
@@ -3360,7 +3360,7 @@ function setPadAssign(mode,btn){
   document.getElementById('holoPresetRow').classList.toggle('active',isHolo);
   const holoCtrlRowEl=document.getElementById('holoCtrlRow');
   if(holoCtrlRowEl) holoCtrlRowEl.classList.toggle('active',isHolo);
-  if(isSmp){ const lbMap={speed:'X=SPEED · Y=EQ',echo:'X=DELAY · Y=FEEDBACK',pitch:'X=PITCH · Y=REVERB'}; const el=document.getElementById('samplerLabel'); if(el) el.textContent='SAMPLERIZER — '+(lbMap[smpPadPreset]||''); }
+  if(isSmp){ const lbMap={speed:'X=SPEED · Y=EQ',rhythm:'X=SLICE · Y=CHOP',pitch:'X=PITCH · Y=REVERB'}; const el=document.getElementById('samplerLabel'); if(el) el.textContent='SAMPLERIZER — '+(lbMap[smpPadPreset]||''); }
 document.getElementById('xsLabel').style.display=isXS?'':'none';
   document.getElementById('samplerLabel').style.display=isSmp?'':'none';
   document.getElementById('holoLabel').style.display=isHolo?'':'none';
@@ -3432,13 +3432,59 @@ function setSmpPadPreset(preset, btn){
   smpPadPreset=preset;
   document.querySelectorAll('.spp').forEach(b=>b.classList.remove('on'));
   if(btn) btn.classList.add('on');
-  const lbMap={speed:'X=SPEED · Y=EQ', echo:'X=DELAY · Y=FEEDBACK', pitch:'X=PITCH · Y=REVERB'};
+  const lbMap={speed:'X=SPEED · Y=EQ', rhythm:'X=SLICE · Y=CHOP', pitch:'X=PITCH · Y=REVERB'};
   const el=document.getElementById('samplerLabel');
   if(el) el.textContent='SAMPLERIZER — '+(lbMap[preset]||'');
 }
 function _smpSpeedRate(px){ return Math.pow(4, px*0.9-0.45); } // ~0.35x→2.3x
-function _smpEchoTimeVal(px){ return (60/bpm)*[0.25,0.5,1.0,2.0][Math.min(3,Math.floor(px*4))]; }
-function _smpEchoFbVal(py){ return Math.min(0.88, py*0.9); }
+// ─── RHYTHM SLICER ───────────────────────────────
+let _rhythmTimer=null, _rhythmSrc=null, _rhythmGain=null;
+const _RHYTHM_DIVS=[1,0.5,0.25,0.125]; // whole, half, quarter, eighth (in beats)
+function _rhythmSliceDur(py){ const idx=Math.min(3,Math.floor(py*4)); return (60/bpm)*_RHYTHM_DIVS[idx]; }
+function _rhythmFireSlice(px,py){
+  if(!samplerBuf||!ctx) return;
+  // Stop previous slice
+  if(_rhythmSrc){ try{_rhythmSrc.stop();}catch(e){} _rhythmSrc=null; }
+  const dur=samplerBuf.duration;
+  const sliceDur=_rhythmSliceDur(py);
+  // X selects which part of the sample to play
+  const offset=Math.min(px*dur, dur-0.01);
+  const vol=r('SMP-Vol')/100;
+  const src=ctx.createBufferSource();
+  src.buffer=samplerBuf; src.playbackRate.value=1;
+  const g=ctx.createGain(); g.gain.value=vol;
+  // Fade out at end of slice
+  const fadeT=Math.min(0.03, sliceDur*0.15);
+  g.gain.setValueAtTime(vol, ctx.currentTime);
+  g.gain.setTargetAtTime(0, ctx.currentTime+Math.max(0.01,sliceDur-fadeT), fadeT);
+  src.connect(g); g.connect(masterEQ);
+  if(padloopCapBus&&(padloopRec||padloopOverdub)) g.connect(padloopCapBus);
+  const rv=ctx.createGain(); rv.gain.value=r('SMP-Rev')/100; g.connect(rv); rv.connect(revPre);
+  const dl=ctx.createGain(); dl.gain.value=r('SMP-Dly')/100; g.connect(dl); dl.connect(delNode);
+  src.start(0, offset, sliceDur+0.05);
+  _rhythmSrc=src; _rhythmGain=g;
+}
+function _rhythmStart(px,py){
+  _rhythmStop();
+  _rhythmFireSlice(px,py);
+  // Schedule repeating slices synced to clock
+  const schedNext=()=>{
+    if(!_rhythmTimer) return;
+    const sliceDur=_rhythmSliceDur(smpPadLockY!=null?smpPadLockY:py);
+    _rhythmTimer=setTimeout(()=>{
+      if(smpPadLockX!=null) _rhythmFireSlice(smpPadLockX, smpPadLockY!=null?smpPadLockY:py);
+      schedNext();
+    }, sliceDur*1000);
+  };
+  _rhythmTimer=true; // sentinel
+  schedNext();
+}
+function _rhythmStop(){
+  if(_rhythmTimer&&_rhythmTimer!==true) clearTimeout(_rhythmTimer);
+  _rhythmTimer=null;
+  if(_rhythmSrc){ try{_rhythmSrc.stop();}catch(e){} _rhythmSrc=null; }
+  _rhythmGain=null;
+}
 const _SMP_PITCH_SNAPS=[-12,-5,0,5,7,12,19,24];
 function _smpSnapPitchRate(px){
   const i=Math.round(px*(_SMP_PITCH_SNAPS.length-1));
@@ -3463,9 +3509,12 @@ function samplerStart(px,py){
   if(smpPadPreset==='speed'){
     pitchRate=_smpSpeedRate(px);
     offset=Math.min(r('SMP-Start')/100*samplerBuf.duration, samplerBuf.duration-0.001);
-  } else if(smpPadPreset==='echo'){
-    pitchRate=Math.pow(2,(r('SMP-Pitch')-50)/50);
-    offset=Math.min(px*samplerBuf.duration, samplerBuf.duration-0.001);
+  } else if(smpPadPreset==='rhythm'){
+    // Rhythm mode uses its own slicer — skip normal source creation
+    _rhythmStart(px,py);
+    samplerGain=null; samplerSrc=null;
+    triggerEnergy(0.5);
+    return;
   } else { // pitch
     pitchRate=_smpSnapPitchRate(px);
     offset=Math.min(r('SMP-Start')/100*samplerBuf.duration, samplerBuf.duration-0.001);
@@ -3480,16 +3529,6 @@ function samplerStart(px,py){
     filt.type='lowpass'; filt.frequency.value=_smpFilterFreq(py); filt.Q.value=1.2;
     src.connect(filt); filt.connect(mg);
     samplerFilter=filt;
-  } else if(smpPadPreset==='echo'){
-    src.connect(mg);
-    // Local feedback delay: X=time, Y=feedback
-    const eD=ctx.createDelay(2.0); eD.delayTime.value=_smpEchoTimeVal(px);
-    const eFb=ctx.createGain(); eFb.gain.value=_smpEchoFbVal(py);
-    const eOut=ctx.createGain(); eOut.gain.value=0.65;
-    eD.connect(eFb); eFb.connect(eD); eD.connect(eOut); eOut.connect(masterEQ);
-    const eRv=ctx.createGain(); eRv.gain.value=0.40; eOut.connect(eRv); eRv.connect(revPre);
-    mg.connect(eD);
-    samplerEchoDelay=eD; samplerEchoFbGain=eFb;
   } else { // pitch — Y = extra reverb send
     src.connect(mg);
     const rvS=ctx.createGain(); rvS.gain.value=py*0.90; mg.connect(rvS); rvS.connect(revPre);
@@ -3499,7 +3538,7 @@ function samplerStart(px,py){
   if(padloopCapBus&&(padloopRec||padloopOverdub)) mg.connect(padloopCapBus);
   const rv0=ctx.createGain(); rv0.gain.value=r('SMP-Rev')/100; mg.connect(rv0); rv0.connect(revPre);
   samplerRevSend=rv0;
-  if(smpPadPreset!=='echo'){ const dl0=ctx.createGain(); dl0.gain.value=r('SMP-Dly')/100; mg.connect(dl0); dl0.connect(delNode); }
+  { const dl0=ctx.createGain(); dl0.gain.value=r('SMP-Dly')/100; mg.connect(dl0); dl0.connect(delNode); }
   src.start(0, offset);
   samplerSrc=src;
   _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85, null, smpPadPreset==='speed'?py:null);
@@ -3573,15 +3612,16 @@ function samplerUpdate(px,py){
   if(smpPadPreset==='speed'){
     if(samplerSrc) samplerSrc.playbackRate.setTargetAtTime(_smpSpeedRate(px),ctx.currentTime,0.04);
     if(samplerFilter) samplerFilter.frequency.setTargetAtTime(_smpFilterFreq(py),ctx.currentTime,0.03);
-  } else if(smpPadPreset==='echo'){
-    if(samplerEchoDelay) samplerEchoDelay.delayTime.setTargetAtTime(_smpEchoTimeVal(px),ctx.currentTime,0.04);
-    if(samplerEchoFbGain) samplerEchoFbGain.gain.setTargetAtTime(_smpEchoFbVal(py),ctx.currentTime,0.04);
+  } else if(smpPadPreset==='rhythm'){
+    // Rhythm: X/Y changes are picked up by the next scheduled slice via smpPadLockX/Y
+    return;
   } else { // pitch
     if(samplerSrc) samplerSrc.playbackRate.setTargetAtTime(_smpSnapPitchRate(px),ctx.currentTime,0.04);
     if(samplerRevSend) samplerRevSend.gain.setTargetAtTime(py*0.90,ctx.currentTime,0.04);
   }
 }
 function samplerStop(){
+  _rhythmStop();
   if(!samplerSrc) return;
   try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
   samplerSrc=null; samplerFilter=null; samplerGain=null; samplerEchoDelay=null; samplerEchoFbGain=null; samplerRevSend=null;
