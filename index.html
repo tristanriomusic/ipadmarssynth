@@ -3360,7 +3360,7 @@ function setPadAssign(mode,btn){
   document.getElementById('holoPresetRow').classList.toggle('active',isHolo);
   const holoCtrlRowEl=document.getElementById('holoCtrlRow');
   if(holoCtrlRowEl) holoCtrlRowEl.classList.toggle('active',isHolo);
-  if(isSmp){ const lbMap={speed:'X=SPEED · Y=EQ',rhythm:'X=SLICE · Y=CHOP',pitch:'X=PITCH · Y=REVERB'}; const el=document.getElementById('samplerLabel'); if(el) el.textContent='SAMPLERIZER — '+(lbMap[smpPadPreset]||''); }
+  if(isSmp){ const lbMap={speed:'X=SPEED · Y=EQ',rhythm:'X=PATTERN · Y=SLICE',pitch:'X=PITCH · Y=REVERB'}; const el=document.getElementById('samplerLabel'); if(el) el.textContent='SAMPLERIZER — '+(lbMap[smpPadPreset]||''); }
 document.getElementById('xsLabel').style.display=isXS?'':'none';
   document.getElementById('samplerLabel').style.display=isSmp?'':'none';
   document.getElementById('holoLabel').style.display=isHolo?'':'none';
@@ -3432,29 +3432,49 @@ function setSmpPadPreset(preset, btn){
   smpPadPreset=preset;
   document.querySelectorAll('.spp').forEach(b=>b.classList.remove('on'));
   if(btn) btn.classList.add('on');
-  const lbMap={speed:'X=SPEED · Y=EQ', rhythm:'X=SLICE · Y=CHOP', pitch:'X=PITCH · Y=REVERB'};
+  const lbMap={speed:'X=SPEED · Y=EQ', rhythm:'X=PATTERN · Y=SLICE', pitch:'X=PITCH · Y=REVERB'};
   const el=document.getElementById('samplerLabel');
   if(el) el.textContent='SAMPLERIZER — '+(lbMap[preset]||'');
 }
 function _smpSpeedRate(px){ return Math.pow(4, px*0.9-0.45); } // ~0.35x→2.3x
 // ─── RHYTHM SLICER ───────────────────────────────
-let _rhythmTimer=null, _rhythmSrc=null, _rhythmGain=null;
-const _RHYTHM_DIVS=[1,0.5,0.25,0.125]; // whole, half, quarter, eighth (in beats)
-function _rhythmSliceDur(py){ const idx=Math.min(3,Math.floor(py*4)); return (60/bpm)*_RHYTHM_DIVS[idx]; }
-function _rhythmFireSlice(px,py){
+// X = rhythmic pattern (left=simple/spacious → right=fast/complex)
+// Y = slice position in sample (top=start → bottom=end)
+// Patterns are arrays of 16th-note positions (0-15) within one bar
+let _rhythmTimer=null, _rhythmSrc=null, _rhythmGain=null, _rhythmStep=0, _rhythmActive=false;
+const _RHYTHM_PATTERNS=[
+  [0,8],                              // half notes — spacious
+  [0,4,8,12],                         // quarter notes — steady
+  [0,4,6,8,12,14],                    // quarters + off-beat pushes
+  [0,2,4,6,8,10,12,14],              // eighth notes — driving
+  [0,2,3,6,8,10,11,14],              // syncopated eighths
+  [0,1,3,4,6,8,9,11,12,14],          // dense syncopation
+  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], // full 16ths — maximum energy
+];
+function _rhythmGetPattern(px){
+  const idx=Math.min(_RHYTHM_PATTERNS.length-1, Math.floor(px*_RHYTHM_PATTERNS.length));
+  return _RHYTHM_PATTERNS[idx];
+}
+function _rhythmFireSlice(py, stepInBar){
   if(!samplerBuf||!ctx) return;
-  // Stop previous slice
   if(_rhythmSrc){ try{_rhythmSrc.stop();}catch(e){} _rhythmSrc=null; }
   const dur=samplerBuf.duration;
-  const sliceDur=_rhythmSliceDur(py);
-  // X selects which part of the sample to play
-  const offset=Math.min(px*dur, dur-0.01);
+  const sixteenth=60/bpm/4;
+  // Y selects slice position in the sample
+  const offset=Math.min(py*dur, dur-0.01);
+  // Slice duration = time until next pattern hit or end of bar
+  const px=smpPadLockX!=null?smpPadLockX:0.5;
+  const pat=_rhythmGetPattern(px);
+  const curIdx=pat.indexOf(stepInBar);
+  const nextIdx=(curIdx+1)%pat.length;
+  const nextStep=nextIdx>curIdx?pat[nextIdx]:pat[nextIdx]+16;
+  const sliceSteps=nextStep-stepInBar;
+  const sliceDur=sliceSteps*sixteenth;
   const vol=r('SMP-Vol')/100;
   const src=ctx.createBufferSource();
   src.buffer=samplerBuf; src.playbackRate.value=1;
   const g=ctx.createGain(); g.gain.value=vol;
-  // Fade out at end of slice
-  const fadeT=Math.min(0.03, sliceDur*0.15);
+  const fadeT=Math.min(0.02, sliceDur*0.12);
   g.gain.setValueAtTime(vol, ctx.currentTime);
   g.gain.setTargetAtTime(0, ctx.currentTime+Math.max(0.01,sliceDur-fadeT), fadeT);
   src.connect(g); g.connect(masterEQ);
@@ -3464,23 +3484,41 @@ function _rhythmFireSlice(px,py){
   src.start(0, offset, sliceDur+0.05);
   _rhythmSrc=src; _rhythmGain=g;
 }
+function _rhythmTick(){
+  if(!_rhythmActive) return;
+  const sixteenth=60/bpm/4;
+  const px=smpPadLockX!=null?smpPadLockX:0.5;
+  const py=smpPadLockY!=null?smpPadLockY:0.5;
+  const pat=_rhythmGetPattern(px);
+  // Find next pattern step at or after current position
+  const stepInBar=_rhythmStep%16;
+  if(pat.includes(stepInBar)){
+    _rhythmFireSlice(py, stepInBar);
+  }
+  _rhythmStep=(_rhythmStep+1)%16;
+  _rhythmTimer=setTimeout(_rhythmTick, sixteenth*1000);
+}
 function _rhythmStart(px,py){
   _rhythmStop();
-  _rhythmFireSlice(px,py);
-  // Schedule repeating slices synced to clock
-  const schedNext=()=>{
-    if(!_rhythmTimer) return;
-    const sliceDur=_rhythmSliceDur(smpPadLockY!=null?smpPadLockY:py);
-    _rhythmTimer=setTimeout(()=>{
-      if(smpPadLockX!=null) _rhythmFireSlice(smpPadLockX, smpPadLockY!=null?smpPadLockY:py);
-      schedNext();
-    }, sliceDur*1000);
-  };
-  _rhythmTimer=true; // sentinel
-  schedNext();
+  _rhythmActive=true;
+  // Sync to sequencer if playing
+  if(isPlaying){
+    _rhythmStep=seqStep%16;
+  } else {
+    _rhythmStep=0;
+  }
+  // Fire first slice immediately
+  const pat=_rhythmGetPattern(px);
+  const nearest=pat.reduce((best,s)=>Math.abs(s-_rhythmStep)<Math.abs(best-_rhythmStep)?s:best, pat[0]);
+  _rhythmStep=nearest;
+  _rhythmFireSlice(py, nearest);
+  _rhythmStep=(nearest+1)%16;
+  const sixteenth=60/bpm/4;
+  _rhythmTimer=setTimeout(_rhythmTick, sixteenth*1000);
 }
 function _rhythmStop(){
-  if(_rhythmTimer&&_rhythmTimer!==true) clearTimeout(_rhythmTimer);
+  _rhythmActive=false;
+  if(_rhythmTimer) clearTimeout(_rhythmTimer);
   _rhythmTimer=null;
   if(_rhythmSrc){ try{_rhythmSrc.stop();}catch(e){} _rhythmSrc=null; }
   _rhythmGain=null;
