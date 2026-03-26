@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>OMNIVERSE V14</title>
+  <title>LoopMachien</title>
   <style>
     :root {
       --bass:#ffcc00; --drum:#ff6600; --hihat:#00ff88;
@@ -328,7 +328,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
   <div class="boot-bg"></div>
   <div class="boot-overlay"></div>
   <div class="boot-content">
-    <div class="boot-title">OMNIVERSE</div>
+    <div class="boot-title">LoopMachien</div>
     <div class="boot-version">V 1 4</div>
     <div class="boot-sub">▶ TAP TO INITIALIZE ◀</div>
   </div>
@@ -2269,7 +2269,7 @@ function sessionRecToggle(){
   sessionMediaRec.ondataavailable=e=>{ if(e.data&&e.data.size>0) sessionChunks.push(e.data); };
   sessionMediaRec.onstop=async()=>{
     const blob=new Blob(sessionChunks,{type:'audio/webm'});
-    const fname='omniverse_'+(new Date().toISOString().slice(0,19).replace(/[T:]/g,'-'))+'.webm';
+    const fname='loopmachien_'+(new Date().toISOString().slice(0,19).replace(/[T:]/g,'-'))+'.webm';
     // iOS Safari: use share sheet if available, otherwise fallback to download link
     if(navigator.canShare&&navigator.canShare({files:[new File([blob],fname,{type:'audio/webm'})]})){
       try{ await navigator.share({files:[new File([blob],fname,{type:'audio/webm'})],title:fname}); return; }catch(e){}
