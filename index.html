@@ -403,6 +403,8 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
 
   <!-- POPUP BACKDROP -->
   <div id="popup-bg" onclick="closeCirclePopup()"></div>
+  <!-- SAMPLER STOP BUTTON -->
+  <button id="smpStopFloat" onclick="samplerStop();smpStopFloatUpdate()" style="display:none;position:fixed;bottom:18px;right:18px;z-index:9000;width:56px;height:56px;border-radius:50%;border:2px solid rgba(168,85,247,0.7);background:rgba(168,85,247,0.25);color:#d4aaff;font-size:20px;font-weight:900;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 0 16px rgba(168,85,247,0.4);touch-action:manipulation;-webkit-tap-highlight-color:transparent">■</button>
   <!-- RECORDING BORDER OVERLAYS -->
   <div id="rec-border-gloop"></div>
   <div id="rec-border-seq"></div>
@@ -431,6 +433,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <div class="circ-body" style="background:rgba(255,153,68,0.2);border:2px solid rgba(255,153,68,0.65);box-shadow:0 0 16px rgba(255,153,68,0.2),inset 0 0 20px rgba(255,153,68,0.1)" onclick="openCirclePopup('drGLOOP',event,null)">
           <div class="circ-ring" id="cring-GL" style="border-color:#ff9944"></div>
           <div class="circ-name">GTR LOOP</div>
+          <button class="circ-mute-btn" id="cmute-GL" onclick="gloopMuteToggle(this);event.stopPropagation()">MUTE</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="100" style="accent-color:#ff9944" oninput="syncCircVol('gloop-decay',this.value)">
@@ -445,6 +448,7 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <div class="circ-body" style="background:rgba(78,205,196,0.2);border:2px solid rgba(78,205,196,0.65);box-shadow:0 0 16px rgba(78,205,196,0.2),inset 0 0 20px rgba(78,205,196,0.1)" onclick="openCirclePopup('drPADLOOP',event,null)">
           <div class="circ-ring" id="cring-PL" style="border-color:#4ecdc4"></div>
           <div class="circ-name">PAD LOOP</div>
+          <button class="circ-mute-btn" id="cmute-PL" onclick="padloopMuteToggle(this);event.stopPropagation()">MUTE</button>
         </div>
         <div class="circ-y-wrap">
           <input type="range" class="circ-y" min="0" max="100" value="100" style="accent-color:#4ecdc4" oninput="syncCircVol('padloop-decay',this.value)">
@@ -1817,6 +1821,19 @@ const activePre={DR:0,B:0,D:0,H:0,K:0,SN:0};
 const instDeep={X:false,DR:false,B:false,D:false,H:false,ARP:false,BA:false};
 
 let nextBarTime=0; // set by sequencer each bar
+
+// ═══ LOOPER MUTES ════════════════════════════════════════════════════
+let gloopMuted=false, padloopMuted=false;
+function gloopMuteToggle(btn){
+  gloopMuted=!gloopMuted;
+  if(btn) btn.classList.toggle('muted', gloopMuted);
+  if(gloopOutGain) gloopOutGain.gain.setTargetAtTime(gloopMuted?0:nv('gloop-loopvol'), ctx.currentTime, 0.02);
+}
+function padloopMuteToggle(btn){
+  padloopMuted=!padloopMuted;
+  if(btn) btn.classList.toggle('muted', padloopMuted);
+  if(padloopOutGain) padloopOutGain.gain.setTargetAtTime(padloopMuted?0:nv('padloop-loopvol'), ctx.currentTime, 0.02);
+}
 
 // ═══ SAMPLERIZER LATCH/HOLD MODE ══════════════════════════════════════
 let smpLatch=true; // true=latch (keeps playing after release), false=hold (stops on release)
@@ -3556,6 +3573,7 @@ function samplerStart(px,py){
     _rhythmStart(px,py);
     samplerGain=null; samplerSrc=null;
     triggerEnergy(0.5);
+    smpStopFloatUpdate();
     return;
   } else { // pitch
     pitchRate=_smpSnapPitchRate(px);
@@ -3585,6 +3603,7 @@ function samplerStart(px,py){
   samplerSrc=src;
   _spawnPsychoLayers(samplerBuf, pitchRate, offset, ctx.currentTime, 0.85, null, smpPadPreset==='speed'?py:null);
   triggerEnergy(0.5);
+  smpStopFloatUpdate();
 }
 
 // Scheduled sampler trigger for looper playback
@@ -3664,9 +3683,15 @@ function samplerUpdate(px,py){
 }
 function samplerStop(){
   _rhythmStop();
-  if(!samplerSrc) return;
-  try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){}
+  if(!samplerSrc&&!_rhythmActive) { smpStopFloatUpdate(); return; }
+  if(samplerSrc){ try{ samplerSrc.stop(ctx.currentTime+0.04); }catch(e){} }
   samplerSrc=null; samplerFilter=null; samplerGain=null; samplerEchoDelay=null; samplerEchoFbGain=null; samplerRevSend=null;
+  smpStopFloatUpdate();
+}
+function smpStopFloatUpdate(){
+  const btn=document.getElementById('smpStopFloat'); if(!btn) return;
+  const playing=!!(samplerSrc||_rhythmActive);
+  btn.style.display=(smpLatch&&playing)?'block':'none';
 }
 // ─── HOLOGRAM GRANULAR ────────────────────────────
 const HOLO_PRESETS=[
