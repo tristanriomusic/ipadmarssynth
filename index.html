@@ -3091,25 +3091,6 @@ function init(){
   });
   document.addEventListener('touchstart',()=>{ if(ctx.state!=='running') ctx.resume().then(()=>startAudioKeepAlive()).catch(()=>{}); },{passive:true});
 
-  // Swipe-to-toggle sequence steps: drag finger across steps to set them all on or off
-  document.addEventListener('touchmove',(e)=>{
-    if(smSwipeIntent===null||!smSwipeTrack) return;
-    const touch=e.touches[0];
-    const el=document.elementFromPoint(touch.clientX,touch.clientY);
-    if(!el||!el.classList.contains('sm-step')) return;
-    // find step index from class list
-    const cls=[...el.classList].find(c=>/^sm-step-\d+$/.test(c));
-    if(!cls) return;
-    const i=parseInt(cls.replace('sm-step-',''),10);
-    const gi=seqViewBar*16+i;
-    if(smSwipeTouched.has(gi)) return;
-    smSwipeTouched.add(gi);
-    smSwipeTrack.state[gi]=smSwipeIntent;
-    el.style.background=smSwipeIntent?smSwipeTrack.color:'rgba(0,0,0,0.45)';
-    el.style.boxShadow=smSwipeIntent?`0 0 8px ${smSwipeTrack.color}`:'';
-    smUpdateDot(smSwipeTrack.id);
-    if(seqViewBar===0) refreshGrid(INST_CFG[smSwipeTrack.id]?.[0]?.gid, smSwipeTrack.cls, smSwipeTrack.state);
-  },{passive:true});
   document.addEventListener('touchend',()=>{ smSwipeIntent=null; smSwipeTrack=null; smSwipeTouched=new Set(); },{passive:true});
 
   acquireWakeLock();
@@ -5289,6 +5270,27 @@ function buildSeqMode(){
       });
       grid.appendChild(step);
     }
+    // Swipe-to-toggle: handle touchmove on the grid itself to avoid scroll interception
+    grid.addEventListener('touchmove',(e)=>{
+      if(smSwipeIntent===null||!smSwipeTrack) return;
+      e.preventDefault();
+      const touch=e.touches[0];
+      const el=document.elementFromPoint(touch.clientX,touch.clientY);
+      if(!el) return;
+      const stepEl=el.classList.contains('sm-step')?el:el.closest('.sm-step');
+      if(!stepEl) return;
+      const cls=[...stepEl.classList].find(c=>/^sm-step-\d+$/.test(c));
+      if(!cls) return;
+      const idx=parseInt(cls.replace('sm-step-',''),10);
+      const gi=seqViewBar*16+idx;
+      if(smSwipeTouched.has(gi)) return;
+      smSwipeTouched.add(gi);
+      smSwipeTrack.state[gi]=smSwipeIntent;
+      stepEl.style.background=smSwipeIntent?smSwipeTrack.color:'rgba(0,0,0,0.45)';
+      stepEl.style.boxShadow=smSwipeIntent?`0 0 8px ${smSwipeTrack.color}`:'';
+      smUpdateDot(smSwipeTrack.id);
+      if(seqViewBar===0) refreshGrid(INST_CFG[smSwipeTrack.id]?.[0]?.gid, smSwipeTrack.cls, smSwipeTrack.state);
+    },{passive:false});
     row.appendChild(grid);
     wrap.appendChild(row);
   });
