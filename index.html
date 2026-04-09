@@ -1461,6 +1461,7 @@ function applyPendingMutes(){
 let seqBarCount=4; // 1–4: how many bars the loop cycles through
 let seqViewBar=0;  // 0–3: which bar is shown in SEQ MODE editor
 let seqModeActive=false;
+let smSwipeIntent=null, smSwipeTrack=null, smSwipeTouched=new Set();
 let omniRandT=0;
 
 // ── AUDIO REACTIVITY ──────────────────────────────
@@ -3089,6 +3090,28 @@ function init(){
     }
   });
   document.addEventListener('touchstart',()=>{ if(ctx.state!=='running') ctx.resume().then(()=>startAudioKeepAlive()).catch(()=>{}); },{passive:true});
+
+  // Swipe-to-toggle sequence steps: drag finger across steps to set them all on or off
+  document.addEventListener('touchmove',(e)=>{
+    if(smSwipeIntent===null||!smSwipeTrack) return;
+    const touch=e.touches[0];
+    const el=document.elementFromPoint(touch.clientX,touch.clientY);
+    if(!el||!el.classList.contains('sm-step')) return;
+    // find step index from class list
+    const cls=[...el.classList].find(c=>/^sm-step-\d+$/.test(c));
+    if(!cls) return;
+    const i=parseInt(cls.replace('sm-step-',''),10);
+    const gi=seqViewBar*16+i;
+    if(smSwipeTouched.has(gi)) return;
+    smSwipeTouched.add(gi);
+    smSwipeTrack.state[gi]=smSwipeIntent;
+    el.style.background=smSwipeIntent?smSwipeTrack.color:'rgba(0,0,0,0.45)';
+    el.style.boxShadow=smSwipeIntent?`0 0 8px ${smSwipeTrack.color}`:'';
+    smUpdateDot(smSwipeTrack.id);
+    if(seqViewBar===0) refreshGrid(INST_CFG[smSwipeTrack.id]?.[0]?.gid, smSwipeTrack.cls, smSwipeTrack.state);
+  },{passive:true});
+  document.addEventListener('touchend',()=>{ smSwipeIntent=null; smSwipeTrack=null; smSwipeTouched=new Set(); },{passive:true});
+
   acquireWakeLock();
 }
 
@@ -5246,13 +5269,22 @@ function buildSeqMode(){
       step.className=`sm-step sm-step-${i}`;
       step.style.background=t.state[seqViewBar*16+i]?t.color:'rgba(0,0,0,0.45)';
       if(t.state[seqViewBar*16+i]) step.style.boxShadow=`0 0 8px ${t.color}`;
+      step.addEventListener('touchstart',(e)=>{
+        e.preventDefault();
+        const gi=seqViewBar*16+i;
+        t.state[gi]=t.state[gi]?0:1;
+        step.style.background=t.state[gi]?t.color:'rgba(0,0,0,0.45)';
+        step.style.boxShadow=t.state[gi]?`0 0 8px ${t.color}`:'';
+        smUpdateDot(t.id);
+        if(seqViewBar===0) refreshGrid(INST_CFG[t.id]?.[0]?.gid, t.cls, t.state);
+        smSwipeIntent=t.state[gi]; smSwipeTrack=t; smSwipeTouched=new Set([gi]);
+      },{passive:false});
       step.addEventListener('click',()=>{
         const gi=seqViewBar*16+i;
         t.state[gi]=t.state[gi]?0:1;
         step.style.background=t.state[gi]?t.color:'rgba(0,0,0,0.45)';
         step.style.boxShadow=t.state[gi]?`0 0 8px ${t.color}`:'';
         smUpdateDot(t.id);
-        // Sync to drawer grid if editing bar 0
         if(seqViewBar===0) refreshGrid(INST_CFG[t.id]?.[0]?.gid, t.cls, t.state);
       });
       grid.appendChild(step);
