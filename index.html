@@ -871,7 +871,12 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
         <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 0 8px">
           <button class="cmr" id="midiConnectBtn" onclick="midiConnect()">⚡ CONNECT</button>
           <button class="cmr" id="midiLearnBtn" onclick="midiLearnToggle()">🎛 LEARN</button>
+          <button class="cmr" id="midiClockBtn" onclick="midiClockToggle()">⏱ CLOCK SYNC</button>
           <button class="cmr" onclick="midiClearAll()">✕ CLEAR MAP</button>
+        </div>
+        <div id="midiClockPill" style="display:none;align-items:center;gap:6px;padding:4px 8px;margin-bottom:6px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.25);border-radius:6px;font-size:8px;letter-spacing:.8px;color:#00ff88">
+          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#00ff88;animation:dotPulse 1s infinite"></span>
+          MIDI CLOCK &nbsp;<span id="midiClockInd" style="opacity:0.7">waiting...</span>
         </div>
         <div id="midiStatus" style="font-size:8px;color:rgba(255,68,136,0.5);letter-spacing:.8px;padding:0 0 6px"></div>
         <div id="midiMapList" style="font-size:7px;color:rgba(255,255,255,0.4);letter-spacing:.5px;max-height:120px;overflow-y:auto"></div>
@@ -1429,6 +1434,8 @@ let ctx, master, masterEQ, masterClipNode, revNode, revPre, revWet, revHP, revLP
     delNode, delFb, delDamp, delHP, delSat, delWet, waveshaper, driveMix;
 let delSyncDiv=null; // null=free, 0.25=1/16, 0.5=1/8, 1.0=1/4, 2.0=1/2
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
+// MIDI clock follow
+let midiClockFollow=false, midiClockPulses=[], midiClockLastBpm=0;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
 let padAssign='xs'; // 'xs' | 'sampler'
@@ -4985,8 +4992,37 @@ function midiLearnCleanup(){
   midiUpdateStatus();
 }
 
+function handleMidiClock(){
+  const now=performance.now();
+  midiClockPulses.push(now);
+  if(midiClockPulses.length>25) midiClockPulses.shift();
+  if(midiClockPulses.length<13) return; // need at least half a beat of data
+  const n=midiClockPulses.length;
+  const avgInterval=(midiClockPulses[n-1]-midiClockPulses[0])/(n-1);
+  const detectedBpm=Math.round(60000/(avgInterval*24));
+  if(detectedBpm<40||detectedBpm>250) return;
+  const clamped=Math.max(60,Math.min(200,detectedBpm));
+  const ind=document.getElementById('midiClockInd');
+  if(ind) ind.textContent=detectedBpm+' BPM';
+  if(clamped!==midiClockLastBpm){ midiClockLastBpm=clamped; setBpm(clamped); }
+}
+
+function midiClockToggle(){
+  midiClockFollow=!midiClockFollow;
+  midiClockPulses=[]; midiClockLastBpm=0;
+  const btn=document.getElementById('midiClockBtn');
+  const pill=document.getElementById('midiClockPill');
+  if(btn){ btn.style.background=midiClockFollow?'rgba(0,255,136,0.25)':''; btn.style.color=midiClockFollow?'#00ff88':''; }
+  if(pill) pill.style.display=midiClockFollow?'flex':'none';
+  const ind=document.getElementById('midiClockInd');
+  if(ind) ind.textContent='waiting...';
+}
+
 function onMidiMsg(e){
-  const [status, cc, val]=e.data;
+  const status=e.data[0];
+  // MIDI Timing Clock — single byte 0xF8, no channel
+  if(status===0xF8){ if(midiClockFollow) handleMidiClock(); return; }
+  const [,cc,val]=e.data;
   const ch=status&0x0F;
   const type=status&0xF0;
   if(type!==0xB0) return; // only CC messages
