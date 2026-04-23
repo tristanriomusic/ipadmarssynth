@@ -5012,20 +5012,28 @@ function midiSendToAll(data){
   midiAccess.outputs.forEach(o=>{ try{ o.send(data); }catch(e){} });
 }
 
-function midiClockSendStart(){
-  if(midiClockTimer) clearInterval(midiClockTimer);
-  const interval=60000/(bpm*24);
-  midiClockTimer=setInterval(()=>{
+function midiClockSchedule(){
+  if(!midiClockSending) return;
+  const now=performance.now();
+  const pulseMs=60000/(bpm*24);
+  while(midiClockNextPulse<=now+4){
     midiSendToAll([0xF8]);
-    // Flash dot once per beat (every 24th pulse)
-    if(typeof midiClockSendStart._n==='undefined') midiClockSendStart._n=0;
-    midiClockSendStart._n++;
-    if(midiClockSendStart._n>=24){
-      midiClockSendStart._n=0;
+    midiClockPulseN++;
+    if(midiClockPulseN>=24){
+      midiClockPulseN=0;
       const dot=document.getElementById('midiClockDot');
       if(dot){ dot.style.background='#00ff88'; setTimeout(()=>{ dot.style.background='rgba(255,255,255,0.25)'; },120); }
     }
-  }, interval);
+    midiClockNextPulse+=pulseMs;
+  }
+  midiClockTimer=setTimeout(midiClockSchedule,2);
+}
+
+function midiClockSendStart(){
+  clearTimeout(midiClockTimer);
+  midiClockNextPulse=performance.now();
+  midiClockPulseN=0;
+  midiClockSchedule();
 }
 
 function midiClockToggle(){
