@@ -2477,8 +2477,7 @@ async function gloopEnumDevices(){
   const connectRow=document.getElementById('gloop-connect-row');
   const st=document.getElementById('gloop-status');
   if(connectRow) connectRow.querySelector('button').textContent='⏳ CONNECTING...';
-  // iOS: MIDI session may have suspended AudioContext — resume before getUserMedia
-  if(ctx) await ctx.resume();
+  try{ if(ctx) await ctx.resume(); }catch(e){}
   try{
     const tmp=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     tmp.getTracks().forEach(t=>t.stop());
