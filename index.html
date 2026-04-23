@@ -2870,8 +2870,11 @@ function togglePlay(){
     btn.textContent='■  STOP'; btn.classList.add('playing');
     if(midiClockSending) midiSendToAll([0xFA]); // MIDI Start
   }
-  else{ btn.textContent='▶  PLAY'; btn.classList.remove('playing');
-    if(midiClockSending) midiSendToAll([0xFC]); // MIDI Stop document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); smpBeatCount=0; bassArpStep=0; tlUpdate(0); }
+  else{
+    btn.textContent='▶  PLAY'; btn.classList.remove('playing');
+    if(midiClockSending) midiSendToAll([0xFC]);
+    document.querySelectorAll('.step').forEach(e=>e.classList.remove('playing')); smpBeatCount=0; bassArpStep=0; tlUpdate(0);
+  }
 }
 function toggleInstMode(inst,e){
   e.stopPropagation();
