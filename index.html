@@ -5045,7 +5045,7 @@ function midiClockToggle(){
 function onMidiMsg(e){
   const status=e.data[0];
   // MIDI Timing Clock — single byte 0xF8, no channel, always detect
-  if(status===0xF8){ handleMidiClock(); return; }
+  if(status===0xF8) return; // we are now the clock master, ignore incoming clock
   const [,cc,val]=e.data;
   const ch=status&0x0F;
   const type=status&0xF0;
