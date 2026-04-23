@@ -1435,7 +1435,7 @@ let ctx, master, masterEQ, masterClipNode, revNode, revPre, revWet, revHP, revLP
 let delSyncDiv=null; // null=free, 0.25=1/16, 0.5=1/8, 1.0=1/4, 2.0=1/2
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 // MIDI clock follow
-let midiClockSending=false, midiClockTimer=null;
+let midiClockSending=false, midiClockTimer=null, midiClockNextPulse=0, midiClockPulseN=0;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
 let padAssign='xs'; // 'xs' | 'sampler'
