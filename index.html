@@ -2478,12 +2478,19 @@ async function gloopEnumDevices(){
   const st=document.getElementById('gloop-status');
   if(connectRow) connectRow.querySelector('button').textContent='⏳ CONNECTING...';
   try{ if(ctx) await ctx.resume(); }catch(e){}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
+    if(st){ st.textContent='getUserMedia not supported in this browser'; st.style.display='block'; }
+    alert('getUserMedia not supported in this browser');
+    return;
+  }
   try{
     const tmp=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     tmp.getTracks().forEach(t=>t.stop());
   }catch(e){
     if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
-    if(st){ st.textContent='ERROR: '+e.message; st.style.display='block'; }
+    if(st){ st.textContent='ERROR: '+e.name+': '+e.message; st.style.display='block'; }
+    alert('Mic error: '+e.name+': '+e.message);
     return;
   }
   // Permission granted — reveal full controls, hide connect prompt
