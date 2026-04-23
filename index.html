@@ -2480,8 +2480,7 @@ async function gloopEnumDevices(){
   try{ if(ctx) await ctx.resume(); }catch(e){}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
-    if(st){ st.textContent='getUserMedia not supported in this browser'; st.style.display='block'; }
-    alert('getUserMedia not supported in this browser');
+    if(st){ st.textContent='Mic input not supported in Web MIDI Browser. Use Safari for looper, or route audio via AUM/AudioBus.'; st.style.display='block'; }
     return;
   }
   try{
@@ -2490,7 +2489,6 @@ async function gloopEnumDevices(){
   }catch(e){
     if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
     if(st){ st.textContent='ERROR: '+e.name+': '+e.message; st.style.display='block'; }
-    alert('Mic error: '+e.name+': '+e.message);
     return;
   }
   // Permission granted — reveal full controls, hide connect prompt
