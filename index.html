@@ -4952,8 +4952,9 @@ function midiConnect(){
 
 function midiUpdateStatus(){
   const st=document.getElementById('midiStatus'); if(!st||!midiAccess) return;
-  const names=[]; midiAccess.inputs.forEach(i=>{ if(i.state==='connected') names.push(i.name); });
-  st.textContent=names.length?'Connected: '+names.join(', '):'No MIDI devices found';
+  const ins=[]; midiAccess.inputs.forEach(i=>{ if(i.state==='connected') ins.push(i.name); });
+  const outs=[]; midiAccess.outputs.forEach(o=>{ if(o.state==='connected') outs.push(o.name); });
+  st.textContent=(ins.length?'IN: '+ins.join(', '):'No inputs')+' | '+(outs.length?'OUT: '+outs.join(', '):'No outputs');
   midiRefreshMapList();
 }
 
