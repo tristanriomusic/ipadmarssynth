@@ -5000,33 +5000,43 @@ function midiLearnCleanup(){
   midiUpdateStatus();
 }
 
-let midiClockDotTimer=null;
-function handleMidiClock(){
-  const now=performance.now();
-  midiClockPulseCount++;
-  if(midiClockPulseCount===1) midiClockWindowStart=now;
-  if(midiClockPulseCount<24) return; // wait for a full beat (24 pulses = 1 quarter note)
-  // One beat elapsed — compute BPM from the 24-pulse window
-  const elapsed=now-midiClockWindowStart;
-  midiClockPulseCount=0;
-  if(elapsed<=0) return;
-  const detectedBpm=Math.round(60000/elapsed);
-  if(detectedBpm<20||detectedBpm>300) return;
-  // Flash dot once per beat
-  const dot=document.getElementById('midiClockDot');
-  if(dot){ dot.style.background='#00ff88'; clearTimeout(midiClockDotTimer); midiClockDotTimer=setTimeout(()=>{ dot.style.background='rgba(255,255,255,0.25)'; },120); }
-  const ind=document.getElementById('midiClockInd');
-  if(ind) ind.textContent=detectedBpm+' BPM'+(midiClockFollow?' — LOCKED':'');
-  if(!midiClockFollow) return;
-  const clamped=Math.max(60,Math.min(200,detectedBpm));
-  if(clamped!==midiClockLastBpm){ midiClockLastBpm=clamped; setBpm(clamped); }
+function midiSendToAll(data){
+  if(!midiAccess) return;
+  midiAccess.outputs.forEach(o=>{ try{ o.send(data); }catch(e){} });
+}
+
+function midiClockSendStart(){
+  if(midiClockTimer) clearInterval(midiClockTimer);
+  const interval=60000/(bpm*24);
+  midiClockTimer=setInterval(()=>{
+    midiSendToAll([0xF8]);
+    // Flash dot once per beat (every 24th pulse)
+    if(typeof midiClockSendStart._n==='undefined') midiClockSendStart._n=0;
+    midiClockSendStart._n++;
+    if(midiClockSendStart._n>=24){
+      midiClockSendStart._n=0;
+      const dot=document.getElementById('midiClockDot');
+      if(dot){ dot.style.background='#00ff88'; setTimeout(()=>{ dot.style.background='rgba(255,255,255,0.25)'; },120); }
+    }
+  }, interval);
 }
 
 function midiClockToggle(){
-  midiClockFollow=!midiClockFollow;
-  midiClockLastBpm=0;
+  midiClockSending=!midiClockSending;
+  midiClockSendStart._n=0;
   const btn=document.getElementById('midiClockBtn');
-  if(btn){ btn.style.background=midiClockFollow?'rgba(0,255,136,0.25)':''; btn.style.color=midiClockFollow?'#00ff88':''; }
+  const ind=document.getElementById('midiClockInd');
+  if(midiClockSending){
+    midiClockSendStart();
+    if(isPlaying) midiSendToAll([0xFA]);
+    if(btn){ btn.style.background='rgba(0,255,136,0.25)'; btn.style.color='#00ff88'; }
+    if(ind) ind.textContent=bpm+' BPM — SENDING';
+  } else {
+    clearInterval(midiClockTimer); midiClockTimer=null;
+    midiSendToAll([0xFC]);
+    if(btn){ btn.style.background=''; btn.style.color=''; }
+    if(ind) ind.textContent='off';
+  }
 }
 
 function onMidiMsg(e){
