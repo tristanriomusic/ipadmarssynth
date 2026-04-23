@@ -2850,6 +2850,7 @@ function setBpm(val){
   // Each looper may have different bar counts, so send step + looper bars
   if(gloopWorklet) gloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val,step:seqStep,loopSteps:gloopBars*16});
   if(padloopWorklet) padloopWorklet.port.postMessage({cmd:'set_bpm',bpm:val,step:seqStep,loopSteps:padloopBars*16});
+  if(midiClockSending){ midiClockSendStart(); const ind=document.getElementById('midiClockInd'); if(ind) ind.textContent=val+' BPM — SENDING'; }
 }
 function setPadMode(mode,btn){
   padMode=mode;
