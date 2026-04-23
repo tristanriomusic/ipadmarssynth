@@ -874,9 +874,9 @@ input.circ-y{ -webkit-appearance:slider-vertical; writing-mode:vertical-lr; dire
           <button class="cmr" id="midiClockBtn" onclick="midiClockToggle()">⏱ CLOCK SYNC</button>
           <button class="cmr" onclick="midiClearAll()">✕ CLEAR MAP</button>
         </div>
-        <div id="midiClockPill" style="display:none;align-items:center;gap:6px;padding:4px 8px;margin-bottom:6px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.25);border-radius:6px;font-size:8px;letter-spacing:.8px;color:#00ff88">
-          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#00ff88;animation:dotPulse 1s infinite"></span>
-          MIDI CLOCK &nbsp;<span id="midiClockInd" style="opacity:0.7">waiting...</span>
+        <div id="midiClockPill" style="display:none;align-items:center;gap:6px;padding:4px 8px;margin-bottom:6px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.25);border-radius:6px;font-size:8px;letter-spacing:.8px;color:rgba(255,255,255,0.5)">
+          <span id="midiClockDot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0"></span>
+          MIDI CLOCK &nbsp;<span id="midiClockInd">no signal</span>
         </div>
         <div id="midiStatus" style="font-size:8px;color:rgba(255,68,136,0.5);letter-spacing:.8px;padding:0 0 6px"></div>
         <div id="midiMapList" style="font-size:7px;color:rgba(255,255,255,0.4);letter-spacing:.5px;max-height:120px;overflow-y:auto"></div>
@@ -1435,7 +1435,7 @@ let ctx, master, masterEQ, masterClipNode, revNode, revPre, revWet, revHP, revLP
 let delSyncDiv=null; // null=free, 0.25=1/16, 0.5=1/8, 1.0=1/4, 2.0=1/2
 let bpm=120, seqStep=0, nextT=0, isPlaying=false;
 // MIDI clock follow
-let midiClockFollow=false, midiClockPulses=[], midiClockLastBpm=0;
+let midiClockFollow=false, midiClockLastBpm=0, midiClockPulseCount=0, midiClockWindowStart=0;
 let padActive=false, padX=0.5, padY=0.5, padMode='shimmer', lastGrain=0;
 let ripples=[];
 let padAssign='xs'; // 'xs' | 'sampler'
@@ -2474,16 +2474,17 @@ function flashCircle(id){
 }
 
 async function gloopEnumDevices(){
-  // Show connecting state on the button
   const connectRow=document.getElementById('gloop-connect-row');
+  const st=document.getElementById('gloop-status');
   if(connectRow) connectRow.querySelector('button').textContent='⏳ CONNECTING...';
+  // iOS: MIDI session may have suspended AudioContext — resume before getUserMedia
+  if(ctx) await ctx.resume();
   try{
     const tmp=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     tmp.getTracks().forEach(t=>t.stop());
   }catch(e){
     if(connectRow) connectRow.querySelector('button').textContent='⚡ CONNECT AUDIO INPUT';
-    const st=document.getElementById('gloop-status');
-    if(st){ st.textContent='MIC PERMISSION DENIED'; st.style.display='block'; }
+    if(st){ st.textContent='ERROR: '+e.message; st.style.display='block'; }
     return;
   }
   // Permission granted — reveal full controls, hide connect prompt
@@ -4923,7 +4924,7 @@ let midiMap=JSON.parse(localStorage.getItem('lm_midiMap')||'{}');
 
 function midiConnect(){
   const st=document.getElementById('midiStatus');
-  if(!navigator.requestMIDIAccess){ if(st) st.textContent='MIDI not supported in this browser'; return; }
+  if(!navigator.requestMIDIAccess){ if(st) st.innerHTML='Web MIDI not supported.<br>On iPad: use <b>Web MIDI Browser</b> app (App Store).<br>On desktop: use Chrome.'; return; }
   navigator.requestMIDIAccess().then(access=>{
     midiAccess=access;
     access.inputs.forEach(input=>{ input.onmidimessage=onMidiMsg; });
@@ -4934,6 +4935,9 @@ function midiConnect(){
     midiUpdateStatus();
     const btn=document.getElementById('midiConnectBtn');
     if(btn){ btn.style.background='rgba(0,255,136,0.2)'; btn.style.color='#00ff88'; }
+    const pill=document.getElementById('midiClockPill'); if(pill) pill.style.display='flex';
+    // iOS: MIDI session can suspend the AudioContext — resume it
+    if(ctx && ctx.state!=='running') ctx.resume();
   }).catch(err=>{
     if(st) st.textContent='MIDI access denied';
   });
@@ -4992,36 +4996,39 @@ function midiLearnCleanup(){
   midiUpdateStatus();
 }
 
+let midiClockDotTimer=null;
 function handleMidiClock(){
   const now=performance.now();
-  midiClockPulses.push(now);
-  if(midiClockPulses.length>25) midiClockPulses.shift();
-  if(midiClockPulses.length<13) return; // need at least half a beat of data
-  const n=midiClockPulses.length;
-  const avgInterval=(midiClockPulses[n-1]-midiClockPulses[0])/(n-1);
-  const detectedBpm=Math.round(60000/(avgInterval*24));
-  if(detectedBpm<40||detectedBpm>250) return;
-  const clamped=Math.max(60,Math.min(200,detectedBpm));
+  midiClockPulseCount++;
+  if(midiClockPulseCount===1) midiClockWindowStart=now;
+  if(midiClockPulseCount<24) return; // wait for a full beat (24 pulses = 1 quarter note)
+  // One beat elapsed — compute BPM from the 24-pulse window
+  const elapsed=now-midiClockWindowStart;
+  midiClockPulseCount=0;
+  if(elapsed<=0) return;
+  const detectedBpm=Math.round(60000/elapsed);
+  if(detectedBpm<20||detectedBpm>300) return;
+  // Flash dot once per beat
+  const dot=document.getElementById('midiClockDot');
+  if(dot){ dot.style.background='#00ff88'; clearTimeout(midiClockDotTimer); midiClockDotTimer=setTimeout(()=>{ dot.style.background='rgba(255,255,255,0.25)'; },120); }
   const ind=document.getElementById('midiClockInd');
-  if(ind) ind.textContent=detectedBpm+' BPM';
+  if(ind) ind.textContent=detectedBpm+' BPM'+(midiClockFollow?' — LOCKED':'');
+  if(!midiClockFollow) return;
+  const clamped=Math.max(60,Math.min(200,detectedBpm));
   if(clamped!==midiClockLastBpm){ midiClockLastBpm=clamped; setBpm(clamped); }
 }
 
 function midiClockToggle(){
   midiClockFollow=!midiClockFollow;
-  midiClockPulses=[]; midiClockLastBpm=0;
+  midiClockLastBpm=0;
   const btn=document.getElementById('midiClockBtn');
-  const pill=document.getElementById('midiClockPill');
   if(btn){ btn.style.background=midiClockFollow?'rgba(0,255,136,0.25)':''; btn.style.color=midiClockFollow?'#00ff88':''; }
-  if(pill) pill.style.display=midiClockFollow?'flex':'none';
-  const ind=document.getElementById('midiClockInd');
-  if(ind) ind.textContent='waiting...';
 }
 
 function onMidiMsg(e){
   const status=e.data[0];
-  // MIDI Timing Clock — single byte 0xF8, no channel
-  if(status===0xF8){ if(midiClockFollow) handleMidiClock(); return; }
+  // MIDI Timing Clock — single byte 0xF8, no channel, always detect
+  if(status===0xF8){ handleMidiClock(); return; }
   const [,cc,val]=e.data;
   const ch=status&0x0F;
   const type=status&0xF0;
