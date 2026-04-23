@@ -5047,7 +5047,7 @@ function midiClockToggle(){
     if(btn){ btn.style.background='rgba(0,255,136,0.25)'; btn.style.color='#00ff88'; }
     if(ind) ind.textContent=bpm+' BPM — SENDING';
   } else {
-    clearInterval(midiClockTimer); midiClockTimer=null;
+    clearTimeout(midiClockTimer); midiClockTimer=null;
     midiSendToAll([0xFC]);
     if(btn){ btn.style.background=''; btn.style.color=''; }
     if(ind) ind.textContent='off';
